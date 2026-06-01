@@ -10,7 +10,7 @@ import { RuntimeLogPanel } from '../features/logs/LogPanel';
 import { RuntimeStatusPanel } from '../features/runtime/RuntimePanel';
 import { LanguageToggleRow, SettingInputRow, SettingToggleRow } from '../features/settings/SettingsControls';
 import { ServerNodeCard } from '../features/servers/ServerCard';
-import { SubscriptionGroupListRow, SubscriptionNodeListRow } from '../features/subscriptions/SubscriptionRows';
+import { SubscriptionGroupRowModel, SubscriptionManagerPanel, SubscriptionNodeRowModel } from '../features/subscriptions/SubscriptionPanel';
 import { ConnectionController, ConnectionSnapshot } from '../services/ConnectionController';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
 import { DiagnosticEvent, DiagnosticLog } from '../services/DiagnosticLog';
@@ -647,127 +647,74 @@ struct Index {
 
   @Builder
   private SubscriptionPanel() {
-    Column({ space: 12 }) {
-      Row() {
-        Text(this.t('subscription.panelTitle'))
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#111827')
-          .layoutWeight(1)
-        Text(this.f2('subscription.summary', 'groups', this.subscriptionGroups.length.toString(), 'nodes', this.nodes.length.toString()))
-          .fontSize(12)
-          .fontColor('#6B7280')
-      }
-      .width('100%')
-
-      TextArea({
-        placeholder: this.t('placeholder.subscriptionUrl'),
-        text: this.subscriptionUrl
-      })
-        .height(56)
-        .fontSize(13)
-        .fontColor('#111827')
-        .placeholderColor('#9CA3AF')
-        .backgroundColor('#F9FAFB')
-        .borderRadius(6)
-        .border({ width: 1, color: '#E5E7EB' })
-        .padding(10)
-        .onChange((value: string) => {
-          this.subscriptionUrl = value;
-        })
-
-      Row({ space: 8 }) {
-        Button(this.t('action.saveGroup'))
-          .height(38)
-          .width(116)
-          .fontSize(14)
-          .enabled(!this.subscriptionUpdating && !this.isBusy())
-          .backgroundColor('#E5E7EB')
-          .fontColor('#374151')
-          .borderRadius(8)
-          .onClick(() => {
-            this.saveSubscriptionGroup();
-          })
-        Button(this.subscriptionUpdating ? this.t('action.updating') : this.t('action.update'))
-          .height(38)
-          .width(96)
-          .fontSize(14)
-          .enabled(!this.subscriptionUpdating && !this.isBusy())
-          .backgroundColor('#1D4ED8')
-          .fontColor('#FFFFFF')
-          .borderRadius(8)
-          .onClick(() => {
-            this.updateSubscription();
-          })
-        Text(this.subscriptionMessage)
-          .fontSize(13)
-          .fontColor('#374151')
-          .layoutWeight(1)
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-
-      if (this.subscriptionGroups.length > 0) {
-        Column({ space: 8 }) {
-          ForEach(this.subscriptionGroups, (group: SubscriptionGroup) => {
-            this.SubscriptionGroupRow(group)
-          }, (group: SubscriptionGroup) => group.id)
-        }
-        .width('100%')
-      }
-
-      if (this.nodes.length > 0) {
-        Column({ space: 8 }) {
-          ForEach(this.nodes, (node: ProxyNode) => {
-            this.NodeRow(node)
-          }, (node: ProxyNode) => node.id)
-        }
-        .width('100%')
-      }
-    }
-    .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
-  }
-
-  @Builder
-  private SubscriptionGroupRow(group: SubscriptionGroup) {
-    SubscriptionGroupListRow({
-      group: group,
-      isSelected: group.id === this.selectedGroupId,
-      summary: this.f2('group.enabledSummary', 'status', group.enabled ? this.t('common.enabled') : this.t('common.disabled'), 'count', group.nodes.length.toString()),
+    SubscriptionManagerPanel({
+      title: this.t('subscription.panelTitle'),
+      summary: this.f2('subscription.summary', 'groups', this.subscriptionGroups.length.toString(), 'nodes', this.nodes.length.toString()),
+      urlPlaceholder: this.t('placeholder.subscriptionUrl'),
+      urlValue: this.subscriptionUrl,
+      saveGroupLabel: this.t('action.saveGroup'),
+      updateLabel: this.subscriptionUpdating ? this.t('action.updating') : this.t('action.update'),
+      message: this.subscriptionMessage,
+      isBusy: this.isBusy(),
+      isUpdating: this.subscriptionUpdating,
+      groupRows: this.subscriptionGroupRows(),
+      nodeRows: this.subscriptionNodeRows(),
       currentLabel: this.t('action.current'),
       openLabel: this.t('action.open'),
       onLabel: this.t('action.on'),
       offLabel: this.t('action.off'),
       deleteLabel: this.t('action.del'),
-      onSelect: (selectedGroup: SubscriptionGroup) => {
-        this.selectSubscriptionGroup(selectedGroup);
+      selectedLabel: this.t('action.selected'),
+      useLabel: this.t('action.use'),
+      onUrlChange: (value: string) => {
+        this.subscriptionUrl = value;
       },
-      onToggle: (selectedGroup: SubscriptionGroup) => {
-        this.toggleSubscriptionGroup(selectedGroup);
+      onSaveGroup: () => {
+        this.saveSubscriptionGroup();
       },
-      onDelete: (selectedGroup: SubscriptionGroup) => {
-        this.removeSubscriptionGroup(selectedGroup);
+      onUpdate: () => {
+        this.updateSubscription();
+      },
+      onSelectGroup: (group: SubscriptionGroup) => {
+        this.selectSubscriptionGroup(group);
+      },
+      onToggleGroup: (group: SubscriptionGroup) => {
+        this.toggleSubscriptionGroup(group);
+      },
+      onDeleteGroup: (group: SubscriptionGroup) => {
+        this.removeSubscriptionGroup(group);
+      },
+      onSelectNode: (node: ProxyNode) => {
+        this.selectNode(node);
       }
     })
   }
 
-  @Builder
-  private NodeRow(node: ProxyNode) {
-    SubscriptionNodeListRow({
-      node: node,
-      isSelected: node.id === this.selectedNodeId,
-      isBusy: this.isBusy(),
-      delayText: this.nodeDelayText(node),
-      delayColor: this.nodeDelayColor(node),
-      selectedLabel: this.t('action.selected'),
-      useLabel: this.t('action.use'),
-      onSelect: (selectedNode: ProxyNode) => {
-        this.selectNode(selectedNode);
-      }
-    })
+  private subscriptionGroupRows(): Array<SubscriptionGroupRowModel> {
+    const rows: Array<SubscriptionGroupRowModel> = [];
+    for (let index = 0; index < this.subscriptionGroups.length; index++) {
+      const group = this.subscriptionGroups[index];
+      rows.push({
+        group: group,
+        isSelected: group.id === this.selectedGroupId,
+        summary: this.f2('group.enabledSummary', 'status', group.enabled ? this.t('common.enabled') : this.t('common.disabled'), 'count', group.nodes.length.toString())
+      });
+    }
+    return rows;
+  }
+
+  private subscriptionNodeRows(): Array<SubscriptionNodeRowModel> {
+    const rows: Array<SubscriptionNodeRowModel> = [];
+    for (let index = 0; index < this.nodes.length; index++) {
+      const node = this.nodes[index];
+      rows.push({
+        node: node,
+        isSelected: node.id === this.selectedNodeId,
+        delayText: this.nodeDelayText(node),
+        delayColor: this.nodeDelayColor(node)
+      });
+    }
+    return rows;
   }
 
   @Builder
