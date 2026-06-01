@@ -1,0 +1,86 @@
+import { describe, it, expect } from '@ohos/hypium';
+import { buildXrayConfig, normalizeOutboundInput, validateOutboundJson } from '../main/ets/core/XrayConfig';
+import { parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
+import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
+
+const VLESS_REALITY_OUTBOUND: string =
+  '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision"}]}]},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"serverName":"www.example.com","publicKey":"test-public-key","shortId":"abcd","fingerprint":"chrome"}}}';
+
+export default function localUnitTest() {
+  describe('xrayConfig', () => {
+    it('validates vless reality outbound json', 0, () => {
+      const result = validateOutboundJson(VLESS_REALITY_OUTBOUND);
+      expect(result.valid).assertTrue();
+      expect(result.protocol).assertEqual('vless');
+      expect(result.normalizedJson).assertContain('"protocol": "vless"');
+    });
+
+    it('rejects malformed json', 0, () => {
+      const result = validateOutboundJson('{');
+      expect(result.valid).assertFalse();
+    });
+
+    it('rejects outbound without settings', 0, () => {
+      const result = validateOutboundJson('{"protocol":"vless"}');
+      expect(result.valid).assertFalse();
+      expect(result.message).assertContain('settings');
+    });
+
+    it('builds full xray config with socks inbound', 0, () => {
+      const result = buildXrayConfig(VLESS_REALITY_OUTBOUND, 10901);
+      expect(result.socksPort).assertEqual(10901);
+      expect(result.configJson).assertContain('"inbounds"');
+      expect(result.configJson).assertContain('"outbounds"');
+      expect(result.configJson).assertContain('"protocol": "socks"');
+      expect(result.configJson).assertContain('"security": "reality"');
+    });
+
+    it('imports vless reality share link as outbound json', 0, () => {
+      const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.example.com&fp=chrome&pbk=test-public-key&sid=abcd&type=tcp#demo';
+      const imported = parseShareLinkToOutboundJson(link);
+      expect(imported.success).assertTrue();
+      expect(imported.protocol).assertEqual('vless');
+      expect(imported.outboundJson).assertContain('"protocol": "vless"');
+      expect(imported.outboundJson).assertContain('"realitySettings"');
+      expect(imported.outboundJson).assertContain('"publicKey": "test-public-key"');
+
+      const validation = normalizeOutboundInput(link);
+      expect(validation.valid).assertTrue();
+      expect(validation.normalizedJson).assertContain('"flow": "xtls-rprx-vision"');
+    });
+
+    it('imports trojan ws tls share link as outbound json', 0, () => {
+      const link = 'trojan://secret@example.com:443?security=tls&sni=trojan.example&type=ws&host=cdn.example&path=%2Fws#trojan-demo';
+      const imported = parseShareLinkToOutboundJson(link);
+      expect(imported.success).assertTrue();
+      expect(imported.protocol).assertEqual('trojan');
+      expect(imported.outboundJson).assertContain('"protocol": "trojan"');
+      expect(imported.outboundJson).assertContain('"password": "secret"');
+      expect(imported.outboundJson).assertContain('"wsSettings"');
+      expect(imported.outboundJson).assertContain('"serverName": "trojan.example"');
+    });
+
+    it('imports vmess and shadowsocks share links as outbound json', 0, () => {
+      const vmess = 'vmess://eyJ2IjoiMiIsInBzIjoidm1lc3MtZGVtbyIsImFkZCI6ImV4YW1wbGUuY29tIiwicG9ydCI6IjQ0MyIsImlkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAwIiwiYWlkIjoiMCIsInNjeSI6ImF1dG8iLCJuZXQiOiJ3cyIsInR5cGUiOiJub25lIiwiaG9zdCI6ImNkbi5leGFtcGxlIiwicGF0aCI6Ii93cyIsInRscyI6InRscyIsInNuaSI6InZtZXNzLmV4YW1wbGUiLCJmcCI6ImNocm9tZSIsImFscG4iOiJoMiJ9';
+      const ss = 'ss://YWVzLTEyOC1nY206c2VjcmV0QGV4YW1wbGUuY29tOjgzODg=#ss-demo';
+
+      const vmessResult = parseShareLinkToOutboundJson(vmess);
+      expect(vmessResult.success).assertTrue();
+      expect(vmessResult.outboundJson).assertContain('"protocol": "vmess"');
+      expect(vmessResult.outboundJson).assertContain('"security": "auto"');
+
+      const ssResult = parseShareLinkToOutboundJson(ss);
+      expect(ssResult.success).assertTrue();
+      expect(ssResult.outboundJson).assertContain('"protocol": "shadowsocks"');
+      expect(ssResult.outboundJson).assertContain('"method": "aes-128-gcm"');
+    });
+
+    it('parses base64 subscription content into selectable nodes', 0, () => {
+      const content = 'dmxlc3M6Ly8wMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDBAZXhhbXBsZS5jb206NDQzP2VuY3J5cHRpb249bm9uZSZzZWN1cml0eT1yZWFsaXR5JnNuaT13d3cuZXhhbXBsZS5jb20mZnA9Y2hyb21lJnBiaz10ZXN0LXB1YmxpYy1rZXkmc2lkPWFiY2QmdHlwZT10Y3AjZGVtbwp0cm9qYW46Ly9zZWNyZXRAZXhhbXBsZS5jb206NDQzP3NlY3VyaXR5PXRscyZzbmk9dHJvamFuLmV4YW1wbGUmdHlwZT13cyZob3N0PWNkbi5leGFtcGxlJnBhdGg9JTJGd3MjdHJvamFuLWRlbW8=';
+      const nodes = SubscriptionManager.parseSubscriptionContent(content, 'https://sub.example/list');
+      expect(nodes.length).assertEqual(2);
+      expect(nodes[0].outboundJson).assertContain('"protocol": "vless"');
+      expect(nodes[1].outboundJson).assertContain('"protocol": "trojan"');
+    });
+  });
+}

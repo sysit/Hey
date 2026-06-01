@@ -1,0 +1,5 @@
+{
+  "libheyvpn.so": {
+    "source": "src/mock/Libheyvpn.mock.ets"
+  }
+}
