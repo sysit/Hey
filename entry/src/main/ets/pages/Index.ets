@@ -5,6 +5,7 @@ import { SelectionButton } from '../components/SelectionButton';
 import { DEFAULT_LANGUAGE, normalizeLanguage, translate } from '../core/I18n';
 import { AppLanguage, AppSettings, ConnectionStatus, ProxyNode, ProxyProfile, RuntimeStats, SubscriptionGroup, SubscriptionProfile } from '../core/Profile';
 import { normalizeOutboundInput } from '../core/XrayConfig';
+import { XrayConfigPanel } from '../features/import/ConfigPanel';
 import { RuntimeLogPanel } from '../features/logs/LogPanel';
 import { RuntimeStatusPanel } from '../features/runtime/RuntimePanel';
 import { LanguageToggleRow, SettingInputRow, SettingToggleRow } from '../features/settings/SettingsControls';
@@ -771,67 +772,25 @@ struct Index {
 
   @Builder
   private ConfigPanel() {
-    Column({ space: 12 }) {
-      Row() {
-        Text(this.t('config.title'))
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#111827')
-          .layoutWeight(1)
-        Text(this.profileUpdatedAt)
-          .fontSize(12)
-          .fontColor('#6B7280')
+    XrayConfigPanel({
+      title: this.t('config.title'),
+      updatedAt: this.profileUpdatedAt,
+      placeholder: this.t('placeholder.outbound'),
+      outboundJson: this.outboundJson,
+      validLabel: this.t('config.valid'),
+      invalidLabel: this.t('config.invalid'),
+      validationOk: this.validationOk,
+      validationMessage: this.validationMessage,
+      importLabel: this.t('action.import'),
+      isBusy: this.isBusy(),
+      onConfigChange: (value: string) => {
+        this.outboundJson = value;
+        this.validateConfig();
+      },
+      onImport: () => {
+        this.normalizeConfigInput();
       }
-      .width('100%')
-
-      TextArea({
-        placeholder: this.t('placeholder.outbound'),
-        text: this.outboundJson
-      })
-        .height(220)
-        .fontSize(13)
-        .fontColor('#111827')
-        .placeholderColor('#9CA3AF')
-        .backgroundColor('#F9FAFB')
-        .borderRadius(6)
-        .border({ width: 1, color: '#E5E7EB' })
-        .padding(10)
-        .onChange((value: string) => {
-          this.outboundJson = value;
-          this.validateConfig();
-        })
-
-      Row({ space: 8 }) {
-        Text(this.validationOk ? this.t('config.valid') : this.t('config.invalid'))
-          .fontSize(12)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.validationOk ? '#166534' : '#B42318')
-          .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-          .backgroundColor(this.validationOk ? '#DCFCE7' : '#FEF3F2')
-          .borderRadius(6)
-        Text(this.validationMessage)
-          .fontSize(13)
-          .fontColor('#374151')
-          .layoutWeight(1)
-        Button(this.t('action.import'))
-          .height(32)
-          .width(76)
-          .fontSize(13)
-          .enabled(!this.isBusy())
-          .backgroundColor('#E5E7EB')
-          .fontColor('#374151')
-          .borderRadius(6)
-          .onClick(() => {
-            this.normalizeConfigInput();
-          })
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-    }
-    .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    })
   }
 
   private async loadInitialState(): Promise<void> {
