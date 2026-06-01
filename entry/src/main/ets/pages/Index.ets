@@ -1,5 +1,7 @@
 import { common } from '@kit.AbilityKit';
+import { ActionListItem } from '../components/ActionListItem';
 import { SectionHeader } from '../components/SectionHeader';
+import { SelectionButton } from '../components/SelectionButton';
 import { DEFAULT_LANGUAGE, normalizeLanguage, translate } from '../core/I18n';
 import { AppLanguage, AppSettings, ConnectionStatus, ProxyNode, ProxyProfile, RuntimeStats, SubscriptionGroup, SubscriptionProfile } from '../core/Profile';
 import { normalizeOutboundInput } from '../core/XrayConfig';
@@ -384,16 +386,15 @@ struct Index {
 
   @Builder
   private ProtocolButton(protocol: string) {
-    Button(protocol.toUpperCase())
-      .height(34)
-      .layoutWeight(1)
-      .fontSize(11)
-      .backgroundColor(this.selectedImportProtocol === protocol ? '#111827' : '#E5E7EB')
-      .fontColor(this.selectedImportProtocol === protocol ? '#FFFFFF' : '#374151')
-      .borderRadius(6)
-      .onClick(() => {
-        this.selectedImportProtocol = protocol;
-      })
+    SelectionButton({
+      label: protocol.toUpperCase(),
+      itemValue: protocol,
+      isSelected: this.selectedImportProtocol === protocol,
+      labelSize: 11,
+      onSelect: (value: string) => {
+        this.selectedImportProtocol = value;
+      }
+    })
   }
 
   @Builder
@@ -582,66 +583,44 @@ struct Index {
 
   @Builder
   private TrafficModeButton(value: string, label: string) {
-    Button(label)
-      .height(34)
-      .layoutWeight(1)
-      .fontSize(12)
-      .backgroundColor(this.trafficMode === value ? '#111827' : '#E5E7EB')
-      .fontColor(this.trafficMode === value ? '#FFFFFF' : '#374151')
-      .borderRadius(6)
-      .onClick(() => {
-        this.trafficMode = value;
+    SelectionButton({
+      label: label,
+      itemValue: value,
+      isSelected: this.trafficMode === value,
+      labelSize: 12,
+      onSelect: (nextValue: string) => {
+        this.trafficMode = nextValue;
         this.appendLog(this.f1('log.routingStrategy', 'value', label));
         this.persistSettings();
-      })
+      }
+    })
   }
 
   @Builder
   private StrategyButton(value: string) {
-    Button(value)
-      .height(34)
-      .layoutWeight(1)
-      .fontSize(11)
-      .backgroundColor(this.routingStrategy === value ? '#111827' : '#E5E7EB')
-      .fontColor(this.routingStrategy === value ? '#FFFFFF' : '#374151')
-      .borderRadius(6)
-      .onClick(() => {
-        this.routingStrategy = value;
-        this.appendLog(this.f1('log.routingStrategy', 'value', value));
+    SelectionButton({
+      label: value,
+      itemValue: value,
+      isSelected: this.routingStrategy === value,
+      labelSize: 11,
+      onSelect: (nextValue: string) => {
+        this.routingStrategy = nextValue;
+        this.appendLog(this.f1('log.routingStrategy', 'value', nextValue));
         this.persistSettings();
-      })
+      }
+    })
   }
 
   @Builder
   private RoutingPreset(title: string, detail: string) {
-    Row({ space: 10 }) {
-      Column({ space: 4 }) {
-        Text(title)
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827')
-        Text(detail)
-          .fontSize(12)
-          .fontColor('#6B7280')
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
+    ActionListItem({
+      title: title,
+      detail: detail,
+      actionLabel: this.t('action.open'),
+      onAction: (openedTitle: string) => {
+        this.appendLog(this.f1('log.presetOpened', 'title', openedTitle));
       }
-      .layoutWeight(1)
-      Button(this.t('action.open'))
-        .height(32)
-        .width(68)
-        .fontSize(12)
-        .backgroundColor('#E5E7EB')
-        .fontColor('#374151')
-        .borderRadius(6)
-        .onClick(() => {
-          this.appendLog(this.f1('log.presetOpened', 'title', title));
-        })
-    }
-    .width('100%')
-    .padding(12)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
+    })
   }
 
   @Builder
