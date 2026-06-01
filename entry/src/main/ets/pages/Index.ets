@@ -8,6 +8,8 @@ import { normalizeOutboundInput } from '../core/XrayConfig';
 import { RuntimeLogPanel } from '../features/logs/LogPanel';
 import { RuntimeStatusPanel } from '../features/runtime/RuntimePanel';
 import { LanguageToggleRow, SettingInputRow, SettingToggleRow } from '../features/settings/SettingsControls';
+import { ServerNodeCard } from '../features/servers/ServerCard';
+import { SubscriptionGroupListRow, SubscriptionNodeListRow } from '../features/subscriptions/SubscriptionRows';
 import { ConnectionController, ConnectionSnapshot } from '../services/ConnectionController';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
 import { DiagnosticEvent, DiagnosticLog } from '../services/DiagnosticLog';
@@ -283,42 +285,19 @@ struct Index {
 
   @Builder
   private ServerCard(node: ProxyNode) {
-    Row({ space: 10 }) {
-      Column({ space: 4 }) {
-        Text(node.name)
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827')
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(`${node.protocol.toUpperCase()}  ${node.sourceUrl.length > 0 ? this.t('node.source.subscription') : this.t('node.source.manual')}`)
-          .fontSize(12)
-          .fontColor('#6B7280')
+    ServerNodeCard({
+      node: node,
+      isSelected: node.id === this.selectedNodeId,
+      isBusy: this.isBusy(),
+      sourceLabel: node.sourceUrl.length > 0 ? this.t('node.source.subscription') : this.t('node.source.manual'),
+      delayText: this.nodeDelayText(node),
+      delayColor: this.nodeDelayColor(node),
+      currentLabel: this.t('action.current'),
+      useLabel: this.t('action.use'),
+      onSelect: (selectedNode: ProxyNode) => {
+        this.selectNode(selectedNode);
       }
-      .layoutWeight(1)
-
-      Text(this.nodeDelayText(node))
-        .fontSize(12)
-        .fontColor(this.nodeDelayColor(node))
-        .width(84)
-        .textAlign(TextAlign.Center)
-
-      Button(node.id === this.selectedNodeId ? this.t('action.current') : this.t('action.use'))
-        .height(34)
-        .width(86)
-        .fontSize(12)
-        .enabled(!this.isBusy())
-        .backgroundColor(node.id === this.selectedNodeId ? '#166534' : '#E5E7EB')
-        .fontColor(node.id === this.selectedNodeId ? '#FFFFFF' : '#374151')
-        .borderRadius(6)
-        .onClick(() => {
-          this.selectNode(node);
-        })
-    }
-    .width('100%')
-    .padding(12)
-    .backgroundColor(node.id === this.selectedNodeId ? '#F0FDF4' : '#FFFFFF')
-    .borderRadius(8)
+    })
   }
 
   @Builder
@@ -753,95 +732,41 @@ struct Index {
 
   @Builder
   private SubscriptionGroupRow(group: SubscriptionGroup) {
-    Row({ space: 8 }) {
-      Column({ space: 3 }) {
-        Text(group.name)
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827')
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(this.f2('group.enabledSummary', 'status', group.enabled ? this.t('common.enabled') : this.t('common.disabled'), 'count', group.nodes.length.toString()))
-          .fontSize(12)
-          .fontColor('#6B7280')
+    SubscriptionGroupListRow({
+      group: group,
+      isSelected: group.id === this.selectedGroupId,
+      summary: this.f2('group.enabledSummary', 'status', group.enabled ? this.t('common.enabled') : this.t('common.disabled'), 'count', group.nodes.length.toString()),
+      currentLabel: this.t('action.current'),
+      openLabel: this.t('action.open'),
+      onLabel: this.t('action.on'),
+      offLabel: this.t('action.off'),
+      deleteLabel: this.t('action.del'),
+      onSelect: (selectedGroup: SubscriptionGroup) => {
+        this.selectSubscriptionGroup(selectedGroup);
+      },
+      onToggle: (selectedGroup: SubscriptionGroup) => {
+        this.toggleSubscriptionGroup(selectedGroup);
+      },
+      onDelete: (selectedGroup: SubscriptionGroup) => {
+        this.removeSubscriptionGroup(selectedGroup);
       }
-      .layoutWeight(1)
-
-      Button(group.id === this.selectedGroupId ? this.t('action.current') : this.t('action.open'))
-        .height(32)
-        .width(76)
-        .fontSize(12)
-        .backgroundColor(group.id === this.selectedGroupId ? '#166534' : '#E5E7EB')
-        .fontColor(group.id === this.selectedGroupId ? '#FFFFFF' : '#374151')
-        .borderRadius(6)
-        .onClick(() => {
-          this.selectSubscriptionGroup(group);
-        })
-      Button(group.enabled ? this.t('action.on') : this.t('action.off'))
-        .height(32)
-        .width(58)
-        .fontSize(12)
-        .backgroundColor(group.enabled ? '#EEF2FF' : '#F3F4F6')
-        .fontColor(group.enabled ? '#3730A3' : '#6B7280')
-        .borderRadius(6)
-        .onClick(() => {
-          this.toggleSubscriptionGroup(group);
-        })
-      Button(this.t('action.del'))
-        .height(32)
-        .width(54)
-        .fontSize(12)
-        .backgroundColor('#FEF3F2')
-        .fontColor('#B42318')
-        .borderRadius(6)
-        .onClick(() => {
-          this.removeSubscriptionGroup(group);
-        })
-    }
-    .width('100%')
-    .padding(10)
-    .backgroundColor(group.id === this.selectedGroupId ? '#F0FDF4' : '#F9FAFB')
-    .borderRadius(6)
+    })
   }
 
   @Builder
   private NodeRow(node: ProxyNode) {
-    Row({ space: 10 }) {
-      Column({ space: 3 }) {
-        Text(node.name)
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#111827')
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(node.protocol.toUpperCase())
-          .fontSize(12)
-          .fontColor('#6B7280')
+    SubscriptionNodeListRow({
+      node: node,
+      isSelected: node.id === this.selectedNodeId,
+      isBusy: this.isBusy(),
+      delayText: this.nodeDelayText(node),
+      delayColor: this.nodeDelayColor(node),
+      selectedLabel: this.t('action.selected'),
+      useLabel: this.t('action.use'),
+      onSelect: (selectedNode: ProxyNode) => {
+        this.selectNode(selectedNode);
       }
-      .layoutWeight(1)
-
-      Text(this.nodeDelayText(node))
-        .fontSize(12)
-        .fontColor(this.nodeDelayColor(node))
-        .width(84)
-        .textAlign(TextAlign.Center)
-
-      Button(node.id === this.selectedNodeId ? this.t('action.selected') : this.t('action.use'))
-        .height(34)
-        .width(86)
-        .fontSize(13)
-        .enabled(!this.isBusy())
-        .backgroundColor(node.id === this.selectedNodeId ? '#166534' : '#E5E7EB')
-        .fontColor(node.id === this.selectedNodeId ? '#FFFFFF' : '#374151')
-        .borderRadius(6)
-        .onClick(() => {
-          this.selectNode(node);
-        })
-    }
-    .width('100%')
-    .padding(10)
-    .backgroundColor(node.id === this.selectedNodeId ? '#F0FDF4' : '#F9FAFB')
-    .borderRadius(6)
+    })
   }
 
   @Builder
