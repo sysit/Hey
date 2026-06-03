@@ -47,8 +47,8 @@ export class ConnectionController {
         uploadBytes: stats.uploadBytes,
         downloadBytes: stats.downloadBytes,
         xrayRunning: true,
-        tun2SocksRunning: true,
-        lastMessage: 'VPN extension owns the native bridge. Wire IPC stats after real libXray/tun2socks integration.'
+        tunRunning: true,
+        lastMessage: 'VPN extension owns the native bridge. Xray is handling the TUN inbound directly.'
       };
     }
     return stats;
@@ -72,14 +72,10 @@ export class ConnectionController {
     const requestedAt = Date.now();
 
     try {
-      hilog.info(LOG_DOMAIN, LOG_TAG, 'Calling startVpnExtensionAbility, configBytes=%{public}d, socks=%{public}s:%{public}d',
-        this.generatedConfig.configJson.length,
-        this.generatedConfig.socksHost,
-        this.generatedConfig.socksPort);
+      hilog.info(LOG_DOMAIN, LOG_TAG, 'Calling startVpnExtensionAbility, configBytes=%{public}d',
+        this.generatedConfig.configJson.length);
       await this.withTimeout(vpnExtension.startVpnExtensionAbility(createVpnWant(
-        this.generatedConfig.configJson,
-        this.generatedConfig.socksHost,
-        this.generatedConfig.socksPort
+        this.generatedConfig.configJson
       )), START_VPN_TIMEOUT_MS, '启动 VPN 超时：系统 VPN 授权服务没有响应。若 hilog 中出现 com.huawei.hmos.vpndialog bundle not exist，说明当前系统镜像缺少 VPN 授权组件，请改用真机测试。');
       hilog.info(LOG_DOMAIN, LOG_TAG, 'startVpnExtensionAbility returned.');
       const startEvent = await this.waitForDiagnosticEvent(context, requestedAt, START_VPN_READY_TIMEOUT_MS, (event: DiagnosticEvent) => {

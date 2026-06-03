@@ -2,7 +2,7 @@
 
 This checklist verifies the current MVP path:
 
-`VpnExtensionAbility -> TUN fd -> libheytun2socks.so -> 127.0.0.1:10808 SOCKS -> libxray.so outbound`
+`VpnExtensionAbility -> TUN fd -> CGoSetTunFd -> Xray native TUN inbound -> Xray outbound`
 
 ## Build and Install
 
@@ -11,7 +11,8 @@ DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk ./scripts/device_vp
 DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk ./scripts/device_vpn_smoke_test.sh install
 ```
 
-If command-line install rejects the unsigned HAP, install from DevEco Studio with a valid debug signing config.
+The smoke-test script installs the signed HAP. If install still fails with a
+signature error, refresh the DevEco debug signing config and rebuild.
 
 ## Log Watch
 
@@ -22,7 +23,7 @@ DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk ./scripts/device_vp
 Expected tags:
 
 - `HeyVpnAbility`: VPN authorization, TUN fd, lifecycle cleanup.
-- `HeyNative`: `dlopen`, `dlsym`, Xray start/stop, tun2socks start/stop.
+- `HeyNative`: `dlopen`, `dlsym`, TUN fd setup, Xray start/stop.
 - In-app Logs panel: mirrored diagnostic events from the VPN extension plus periodic native stats.
 
 ## Manual Closed Loop
@@ -34,13 +35,12 @@ Expected tags:
 5. Confirm the in-app log sequence:
    - `VPN ability created.`
    - `VPN created. tunFd=<number>`
+   - `Xray TUN fd configured.`
    - `Xray started.`
-   - `tun2socks started.`
    - repeated `Native bridge stats.`
 6. Open another app, such as the system browser, and visit a site that requires the proxy.
 7. Return to Hey and confirm upload/download counters increase.
 8. Tap Stop and confirm:
-   - `tun2socks stop requested.`
    - `Xray stop requested.`
    - `VPN destroyed.`
    - the system VPN icon disappears.
@@ -48,6 +48,6 @@ Expected tags:
 ## Failure Signals
 
 - `dlopen libxray.so failed`: the packaged Go shared library is not accepted by the device runtime or was not packaged.
-- `dlsym libxray.so failed`: exported symbols changed; verify `CGoRunXrayFromJSON` and `CGoStopXray`.
-- `tun2socks adapter start failed`: the TUN fd path may not be compatible with the adapter on this device.
+- `dlsym libxray.so failed`: exported symbols changed; verify `CGoSetTunFd`, `CGoRunXrayFromJSON`, and `CGoStopXray`.
+- `Xray TUN fd configured` never appears: the Harmony VPN fd was not returned or libXray lacks `CGoSetTunFd`.
 - VPN starts but traffic never increases: check whether the browser traffic is really routed through the VPN and whether the app's own bundle exclusion is avoiding Xray socket loops.

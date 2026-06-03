@@ -1,9 +1,9 @@
 # Hey VPN
 
 Hey VPN is a HarmonyOS VPN client MVP built with ArkTS, Stage model abilities,
-and native Xray/tun2socks cores. It is designed to import proxy nodes,
+and a native Xray core. It is designed to import proxy nodes,
 generate an Xray runtime config, start a HarmonyOS VPN Extension, and route the
-device TUN flow through a local SOCKS bridge.
+device TUN flow through Xray's native TUN inbound.
 
 The current native path is:
 
@@ -15,9 +15,9 @@ User connects
   -> vpnConnection.create(vpnConfig)
   -> TUN fd
   -> libheyvpn.so dlopen(libxray.so)
+  -> CGoSetTunFd(tunFd)
   -> CGoRunXrayFromJSON(config)
-  -> HeyTun2SocksStart(tunFd, 127.0.0.1, 10808, mtu)
-  -> tun2socks forwards TUN flow to the local Xray SOCKS inbound
+  -> Xray native TUN inbound reads the Harmony VPN fd
   -> Xray outbound
 ```
 
@@ -35,10 +35,10 @@ VPN authorization component.
 - Node list, search, selection, start/stop/restart controls, and runtime status.
 - Import of subscription URLs, Xray outbound JSON, and share links.
 - Share-link parsing for `vless://`, `vmess://`, `trojan://`, and `ss://`.
-- Xray config generation with local SOCKS inbound plus proxy/direct/block
+- Xray config generation with native TUN inbound plus proxy/direct/block
   outbounds.
-- Native N-API bridge for packaged combined `libxray.so`, which exports both
-  Xray and tun2socks entry points.
+- Native N-API bridge for packaged `libxray.so`, including TUN fd setup and
+  Xray lifecycle entry points.
 - Diagnostic log panel and native runtime stat display.
 - Scaffolded pages for routing, settings, per-app proxy, user assets, scanner,
   subscriptions, logs, and about.
@@ -58,8 +58,7 @@ docs/                             Real-device test documentation
 
 - DevEco Studio / HarmonyOS SDK 6.1.1, API 24.
 - A HarmonyOS phone or tablet for end-to-end VPN testing.
-- Go and DevEco native toolchains when rebuilding the combined Xray/tun2socks
-  shared library.
+- Go and DevEco native toolchains when rebuilding the Xray shared library.
 
 ## Build
 
@@ -72,20 +71,17 @@ DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk ./scripts/device_vp
 The output HAP is expected at:
 
 ```text
-entry/build/default/outputs/default/app/entry-default.hap
+entry/build/default/outputs/default/entry-default-signed.hap
 ```
 
-Rebuild the combined native core when needed:
+Rebuild the Xray native core when needed:
 
 ```bash
 ./scripts/build_libxray_ohos.sh
 ```
 
 The script places `libxray.so` and `libxray.h` under
-`entry/src/main/cpp/prebuilt/arm64-v8a/`. The standalone
-`scripts/build_tun2socks_ohos.sh` script is kept as a reference build path, but
-the current VPN runtime does not package or call an independent
-`libheytun2socks.so`.
+`entry/src/main/cpp/prebuilt/arm64-v8a/`.
 
 ## Install And Test
 
@@ -113,8 +109,8 @@ For the manual closed-loop checklist, see
 ## Native Core
 
 The native bridge builds `libheyvpn.so` and loads one packaged Go shared
-library, `libxray.so`. That combined library exports the Xray control symbols
-and the tun2socks adapter symbols documented in
+library, `libxray.so`. That library exports Xray control symbols plus
+`CGoSetTunFd`, documented in
 [`entry/src/main/cpp/README.md`](entry/src/main/cpp/README.md).
 
 ## Roadmap

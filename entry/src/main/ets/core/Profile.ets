@@ -48,8 +48,8 @@ export interface ValidationResult {
 
 export interface GeneratedXrayConfig {
   configJson: string;
-  socksHost: string;
-  socksPort: number;
+  socksHost?: string;
+  socksPort?: number;
 }
 
 export type AppLanguage = 'zh' | 'en';
@@ -73,7 +73,6 @@ export interface AppSettings {
   preferIpv6: boolean;
   proxySharingEnabled: boolean;
   allowInsecure: boolean;
-  socksPort: number;
   localDnsPort: number;
   vpnDns: string;
   remoteDns: string;
@@ -90,7 +89,7 @@ export interface RuntimeStats {
   uploadBytes: number;
   downloadBytes: number;
   xrayRunning: boolean;
-  tun2SocksRunning: boolean;
+  tunRunning: boolean;
   lastMessage: string;
 }
 

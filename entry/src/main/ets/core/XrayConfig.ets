@@ -27,8 +27,8 @@ interface XraySniffingConfig {
 
 interface XrayInboundConfig {
   tag: string;
-  listen: string;
-  port: number;
+  listen?: string;
+  port?: number;
   protocol: string;
   settings: Object;
   sniffing?: XraySniffingConfig;
@@ -66,13 +66,18 @@ class SocksInboundSettings {
   userLevel: number = 0;
 }
 
+class TunInboundSettings {
+  name: string = 'vpn-tun';
+  mtu: number = 1400;
+  userLevel: number = 0;
+}
+
 class EmptySettings {
 }
 
 const SUPPORTED_PROTOCOLS: Array<string> = ['vless', 'vmess', 'trojan', 'shadowsocks', 'socks', 'http', 'wireguard', 'hysteria2'];
 
 export const DEFAULT_SOCKS_HOST: string = '127.0.0.1';
-export const DEFAULT_SOCKS_PORT: number = 10808;
 export const DELAY_TEST_SOCKS_PORT: number = 10825;
 const DEFAULT_LOG_LEVEL: string = 'warning';
 const DEFAULT_ROUTING_DOMAIN_STRATEGY: string = 'AsIs';
@@ -170,15 +175,15 @@ export function normalizeOutboundInput(input: string): ValidationResult {
   };
 }
 
-export function buildXrayConfig(outboundJson: string, socksPort: number = DEFAULT_SOCKS_PORT): GeneratedXrayConfig {
-  return buildXrayConfigInternal(outboundJson, socksPort, undefined);
+export function buildXrayConfig(outboundJson: string): GeneratedXrayConfig {
+  return buildXrayConfigInternal(outboundJson, undefined);
 }
 
 export function buildXrayConfigWithSettings(outboundJson: string, settings: AppSettings): GeneratedXrayConfig {
-  return buildXrayConfigInternal(outboundJson, settings.socksPort, settings);
+  return buildXrayConfigInternal(outboundJson, settings);
 }
 
-function buildXrayConfigInternal(outboundJson: string, socksPort: number, settings: AppSettings | undefined): GeneratedXrayConfig {
+function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | undefined): GeneratedXrayConfig {
   const validation = validateOutboundJson(outboundJson);
   if (!validation.valid) {
     throw new Error(validation.message);
@@ -198,19 +203,17 @@ function buildXrayConfigInternal(outboundJson: string, socksPort: number, settin
     outbound.mux = mux;
   }
 
-  const socksInbound: XrayInboundConfig = {
-    tag: 'socks-in',
-    listen: DEFAULT_SOCKS_HOST,
-    port: socksPort,
-    protocol: 'socks',
-    settings: new SocksInboundSettings()
+  const tunInbound: XrayInboundConfig = {
+    tag: 'tun-in',
+    protocol: 'tun',
+    settings: new TunInboundSettings()
   };
   if (settings === undefined || settings.sniffingEnabled) {
     const sniffing: XraySniffingConfig = {
       enabled: true,
       destOverride: ['http', 'tls', 'quic']
     };
-    socksInbound.sniffing = sniffing;
+    tunInbound.sniffing = sniffing;
   }
   const directOutbound: XrayOutbound = {
     tag: 'direct',
@@ -228,7 +231,7 @@ function buildXrayConfigInternal(outboundJson: string, socksPort: number, settin
       loglevel: settings?.logLevel ?? DEFAULT_LOG_LEVEL
     },
     dns: buildDnsConfig(settings),
-    inbounds: [socksInbound],
+    inbounds: [tunInbound],
     outbounds: [outbound, directOutbound, blockOutbound],
     routing: {
       domainStrategy: settings?.routingDomainStrategy ?? DEFAULT_ROUTING_DOMAIN_STRATEGY,
@@ -237,9 +240,7 @@ function buildXrayConfigInternal(outboundJson: string, socksPort: number, settin
   };
 
   return {
-    configJson: JSON.stringify(config, null, 2),
-    socksHost: DEFAULT_SOCKS_HOST,
-    socksPort
+    configJson: JSON.stringify(config, null, 2)
   };
 }
 

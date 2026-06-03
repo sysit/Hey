@@ -11,8 +11,6 @@ WORK_DIR="${ROOT_DIR}/build/native/libxray-ohos"
 SRC_DIR="${WORK_DIR}/src"
 OUT_DIR="${ROOT_DIR}/entry/src/main/cpp/prebuilt/arm64-v8a"
 LIBXRAY_REPO="${LIBXRAY_REPO:-https://github.com/XTLS/libXray.git}"
-TUN2SOCKS_VERSION="${TUN2SOCKS_VERSION:-v2.6.0}"
-GVISOR_VERSION="${GVISOR_VERSION:-v0.0.0-20250523182742-eede7a881b20}"
 EXPORTS_FILE="${WORK_DIR}/libxray.exports"
 GO_LDFLAGS_DEFAULT="-s -w -linkmode external -extldflags \"-Wl,--version-script=${EXPORTS_FILE} -Wl,-z,lazy\""
 GOOS_TARGET="${GOOS_TARGET:-android}"
@@ -27,11 +25,6 @@ cat > "${EXPORTS_FILE}" <<'MAP'
     CGoStopXray;
     CGoPing;
     CGoSetTunFd;
-    HeyTun2SocksStart;
-    HeyTun2SocksStop;
-    HeyTun2SocksUploadBytes;
-    HeyTun2SocksDownloadBytes;
-    HeyTun2SocksLastError;
   local: *;
 };
 MAP
@@ -113,138 +106,50 @@ path.write_text(text)
 PY
 fi
 
-cat > hey_tun2socks.go <<'GO'
-package main
+if [[ "${GOOS_TARGET}" == "android" ]]; then
+  GVISOR_MODULE_VERSION="$(go list -m -f '{{.Version}}' gvisor.dev/gvisor)"
+  GVISOR_MODULE_DIR="$(go env GOMODCACHE)/gvisor.dev/gvisor@${GVISOR_MODULE_VERSION}"
+  PATCHED_GVISOR_DIR="${WORK_DIR}/gvisor-patched"
 
-/*
-#include <stdint.h>
-*/
-import "C"
+  if [[ ! -d "${GVISOR_MODULE_DIR}" ]]; then
+    go mod download gvisor.dev/gvisor
+  fi
 
-import (
-	"fmt"
-	"sync/atomic"
+  if [[ -d "${PATCHED_GVISOR_DIR}" ]]; then
+    chmod -R u+w "${PATCHED_GVISOR_DIR}"
+  fi
+  rm -rf "${PATCHED_GVISOR_DIR}"
+  cp -R "${GVISOR_MODULE_DIR}" "${PATCHED_GVISOR_DIR}"
+  chmod -R u+w "${PATCHED_GVISOR_DIR}"
 
-	"github.com/xjasonlyu/tun2socks/v2/engine"
-	"github.com/xjasonlyu/tun2socks/v2/tunnel/statistic"
-)
+  python3 - "${PATCHED_GVISOR_DIR}/pkg/tcpip/link/fdbased/endpoint.go" <<'PY'
+from pathlib import Path
+import sys
 
-var heyTun2SocksRunning atomic.Bool
-var heyTun2SocksLastError atomic.Value
-
-//export HeyTun2SocksStart
-func HeyTun2SocksStart(tunFd C.int, socksHost *C.char, socksPort C.int, mtu C.int) C.int {
-	host := C.GoString(socksHost)
-	if err := heyStartTun2Socks(int(tunFd), host, int(socksPort), int(mtu)); err != nil {
-		heyTun2SocksLastError.Store(err.Error())
-		return -1
-	}
-	heyTun2SocksLastError.Store("")
-	return 0
+path = Path(sys.argv[1])
+text = path.read_text()
+old = """func isSocketFD(fd int) (bool, error) {
+\tvar stat unix.Stat_t
+\tif err := unix.Fstat(fd, &stat); err != nil {
+\t\treturn false, fmt.Errorf("unix.Fstat(%v,...) failed: %v", fd, err)
+\t}
+\treturn (stat.Mode & unix.S_IFSOCK) == unix.S_IFSOCK, nil
 }
-
-//export HeyTun2SocksStop
-func HeyTun2SocksStop() {
-	heyRequestStopTun2Socks()
+"""
+new = """func isSocketFD(fd int) (bool, error) {
+\t// HarmonyOS VPN file descriptors can reject Fstat even when readv/writev
+\t// works. Xray's Android TUN inbound passes a TUN fd here, so force the
+\t// portable non-socket Readv dispatcher and avoid Fstat entirely.
+\treturn false, nil
 }
+"""
+if old not in text:
+    raise SystemExit("expected fdbased isSocketFD implementation not found")
+path.write_text(text.replace(old, new))
+PY
 
-//export HeyTun2SocksUploadBytes
-func HeyTun2SocksUploadBytes() C.int64_t {
-	return C.int64_t(statistic.DefaultManager.Snapshot().UploadTotal)
-}
-
-//export HeyTun2SocksDownloadBytes
-func HeyTun2SocksDownloadBytes() C.int64_t {
-	return C.int64_t(statistic.DefaultManager.Snapshot().DownloadTotal)
-}
-
-//export HeyTun2SocksLastError
-func HeyTun2SocksLastError() *C.char {
-	value := heyTun2SocksLastError.Load()
-	if text, ok := value.(string); ok {
-		return C.CString(text)
-	}
-	return C.CString("")
-}
-
-func heyStartTun2Socks(tunFd int, socksHost string, socksPort int, mtu int) error {
-	if heyTun2SocksRunning.Load() {
-		return nil
-	}
-	if tunFd < 0 || socksHost == "" || socksPort <= 0 || mtu <= 0 {
-		return fmt.Errorf("invalid tun2socks arguments: tunFd=%d host=%q port=%d mtu=%d", tunFd, socksHost, socksPort, mtu)
-	}
-
-	engine.Insert(&engine.Key{
-		MTU:      mtu,
-		Device:   fmt.Sprintf("fd://%d", tunFd),
-		Proxy:    fmt.Sprintf("socks5://%s:%d", socksHost, socksPort),
-		LogLevel: "warn",
-	})
-	if err := engine.StartWithError(); err != nil {
-		return err
-	}
-	heyTun2SocksRunning.Store(true)
-	return nil
-}
-
-func heyRequestStopTun2Socks() {
-	if heyTun2SocksRunning.Swap(false) {
-		go func() {
-			if err := engine.StopWithError(); err != nil {
-				heyTun2SocksLastError.Store(err.Error())
-			}
-		}()
-	}
-}
-GO
-
-go get "github.com/xjasonlyu/tun2socks/v2@${TUN2SOCKS_VERSION}"
-PATCHED_TUN2SOCKS_DIR="${WORK_DIR}/tun2socks-patched"
-if [[ -d "${PATCHED_TUN2SOCKS_DIR}" ]]; then
-  chmod -R u+w "${PATCHED_TUN2SOCKS_DIR}"
+  go mod edit -replace="gvisor.dev/gvisor=${PATCHED_GVISOR_DIR}"
 fi
-rm -rf "${PATCHED_TUN2SOCKS_DIR}"
-cp -R "$(go env GOMODCACHE)/github.com/xjasonlyu/tun2socks/v2@${TUN2SOCKS_VERSION}" "${PATCHED_TUN2SOCKS_DIR}"
-chmod -R u+w "${PATCHED_TUN2SOCKS_DIR}"
-cat > "${PATCHED_TUN2SOCKS_DIR}/engine/start_error.go" <<'GO'
-package engine
-
-func StartWithError() error {
-	return start()
-}
-
-func StopWithError() error {
-	return stop()
-}
-GO
-cat > "${PATCHED_TUN2SOCKS_DIR}/core/device/fdbased/open_linux.go" <<'GO'
-package fdbased
-
-import (
-	"fmt"
-	"os"
-
-	"github.com/xjasonlyu/tun2socks/v2/core/device"
-	"github.com/xjasonlyu/tun2socks/v2/core/device/iobased"
-)
-
-func open(fd int, mtu uint32, offset int) (device.Device, error) {
-	f := &FD{fd: fd, mtu: mtu}
-	ep, err := iobased.New(os.NewFile(uintptr(fd), f.Name()), mtu, offset)
-	if err != nil {
-		return nil, fmt.Errorf("create endpoint: %w", err)
-	}
-	f.LinkEndpoint = ep
-
-	return f, nil
-}
-GO
-go mod edit -replace="github.com/xjasonlyu/tun2socks/v2=${PATCHED_TUN2SOCKS_DIR}"
-go mod edit -require="gvisor.dev/gvisor@${GVISOR_VERSION}"
-go mod edit -replace="gvisor.dev/gvisor=gvisor.dev/gvisor@${GVISOR_VERSION}"
-go mod download gvisor.dev/gvisor
-go mod tidy
 
 CGO_ENABLED=1 \
 GOOS="${GOOS_TARGET}" \

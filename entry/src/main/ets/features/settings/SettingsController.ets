@@ -13,7 +13,6 @@ export interface SettingsDraft {
   fragmentEnabled: boolean;
   proxySharingEnabled: boolean;
   allowInsecure: boolean;
-  socksPort: string;
   remoteDns: string;
   domesticDns: string;
   vpnDns: string;
@@ -44,7 +43,6 @@ export class SettingsController {
       fragmentEnabled: settings.fragmentEnabled,
       proxySharingEnabled: settings.proxySharingEnabled,
       allowInsecure: settings.allowInsecure,
-      socksPort: settings.socksPort.toString(),
       remoteDns: settings.remoteDns,
       domesticDns: settings.domesticDns,
       vpnDns: settings.vpnDns,
@@ -75,7 +73,6 @@ export class SettingsController {
       preferIpv6: DEFAULT_APP_SETTINGS.preferIpv6,
       proxySharingEnabled: draft.proxySharingEnabled,
       allowInsecure: draft.allowInsecure,
-      socksPort: this.parsePortSetting(draft.socksPort, DEFAULT_APP_SETTINGS.socksPort),
       localDnsPort: DEFAULT_APP_SETTINGS.localDnsPort,
       vpnDns: draft.vpnDns.trim(),
       remoteDns: draft.remoteDns.trim(),
@@ -89,13 +86,6 @@ export class SettingsController {
     };
   }
 
-  private parsePortSetting(value: string, fallback: number): number {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed < 1 || parsed > 65535 || Math.floor(parsed) !== parsed) {
-      return fallback;
-    }
-    return parsed;
-  }
 }
 
 export const SETTINGS_CONTROLLER: SettingsController = new SettingsController();

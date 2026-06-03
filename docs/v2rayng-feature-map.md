@@ -29,10 +29,10 @@ XML layouts, drawable assets, launcher artwork, strings, or package branding.
 | --- | --- |
 | Subscription URL fetch and parse | Present for `vless://`, `vmess://`, `trojan://`, `ss://`, `socks://`, `http://`, `https://`, `wireguard://`, `hysteria2://`, `hy2://`. |
 | Node select and save current profile | Present. |
-| Xray config generation | Present for outbound + local SOCKS inbound + basic direct/block outbounds. |
+| Xray config generation | Present for outbound + native TUN inbound + basic direct/block outbounds. |
 | Persistent app settings | Present for core VPN, DNS, mux, sniffing, log and routing strategy; selected values are applied at connection start. |
 | VPN Extension start/stop | Present, with emulator timeout diagnostics. Needs real-device validation. |
-| Xray executable + tun2socks adapter | Present in HAP. Needs real-device closed-loop verification. |
+| Xray native TUN runtime | Present in HAP via `CGoSetTunFd` + Xray TUN inbound. Needs real-device closed-loop verification. |
 | VMess/VLESS/Trojan/Shadowsocks parsing | Present. |
 | SOCKS/HTTP/WireGuard/Hysteria2 parsing | Present for share-link import and subscription discovery. Runtime connection for WireGuard/Hysteria2 still needs core validation. |
 | TUIC parsing | Pending. |

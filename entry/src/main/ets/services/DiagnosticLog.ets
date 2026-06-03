@@ -14,7 +14,7 @@ export interface DiagnosticEvent {
   uploadBytes?: number;
   downloadBytes?: number;
   xrayRunning?: boolean;
-  tun2SocksRunning?: boolean;
+  tunRunning?: boolean;
 }
 
 export class DiagnosticLog {

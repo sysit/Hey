@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEVECO_SDK_HOME="${DEVECO_SDK_HOME:-/Applications/DevEco-Studio.app/Contents/sdk}"
 HVIGOR="${HVIGOR:-/Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw}"
 HDC="${HDC:-${DEVECO_SDK_HOME}/default/openharmony/toolchains/hdc}"
-HAP="${ROOT_DIR}/entry/build/default/outputs/default/app/entry-default.hap"
+HAP="${HAP:-${ROOT_DIR}/entry/build/default/outputs/default/entry-default-signed.hap}"
 
 usage() {
   printf 'Usage: %s {build|install|logs|targets|doctor}\n' "$0"
@@ -20,6 +20,7 @@ require_hdc() {
 
 case "${1:-}" in
   build)
+    DEVECO_SDK_HOME="${DEVECO_SDK_HOME}" "${HVIGOR}" clean --no-daemon --stacktrace
     DEVECO_SDK_HOME="${DEVECO_SDK_HOME}" "${HVIGOR}" assembleApp --no-daemon --stacktrace
     unzip -l "${HAP}" | awk '/libs\/arm64-v8a\/(libhey|libxray).*\.so/ { print }'
     ;;

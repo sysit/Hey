@@ -16,11 +16,13 @@ const OUTBOUND_JSON: string =
 export default function abilityTest() {
   describe('HeyVpnAbility wiring', () => {
     it('creates a start want targeting the vpn extension', 0, () => {
-      const config = buildXrayConfig(OUTBOUND_JSON, 10901);
-      const want = createVpnWant(config.configJson, config.socksHost, config.socksPort);
+      const config = buildXrayConfig(OUTBOUND_JSON);
+      const want = createVpnWant(config.configJson);
       expect(want.bundleName).assertEqual(BUNDLE_NAME);
       expect(want.abilityName).assertEqual(VPN_ABILITY_NAME);
       expect(want.parameters?.['xrayConfigJson']?.toString()).assertContain('"outbounds"');
+      expect(want.parameters?.['socksHost'] === undefined).assertTrue();
+      expect(want.parameters?.['socksPort'] === undefined).assertTrue();
     });
 
     it('creates a stop want targeting the vpn extension', 0, () => {

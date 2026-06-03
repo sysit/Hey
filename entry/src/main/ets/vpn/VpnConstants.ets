@@ -9,15 +9,13 @@ export const VPN_MTU: number = 1400;
 export const TUN_IPV4: string = '172.19.0.2';
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
 
-export function createVpnWant(configJson: string, socksHost: string, socksPort: number): Want {
+export function createVpnWant(configJson: string): Want {
   return {
     deviceId: '',
     bundleName: BUNDLE_NAME,
     abilityName: VPN_ABILITY_NAME,
     parameters: {
-      xrayConfigJson: configJson as Object,
-      socksHost: socksHost as Object,
-      socksPort: socksPort as Object
+      xrayConfigJson: configJson as Object
     }
   };
 }

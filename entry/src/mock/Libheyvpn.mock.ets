@@ -12,7 +12,7 @@ class RuntimeStatsModel {
   uploadBytes: number = 0;
   downloadBytes: number = 0;
   xrayRunning: boolean = false;
-  tun2SocksRunning: boolean = false;
+  tunRunning: boolean = false;
   lastMessage: string = 'Mock native bridge ready.';
 }
 
@@ -22,21 +22,17 @@ class LibheyvpnMock {
     return new NativeResultModel(ok, ok ? 'Mock config preflight passed.' : 'Mock config is missing outbounds.');
   }
 
+  setTunFd(tunFd: number): NativeResultModel {
+    const ok = tunFd >= 0;
+    return new NativeResultModel(ok, ok ? 'Mock Xray TUN fd configured.' : 'Mock TUN fd is invalid.');
+  }
+
   startXray(configJson: string): NativeResultModel {
     return new NativeResultModel(configJson.length > 0, 'Mock Xray bridge started.');
   }
 
   stopXray(): NativeResultModel {
     return new NativeResultModel(true, 'Mock Xray bridge stopped.');
-  }
-
-  startTun2Socks(tunFd: number, host: string, port: number, mtu: number): NativeResultModel {
-    const ok = tunFd >= 0 && host.length > 0 && port > 0 && mtu >= 576;
-    return new NativeResultModel(ok, ok ? 'Mock tun2socks bridge started.' : 'Mock tun2socks arguments are invalid.');
-  }
-
-  stopTun2Socks(): NativeResultModel {
-    return new NativeResultModel(true, 'Mock tun2socks bridge stopped.');
   }
 
   getStats(): RuntimeStatsModel {

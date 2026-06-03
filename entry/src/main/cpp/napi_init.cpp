@@ -12,7 +12,6 @@
 #include <hilog/log.h>
 #include <sstream>
 #include <string>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -27,10 +26,7 @@ constexpr const char* PING_CONFIG_FILE = "hey-ping-config.json";
 using CGoPingFunc = char* (*)(char*);
 using CGoStringFunc = char* (*)(char*);
 using CGoStopFunc = char* (*)();
-using Tun2SocksStartFunc = int (*)(int, char*, int, int);
-using Tun2SocksStopFunc = void (*)();
-using Tun2SocksStatsFunc = int64_t (*)();
-using Tun2SocksLastErrorFunc = char* (*)();
+using CGoSetTunFdFunc = void (*)(int);
 
 std::atomic_bool g_xrayRunning(false);
 std::atomic_bool g_tunRunning(false);
@@ -41,11 +37,7 @@ void* g_xrayHandle = nullptr;
 CGoStringFunc g_runXrayFromJson = nullptr;
 CGoStopFunc g_stopXray = nullptr;
 CGoPingFunc g_pingXray = nullptr;
-Tun2SocksStartFunc g_startTun2Socks = nullptr;
-Tun2SocksStopFunc g_stopTun2Socks = nullptr;
-Tun2SocksStatsFunc g_tun2SocksUploadBytes = nullptr;
-Tun2SocksStatsFunc g_tun2SocksDownloadBytes = nullptr;
-Tun2SocksLastErrorFunc g_tun2SocksLastError = nullptr;
+CGoSetTunFdFunc g_setTunFd = nullptr;
 
 const char* BASE64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -278,7 +270,6 @@ bool ResponseOk(const std::string& base64Response, std::string& message)
 }
 
 bool LoadXrayCore(std::string& message);
-bool LoadTun2SocksCore(std::string& message);
 
 bool LoadXray()
 {
@@ -291,20 +282,10 @@ bool LoadXray()
     return ok;
 }
 
-bool LoadTun2Socks()
-{
-    std::string message;
-    bool ok = LoadTun2SocksCore(message);
-    if (!ok) {
-        g_lastMessage = message;
-        LogError(message);
-    }
-    return ok;
-}
-
 bool LoadXrayCore(std::string& message)
 {
-    if (g_xrayHandle != nullptr && g_runXrayFromJson != nullptr && g_stopXray != nullptr && g_pingXray != nullptr) {
+    if (g_xrayHandle != nullptr && g_runXrayFromJson != nullptr && g_stopXray != nullptr &&
+        g_pingXray != nullptr && g_setTunFd != nullptr) {
         return true;
     }
 
@@ -323,7 +304,8 @@ bool LoadXrayCore(std::string& message)
     g_runXrayFromJson = reinterpret_cast<CGoStringFunc>(dlsym(handle, "CGoRunXrayFromJSON"));
     g_stopXray = reinterpret_cast<CGoStopFunc>(dlsym(handle, "CGoStopXray"));
     g_pingXray = reinterpret_cast<CGoPingFunc>(dlsym(handle, "CGoPing"));
-    if (g_runXrayFromJson == nullptr || g_stopXray == nullptr || g_pingXray == nullptr) {
+    g_setTunFd = reinterpret_cast<CGoSetTunFdFunc>(dlsym(handle, "CGoSetTunFd"));
+    if (g_runXrayFromJson == nullptr || g_stopXray == nullptr || g_pingXray == nullptr || g_setTunFd == nullptr) {
         message = "libXray unavailable: required CGo symbols missing.";
         return false;
     }
@@ -338,30 +320,6 @@ CGoPingFunc LoadCGoPing(std::string& message)
         return nullptr;
     }
     return g_pingXray;
-}
-
-bool LoadTun2SocksCore(std::string& message)
-{
-    if (g_startTun2Socks != nullptr && g_stopTun2Socks != nullptr) {
-        return true;
-    }
-
-    if (!LoadXrayCore(message)) {
-        message = "tun2socks unavailable: " + message;
-        return false;
-    }
-
-    dlerror();
-    g_startTun2Socks = reinterpret_cast<Tun2SocksStartFunc>(dlsym(g_xrayHandle, "HeyTun2SocksStart"));
-    g_stopTun2Socks = reinterpret_cast<Tun2SocksStopFunc>(dlsym(g_xrayHandle, "HeyTun2SocksStop"));
-    g_tun2SocksUploadBytes = reinterpret_cast<Tun2SocksStatsFunc>(dlsym(g_xrayHandle, "HeyTun2SocksUploadBytes"));
-    g_tun2SocksDownloadBytes = reinterpret_cast<Tun2SocksStatsFunc>(dlsym(g_xrayHandle, "HeyTun2SocksDownloadBytes"));
-    g_tun2SocksLastError = reinterpret_cast<Tun2SocksLastErrorFunc>(dlsym(g_xrayHandle, "HeyTun2SocksLastError"));
-    if (g_startTun2Socks == nullptr || g_stopTun2Socks == nullptr) {
-        message = "tun2socks unavailable: combined libxray.so symbols missing.";
-        return false;
-    }
-    return true;
 }
 
 bool ParsePingResponse(const std::string& json, int64_t& delay, std::string& message)
@@ -504,6 +462,40 @@ napi_value ValidateConfig(napi_env env, napi_callback_info info)
     return CreateResult(env, false, g_lastMessage);
 }
 
+napi_value SetTunFd(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResult(env, false, "Missing TUN fd.");
+    }
+
+    int32_t tunFd = GetIntArg(env, args[0]);
+    if (tunFd < 0) {
+        return CreateResult(env, false, "Invalid TUN fd.");
+    }
+    if (g_xrayRunning.load()) {
+        return CreateResult(env, false, "Cannot set TUN fd while Xray is running.");
+    }
+
+    std::string message;
+    if (!LoadXrayCore(message)) {
+        g_tunRunning.store(false);
+        return CreateResult(env, false, message);
+    }
+    if (!MakeFdInheritable(tunFd, message)) {
+        g_tunRunning.store(false);
+        return CreateResult(env, false, message);
+    }
+
+    g_uploadBytes.store(0);
+    g_downloadBytes.store(0);
+    g_setTunFd(tunFd);
+    g_tunRunning.store(true);
+    return CreateResult(env, true, "Xray TUN fd configured.");
+}
+
 napi_value StartXray(napi_env env, napi_callback_info info)
 {
     size_t argc = 2;
@@ -565,6 +557,7 @@ napi_value StopXray(napi_env env, napi_callback_info info)
 {
     (void)info;
     if (!g_xrayRunning.load()) {
+        g_tunRunning.store(false);
         return CreateResult(env, true, "Xray already stopped.");
     }
 
@@ -584,103 +577,20 @@ napi_value StopXray(napi_env env, napi_callback_info info)
     }
 
     g_xrayRunning.store(false);
-    return CreateResult(env, true, "Xray core stopped.");
-}
-
-napi_value StartTun2Socks(napi_env env, napi_callback_info info)
-{
-    size_t argc = 4;
-    napi_value args[4] = { nullptr };
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    if (argc < 4) {
-        return CreateResult(env, false, "Missing tun2socks arguments.");
-    }
-
-    int32_t tunFd = GetIntArg(env, args[0]);
-    std::string host = GetStringArg(env, args[1]);
-    int32_t port = GetIntArg(env, args[2]);
-    int32_t mtu = GetIntArg(env, args[3]);
-
-    if (tunFd < 0) {
-        return CreateResult(env, false, "Invalid TUN fd.");
-    }
-    if (host.empty() || port <= 0 || port > 65535 || mtu < 576 || mtu > 1500) {
-        return CreateResult(env, false, "Invalid tun2socks host, port, or MTU.");
-    }
-    if (g_tunRunning.load()) {
-        return CreateResult(env, true, "tun2socks already running.");
-    }
-
-    g_uploadBytes.store(0);
-    g_downloadBytes.store(0);
-    if (!LoadTun2Socks()) {
-        g_tunRunning.store(false);
-        return CreateResult(env, false, g_lastMessage);
-    }
-
-    std::string message;
-    if (!MakeFdInheritable(tunFd, message)) {
-        g_tunRunning.store(false);
-        return CreateResult(env, false, message);
-    }
-
-    int result = g_startTun2Socks(tunFd, const_cast<char*>(host.c_str()), port, mtu);
-    if (result != 0) {
-        g_tunRunning.store(false);
-        std::string detail;
-        if (g_tun2SocksLastError != nullptr) {
-            char* raw = g_tun2SocksLastError();
-            if (raw != nullptr) {
-                detail = raw;
-                std::free(raw);
-            }
-        }
-        if (detail.empty()) {
-            detail = "unknown error";
-        }
-        return CreateResult(env, false, "tun2socks adapter start failed: " + detail);
-    }
-
-    g_tunRunning.store(true);
-    return CreateResult(env, true, "tun2socks adapter started.");
-}
-
-napi_value StopTun2Socks(napi_env env, napi_callback_info info)
-{
-    (void)info;
-    if (!g_tunRunning.load()) {
-        return CreateResult(env, true, "tun2socks already stopped.");
-    }
-    std::string message;
-    if (!LoadTun2SocksCore(message)) {
-        return CreateResult(env, false, message);
-    }
     g_tunRunning.store(false);
-    Tun2SocksStopFunc stopTun2Socks = g_stopTun2Socks;
-    std::thread([stopTun2Socks]() {
-        stopTun2Socks();
-    }).detach();
-    return CreateResult(env, true, "tun2socks stop requested.");
+    return CreateResult(env, true, "Xray core stopped.");
 }
 
 napi_value GetStats(napi_env env, napi_callback_info info)
 {
     (void)info;
-    if (g_tunRunning.load()) {
-        if (g_tun2SocksUploadBytes != nullptr) {
-            g_uploadBytes.store(g_tun2SocksUploadBytes());
-        }
-        if (g_tun2SocksDownloadBytes != nullptr) {
-            g_downloadBytes.store(g_tun2SocksDownloadBytes());
-        }
-    }
 
     napi_value result = nullptr;
     napi_create_object(env, &result);
     napi_set_named_property(env, result, "uploadBytes", CreateInt64(env, g_uploadBytes.load()));
     napi_set_named_property(env, result, "downloadBytes", CreateInt64(env, g_downloadBytes.load()));
     napi_set_named_property(env, result, "xrayRunning", CreateBool(env, g_xrayRunning.load()));
-    napi_set_named_property(env, result, "tun2SocksRunning", CreateBool(env, g_tunRunning.load()));
+    napi_set_named_property(env, result, "tunRunning", CreateBool(env, g_tunRunning.load()));
     napi_set_named_property(env, result, "lastMessage", CreateString(env, g_lastMessage));
     return result;
 }
@@ -692,10 +602,9 @@ static napi_value Init(napi_env env, napi_value exports)
 {
     napi_property_descriptor desc[] = {
         { "validateConfig", nullptr, ValidateConfig, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setTunFd", nullptr, SetTunFd, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "startXray", nullptr, StartXray, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "stopXray", nullptr, StopXray, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "startTun2Socks", nullptr, StartTun2Socks, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "stopTun2Socks", nullptr, StopTun2Socks, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getStats", nullptr, GetStats, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "pingOutbound", nullptr, PingOutbound, nullptr, nullptr, nullptr, napi_default, nullptr },
     };

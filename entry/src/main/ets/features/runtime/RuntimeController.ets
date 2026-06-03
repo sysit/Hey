@@ -10,7 +10,7 @@ const EMPTY_STATS: RuntimeStats = {
   uploadBytes: 0,
   downloadBytes: 0,
   xrayRunning: false,
-  tun2SocksRunning: false,
+  tunRunning: false,
   lastMessage: translate(DEFAULT_LANGUAGE, 'runtime.nativeBridgeNotQueried')
 };
 
@@ -144,7 +144,7 @@ export class RuntimeController {
           uploadBytes: event.uploadBytes ?? 0,
           downloadBytes: event.downloadBytes ?? 0,
           xrayRunning: event.xrayRunning ?? false,
-          tun2SocksRunning: event.tun2SocksRunning ?? false,
+          tunRunning: event.tunRunning ?? false,
           lastMessage: event.details ?? event.message
         };
         return;

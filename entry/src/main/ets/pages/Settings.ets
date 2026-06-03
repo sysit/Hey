@@ -25,7 +25,6 @@ struct SettingsPage {
   @State private settingProxySharing: boolean = false;
   @State private settingAllowInsecure: boolean = false;
   @State private settingPerAppProxy: boolean = false;
-  @State private settingSocksPort: string = '10808';
   @State private settingRemoteDns: string = '1.1.1.1';
   @State private settingDomesticDns: string = '223.5.5.5';
   @State private settingVpnDns: string = '1.1.1.1';
@@ -59,7 +58,6 @@ struct SettingsPage {
           this.SettingToggle(this.t('settings.localDns'), 'pref_local_dns_enabled', this.settingLocalDns, 'localDns')
           this.SettingToggle(this.t('settings.fakeDns'), 'pref_fake_dns_enabled', this.settingFakeDns, 'fakeDns')
           this.SettingToggle(this.t('settings.proxySharing'), 'pref_proxy_sharing_enabled', this.settingProxySharing, 'proxySharing')
-          this.SettingInput(this.t('settings.socksPort'), 'pref_socks_port', this.settingSocksPort, 'socksPort')
           this.SettingInput(this.t('settings.vpnDns'), 'pref_vpn_dns', this.settingVpnDns, 'vpnDns')
           SectionHeader({ title: this.t('settings.transport'), detail: this.t('settings.transport.detail') })
           this.SettingToggle(this.t('settings.mux'), 'pref_mux_enabled', this.settingMux, 'mux')
@@ -191,9 +189,6 @@ struct SettingsPage {
 
   private updateSettingInput(action: string, value: string): void {
     switch (action) {
-      case 'socksPort':
-        this.settingSocksPort = value;
-        break;
       case 'vpnDns':
         this.settingVpnDns = value;
         break;
@@ -251,7 +246,6 @@ struct SettingsPage {
       fragmentEnabled: this.settingFragment,
       proxySharingEnabled: this.settingProxySharing,
       allowInsecure: this.settingAllowInsecure,
-      socksPort: this.settingSocksPort,
       remoteDns: this.settingRemoteDns,
       domesticDns: this.settingDomesticDns,
       vpnDns: this.settingVpnDns,
@@ -273,7 +267,6 @@ struct SettingsPage {
     this.settingFragment = draft.fragmentEnabled;
     this.settingProxySharing = draft.proxySharingEnabled;
     this.settingAllowInsecure = draft.allowInsecure;
-    this.settingSocksPort = draft.socksPort;
     this.settingRemoteDns = draft.remoteDns;
     this.settingDomesticDns = draft.domesticDns;
     this.settingVpnDns = draft.vpnDns;

@@ -2,7 +2,6 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { vpnExtension, VpnExtensionAbility } from '@kit.NetworkKit';
 import Want from '@ohos.app.ability.Want';
-import { DEFAULT_SOCKS_PORT } from '../core/XrayConfig';
 import { RuntimeStats } from '../core/Profile';
 import {
   createDefaultVpnConfig,
@@ -12,9 +11,8 @@ import {
 } from './VpnConstants';
 import {
   getNativeStats,
-  startNativeTun2Socks,
+  setNativeTunFd,
   startNativeXray,
-  stopNativeTun2Socks,
   stopNativeXray,
   validateNativeConfig
 } from '../native/HeyNative';
@@ -60,11 +58,9 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
 
   private async startVpn(want: Want): Promise<void> {
     const configJson = this.getStringParameter(want, 'xrayConfigJson', '');
-    const socksHost = this.getStringParameter(want, 'socksHost', '127.0.0.1');
-    const socksPort = this.getNumberParameter(want, 'socksPort', DEFAULT_SOCKS_PORT);
 
     try {
-      this.emitInfo('VPN start requested.', `configBytes=${configJson.length}, socks=${socksHost}:${socksPort}, mtu=${VPN_MTU}`);
+      this.emitInfo('VPN start requested.', `configBytes=${configJson.length}, mtu=${VPN_MTU}`);
       const validation = validateNativeConfig(configJson);
       if (!validation.ok) {
         throw new Error(validation.message);
@@ -76,17 +72,17 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       this.tunFd = await this.vpnConnection.create(createDefaultVpnConfig());
       this.emitInfo('VPN created.', `tunFd=${this.tunFd}`);
 
+      const tunResult = setNativeTunFd(this.tunFd);
+      if (!tunResult.ok) {
+        throw new Error(tunResult.message);
+      }
+      this.emitInfo('Xray TUN fd configured.', tunResult.message);
+
       const xrayResult = startNativeXray(configJson, this.context.filesDir);
       if (!xrayResult.ok) {
         throw new Error(xrayResult.message);
       }
       this.emitInfo('Xray started.', xrayResult.message);
-
-      const tunResult = startNativeTun2Socks(this.tunFd, socksHost, socksPort, VPN_MTU);
-      if (!tunResult.ok) {
-        throw new Error(tunResult.message);
-      }
-      this.emitInfo('tun2socks started.', tunResult.message);
 
       this.startStatsTimer();
       this.emitInfo('Native VPN bridge started.', `session=${this.sessionId}`);
@@ -102,18 +98,6 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       return fallback;
     }
     return value.toString();
-  }
-
-  private getNumberParameter(want: Want, key: string, fallback: number): number {
-    const value = want.parameters?.[key];
-    if (value === undefined || value === null) {
-      return fallback;
-    }
-    const parsed = Number(value.toString());
-    if (Number.isNaN(parsed)) {
-      return fallback;
-    }
-    return parsed;
   }
 
   private isStopCommand(want: Want): boolean {
@@ -134,9 +118,6 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
     this.cleaningUp = true;
     this.stopStatsTimer();
     this.emitInfo('VPN cleanup started.', `tunFd=${this.tunFd}`);
-
-    const tunResult = stopNativeTun2Socks();
-    this.emitInfo('tun2socks stop requested.', tunResult.message);
 
     const xrayResult = stopNativeXray();
     this.emitInfo('Xray stop requested.', xrayResult.message);
@@ -183,7 +164,7 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       uploadBytes: stats.uploadBytes,
       downloadBytes: stats.downloadBytes,
       xrayRunning: stats.xrayRunning,
-      tun2SocksRunning: stats.tun2SocksRunning
+      tunRunning: stats.tunRunning
     });
   }
 

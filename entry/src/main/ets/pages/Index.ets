@@ -20,7 +20,7 @@ const EMPTY_STATS: RuntimeStats = {
   uploadBytes: 0,
   downloadBytes: 0,
   xrayRunning: false,
-  tun2SocksRunning: false,
+  tunRunning: false,
   lastMessage: translate(DEFAULT_LANGUAGE, 'runtime.nativeBridgeNotQueried')
 };
 

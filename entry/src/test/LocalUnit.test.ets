@@ -31,12 +31,12 @@ export default function localUnitTest() {
       expect(result.message).assertContain('settings');
     });
 
-    it('builds full xray config with socks inbound', 0, () => {
-      const result = buildXrayConfig(VLESS_REALITY_OUTBOUND, 10901);
-      expect(result.socksPort).assertEqual(10901);
+    it('builds full xray config with tun inbound', 0, () => {
+      const result = buildXrayConfig(VLESS_REALITY_OUTBOUND);
       expect(result.configJson).assertContain('"inbounds"');
       expect(result.configJson).assertContain('"outbounds"');
-      expect(result.configJson).assertContain('"protocol": "socks"');
+      expect(result.configJson).assertContain('"protocol": "tun"');
+      expect(result.configJson).assertContain('"tag": "tun-in"');
       expect(result.configJson).assertContain('"security": "reality"');
     });
 
@@ -60,7 +60,6 @@ export default function localUnitTest() {
         preferIpv6: false,
         proxySharingEnabled: false,
         allowInsecure: false,
-        socksPort: 10909,
         localDnsPort: 10853,
         vpnDns: '1.1.1.1',
         remoteDns: '9.9.9.9',
@@ -73,7 +72,6 @@ export default function localUnitTest() {
         routingDomainStrategy: 'IPIfNonMatch'
       };
       const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
-      expect(result.socksPort).assertEqual(10909);
       expect(result.configJson).assertContain('"loglevel": "debug"');
       expect(result.configJson).assertContain('"domainStrategy": "IPIfNonMatch"');
       expect(result.configJson).assertContain('"geosite:cn"');

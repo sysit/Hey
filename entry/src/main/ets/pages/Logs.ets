@@ -13,7 +13,7 @@ const EMPTY_STATS: RuntimeStats = {
   uploadBytes: 0,
   downloadBytes: 0,
   xrayRunning: false,
-  tun2SocksRunning: false,
+  tunRunning: false,
   lastMessage: translate(DEFAULT_LANGUAGE, 'runtime.nativeBridgeNotQueried')
 };
 
@@ -62,7 +62,7 @@ struct LogsPage {
             downloadLabel: this.t('runtime.download'),
             downloadValue: formatBytes(this.stats.downloadBytes),
             xrayActive: this.stats.xrayRunning,
-            tunActive: this.stats.tun2SocksRunning,
+            tunActive: this.stats.tunRunning,
             lastMessage: this.localizeCoreMessage(this.stats.lastMessage)
           })
           RuntimeLogPanel({
