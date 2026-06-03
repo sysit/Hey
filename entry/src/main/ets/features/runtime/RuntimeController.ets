@@ -36,7 +36,7 @@ export class RuntimeController {
 
   async start(context: common.Context, profile: ProxyProfile, settings: AppSettings, language: AppLanguage): Promise<RuntimeViewState> {
     this.appendLog(translate(language, 'log.startingVpn'));
-    const snapshot = await this.controller.start(profile, settings);
+    const snapshot = await this.controller.start(context, profile, settings);
     this.applySnapshot(snapshot, language);
     this.appendLog(this.status === ConnectionStatus.RUNNING ? translate(language, 'log.vpnStarted') : translate(language, 'log.vpnStartIncomplete'));
     return this.refresh(context, language);
@@ -44,7 +44,7 @@ export class RuntimeController {
 
   async stop(context: common.Context, language: AppLanguage): Promise<RuntimeViewState> {
     this.appendLog(translate(language, 'log.stoppingVpn'));
-    const snapshot = await this.controller.stop();
+    const snapshot = await this.controller.stop(context);
     this.applySnapshot(snapshot, language);
     this.appendLog(this.status === ConnectionStatus.IDLE ? translate(language, 'log.vpnStopped') : translate(language, 'log.vpnStopIncomplete'));
     return this.refresh(context, language);

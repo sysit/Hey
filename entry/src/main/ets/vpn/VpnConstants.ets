@@ -3,6 +3,8 @@ import Want from '@ohos.app.ability.Want';
 
 export const BUNDLE_NAME: string = 'com.lmlm.hey';
 export const VPN_ABILITY_NAME: string = 'HeyVpnAbility';
+export const VPN_COMMAND_KEY: string = 'command';
+export const VPN_COMMAND_STOP: string = 'stop';
 export const VPN_MTU: number = 1400;
 export const TUN_IPV4: string = '172.19.0.2';
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
@@ -25,6 +27,17 @@ export function createStopVpnWant(): Want {
     deviceId: '',
     bundleName: BUNDLE_NAME,
     abilityName: VPN_ABILITY_NAME
+  };
+}
+
+export function createStopCommandVpnWant(): Want {
+  return {
+    deviceId: '',
+    bundleName: BUNDLE_NAME,
+    abilityName: VPN_ABILITY_NAME,
+    parameters: {
+      command: VPN_COMMAND_STOP as Object
+    }
   };
 }
 

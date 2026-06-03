@@ -12,6 +12,7 @@
 #include <hilog/log.h>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -654,9 +655,12 @@ napi_value StopTun2Socks(napi_env env, napi_callback_info info)
     if (!LoadTun2SocksCore(message)) {
         return CreateResult(env, false, message);
     }
-    g_stopTun2Socks();
     g_tunRunning.store(false);
-    return CreateResult(env, true, "tun2socks stopped.");
+    Tun2SocksStopFunc stopTun2Socks = g_stopTun2Socks;
+    std::thread([stopTun2Socks]() {
+        stopTun2Socks();
+    }).detach();
+    return CreateResult(env, true, "tun2socks stop requested.");
 }
 
 napi_value GetStats(napi_env env, napi_callback_info info)

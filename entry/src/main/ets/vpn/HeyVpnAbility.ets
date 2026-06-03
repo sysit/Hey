@@ -6,6 +6,8 @@ import { DEFAULT_SOCKS_PORT } from '../core/XrayConfig';
 import { RuntimeStats } from '../core/Profile';
 import {
   createDefaultVpnConfig,
+  VPN_COMMAND_KEY,
+  VPN_COMMAND_STOP,
   VPN_MTU
 } from './VpnConstants';
 import {
@@ -32,12 +34,28 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
   onCreate(want: Want): void {
     this.sessionId = Date.now().toString();
     this.emitInfo('VPN ability created.', `session=${this.sessionId}`);
-    this.startVpn(want);
+    if (this.isStopCommand(want)) {
+      this.requestCleanup('VPN stop command received on create.', 'startId=0');
+      return;
+    }
+    this.startVpn(want).catch((error: Object) => {
+      this.emitError('VPN start task failed.', this.errorMessage(error));
+    });
+  }
+
+  onRequest(want: Want, startId: number): void {
+    if (this.isStopCommand(want)) {
+      this.requestCleanup('VPN stop command received.', `startId=${startId}`);
+      return;
+    }
+    this.emitInfo('VPN request ignored.', `startId=${startId}, session=${this.sessionId}`);
   }
 
   onDestroy(): void {
     this.emitInfo('VPN ability destroying.', `session=${this.sessionId}`);
-    this.cleanup();
+    if (this.vpnConnection !== null || this.tunFd >= 0) {
+      this.requestCleanup('VPN destroy cleanup requested.', `session=${this.sessionId}`);
+    }
   }
 
   private async startVpn(want: Want): Promise<void> {
@@ -96,6 +114,17 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       return fallback;
     }
     return parsed;
+  }
+
+  private isStopCommand(want: Want): boolean {
+    return this.getStringParameter(want, VPN_COMMAND_KEY, '') === VPN_COMMAND_STOP;
+  }
+
+  private requestCleanup(message: string, details: string): void {
+    this.emitInfo(message, details);
+    this.cleanup().catch((error: Object) => {
+      this.emitError('VPN cleanup task failed.', this.errorMessage(error));
+    });
   }
 
   private async cleanup(): Promise<void> {

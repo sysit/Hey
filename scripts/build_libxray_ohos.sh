@@ -145,7 +145,7 @@ func HeyTun2SocksStart(tunFd C.int, socksHost *C.char, socksPort C.int, mtu C.in
 
 //export HeyTun2SocksStop
 func HeyTun2SocksStop() {
-	heyStopTun2Socks()
+	heyRequestStopTun2Socks()
 }
 
 //export HeyTun2SocksUploadBytes
@@ -188,11 +188,13 @@ func heyStartTun2Socks(tunFd int, socksHost string, socksPort int, mtu int) erro
 	return nil
 }
 
-func heyStopTun2Socks() {
+func heyRequestStopTun2Socks() {
 	if heyTun2SocksRunning.Swap(false) {
-		if err := engine.StopWithError(); err != nil {
-			heyTun2SocksLastError.Store(err.Error())
-		}
+		go func() {
+			if err := engine.StopWithError(); err != nil {
+				heyTun2SocksLastError.Store(err.Error())
+			}
+		}()
 	}
 }
 GO

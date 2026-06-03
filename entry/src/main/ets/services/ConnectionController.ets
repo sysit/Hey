@@ -1,14 +1,22 @@
+import { common } from '@kit.AbilityKit';
 import { vpnExtension } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AppSettings, ConnectionStatus, GeneratedXrayConfig, ProxyProfile, RuntimeStats } from '../core/Profile';
 import { buildXrayConfig, buildXrayConfigWithSettings, validateOutboundJson } from '../core/XrayConfig';
-import { createStopVpnWant, createVpnWant } from '../vpn/VpnConstants';
+import { createStopCommandVpnWant, createStopVpnWant, createVpnWant } from '../vpn/VpnConstants';
 import { getNativeStats } from '../native/HeyNative';
+import { DiagnosticEvent, DiagnosticLog } from './DiagnosticLog';
 
 const LOG_DOMAIN: number = 0x0001;
 const LOG_TAG: string = 'HeyVpn';
 const START_VPN_TIMEOUT_MS: number = 10000;
+const START_VPN_READY_TIMEOUT_MS: number = 12000;
+const STOP_VPN_CLEANUP_TIMEOUT_MS: number = 15000;
+const DIAGNOSTIC_POLL_INTERVAL_MS: number = 250;
+const VPN_STARTED_MESSAGE: string = 'Native VPN bridge started.';
+const VPN_START_FAILED_MESSAGE: string = 'VPN start failed.';
+const VPN_CLEANUP_FINISHED_MESSAGE: string = 'VPN cleanup finished.';
 
 export interface ConnectionSnapshot {
   status: ConnectionStatus;
@@ -46,7 +54,7 @@ export class ConnectionController {
     return stats;
   }
 
-  async start(profile: ProxyProfile, settings?: AppSettings): Promise<ConnectionSnapshot> {
+  async start(context: common.Context, profile: ProxyProfile, settings?: AppSettings): Promise<ConnectionSnapshot> {
     if (this.status === ConnectionStatus.STARTING || this.status === ConnectionStatus.RUNNING) {
       return this.getSnapshot();
     }
@@ -61,6 +69,7 @@ export class ConnectionController {
     this.status = ConnectionStatus.STARTING;
     this.lastError = '';
     this.generatedConfig = settings === undefined ? buildXrayConfig(profile.outboundJson) : buildXrayConfigWithSettings(profile.outboundJson, settings);
+    const requestedAt = Date.now();
 
     try {
       hilog.info(LOG_DOMAIN, LOG_TAG, 'Calling startVpnExtensionAbility, configBytes=%{public}d, socks=%{public}s:%{public}d',
@@ -73,6 +82,15 @@ export class ConnectionController {
         this.generatedConfig.socksPort
       )), START_VPN_TIMEOUT_MS, '启动 VPN 超时：系统 VPN 授权服务没有响应。若 hilog 中出现 com.huawei.hmos.vpndialog bundle not exist，说明当前系统镜像缺少 VPN 授权组件，请改用真机测试。');
       hilog.info(LOG_DOMAIN, LOG_TAG, 'startVpnExtensionAbility returned.');
+      const startEvent = await this.waitForDiagnosticEvent(context, requestedAt, START_VPN_READY_TIMEOUT_MS, (event: DiagnosticEvent) => {
+        return event.source === 'vpn' && (event.message === VPN_STARTED_MESSAGE || event.message === VPN_START_FAILED_MESSAGE);
+      });
+      if (startEvent === null) {
+        throw new Error('启动 VPN 未确认完成：VPN 扩展没有回写启动完成状态。');
+      }
+      if (startEvent.message === VPN_START_FAILED_MESSAGE) {
+        throw new Error(this.formatDiagnosticEvent(startEvent));
+      }
       this.status = ConnectionStatus.RUNNING;
       this.startedAt = Date.now();
     } catch (error) {
@@ -84,19 +102,29 @@ export class ConnectionController {
     return this.getSnapshot();
   }
 
-  async stop(): Promise<ConnectionSnapshot> {
+  async stop(context: common.Context): Promise<ConnectionSnapshot> {
     if (this.status === ConnectionStatus.IDLE || this.status === ConnectionStatus.STOPPING) {
       return this.getSnapshot();
     }
 
     this.status = ConnectionStatus.STOPPING;
+    const requestedAt = Date.now();
     try {
-      hilog.info(LOG_DOMAIN, LOG_TAG, 'Calling stopVpnExtensionAbility.');
+      hilog.info(LOG_DOMAIN, LOG_TAG, 'Calling startVpnExtensionAbility with stop command.');
+      await this.withTimeout(vpnExtension.startVpnExtensionAbility(createStopCommandVpnWant()),
+        START_VPN_TIMEOUT_MS,
+        '停止 VPN 超时：VPN 扩展没有响应停止命令。');
+      const cleanupEvent = await this.waitForDiagnosticEvent(context, requestedAt, STOP_VPN_CLEANUP_TIMEOUT_MS, (event: DiagnosticEvent) => {
+        return event.source === 'vpn' && event.message === VPN_CLEANUP_FINISHED_MESSAGE;
+      });
+      if (cleanupEvent === null) {
+        throw new Error('停止 VPN 未确认完成：VPN 扩展尚未回写清理完成状态。');
+      }
       await vpnExtension.stopVpnExtensionAbility(createStopVpnWant());
       this.status = ConnectionStatus.IDLE;
       this.startedAt = 0;
       this.lastError = '';
-      hilog.info(LOG_DOMAIN, LOG_TAG, 'stopVpnExtensionAbility returned.');
+      hilog.info(LOG_DOMAIN, LOG_TAG, 'VPN stop command completed.');
     } catch (error) {
       const businessError = error as BusinessError;
       this.status = ConnectionStatus.ERROR;
@@ -104,6 +132,51 @@ export class ConnectionController {
       hilog.error(LOG_DOMAIN, LOG_TAG, 'stopVpnExtensionAbility failed: %{public}s', this.lastError);
     }
     return this.getSnapshot();
+  }
+
+  private async waitForDiagnosticEvent(
+    context: common.Context,
+    since: number,
+    timeoutMs: number,
+    predicate: (event: DiagnosticEvent) => boolean
+  ): Promise<DiagnosticEvent | null> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() <= deadline) {
+      const event = await this.findDiagnosticEvent(context, since, predicate);
+      if (event !== null) {
+        return event;
+      }
+      await this.sleep(DIAGNOSTIC_POLL_INTERVAL_MS);
+    }
+    return this.findDiagnosticEvent(context, since, predicate);
+  }
+
+  private async findDiagnosticEvent(
+    context: common.Context,
+    since: number,
+    predicate: (event: DiagnosticEvent) => boolean
+  ): Promise<DiagnosticEvent | null> {
+    const events = await DiagnosticLog.read(context, 120);
+    for (let index = 0; index < events.length; index++) {
+      const event = events[index];
+      if (event.at >= since && predicate(event)) {
+        return event;
+      }
+    }
+    return null;
+  }
+
+  private sleep(durationMs: number): Promise<void> {
+    return new Promise<void>((resolve: () => void) => {
+      setTimeout(resolve, durationMs);
+    });
+  }
+
+  private formatDiagnosticEvent(event: DiagnosticEvent): string {
+    if (event.details !== undefined && event.details.length > 0) {
+      return `${event.message} ${event.details}`;
+    }
+    return event.message;
   }
 
   private withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {
