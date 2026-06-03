@@ -13,6 +13,8 @@
     "pages/Logs",
     "pages/Scanner",
     "pages/About",
-    "pages/Export"
+    "pages/Export",
+    "pages/NodeEdit",
+    "pages/JsonImport"
   ]
 }

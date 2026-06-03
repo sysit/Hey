@@ -222,6 +222,53 @@ export class SubscriptionStore {
     return SubscriptionStore.load(context);
   }
 
+  static async addManualNode(context: common.Context, name: string, outboundJson: string): Promise<SubscriptionProfile> {
+    const profile = await SubscriptionStore.load(context);
+    
+    let localGroup = SubscriptionStore.findGroup(profile.groups, 'sub-local');
+    if (localGroup === null) {
+      localGroup = {
+        id: 'sub-local',
+        name: '手动导入',
+        url: '',
+        enabled: true,
+        selectedNodeId: '',
+        nodes: [],
+        updatedAt: Date.now()
+      };
+      profile.groups.push(localGroup);
+    }
+    
+    const validation = normalizeOutboundInput(outboundJson);
+    const protocol = validation.valid ? validation.protocol : 'unknown';
+    
+    const nodeId = `manual-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const finalName = name.trim().length > 0 ? name.trim() : `手动-${protocol.toUpperCase()}`;
+    
+    const newNode: ProxyNode = {
+      id: nodeId,
+      name: finalName,
+      protocol: protocol,
+      outboundJson: validation.valid ? validation.normalizedJson : outboundJson,
+      sourceUrl: '',
+      rawLink: '',
+      updatedAt: Date.now(),
+      delayMs: -1,
+      delayTestAt: 0,
+      delayStatus: ''
+    };
+    
+    localGroup.nodes.push(newNode);
+    localGroup.selectedNodeId = nodeId;
+    localGroup.updatedAt = Date.now();
+    
+    profile.selectedGroupId = 'sub-local';
+    profile.selectedNodeId = nodeId;
+    
+    await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
+    return SubscriptionStore.load(context);
+  }
+
   private static async save(context: common.Context, profile: SubscriptionProfile): Promise<void> {
     const store = await preferences.getPreferences(context, PREFERENCES_NAME);
     await store.put(SUBSCRIPTION_KEY, JSON.stringify(profile));

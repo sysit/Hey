@@ -12,7 +12,9 @@ export enum AppRoute {
   LOGS = 'pages/Logs',
   SCANNER = 'pages/Scanner',
   ABOUT = 'pages/About',
-  EXPORT = 'pages/Export'
+  EXPORT = 'pages/Export',
+  NODE_EDIT = 'pages/NodeEdit',
+  JSON_IMPORT = 'pages/JsonImport'
 }
 
 export interface RouteEntry {
@@ -42,6 +44,12 @@ export function routeTitleKey(route: AppRoute): string {
   }
   if (route === AppRoute.NODE_DETAIL) {
     return 'node.detail.title';
+  }
+  if (route === AppRoute.NODE_EDIT) {
+    return 'screen.nodeEdit.title';
+  }
+  if (route === AppRoute.JSON_IMPORT) {
+    return 'screen.jsonImport.title';
   }
   for (let index = 0; index < HOME_ROUTE_ENTRIES.length; index++) {
     const entry = HOME_ROUTE_ENTRIES[index];

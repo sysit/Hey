@@ -9,6 +9,7 @@ import { SUBSCRIPTIONS_CONTROLLER } from '../features/subscriptions/Subscription
 import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
+import { SubscriptionStore } from '../storage/SubscriptionStore';
 
 @Entry
 @Component
@@ -107,6 +108,18 @@ struct ScannerPage {
         SHARED_RUNTIME_CONTROLLER.appendLog(saved.lastError);
         return;
       }
+
+      let nodeName = '扫码导入';
+      try {
+        const obj = JSON.parse(saved.profile.outboundJson) as Record<string, Object>;
+        if (obj.tag && typeof obj.tag === 'string' && obj.tag.trim().length > 0) {
+          nodeName = obj.tag.trim();
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson);
       SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.profileSaved'));
       router.back();
     } catch (error) {

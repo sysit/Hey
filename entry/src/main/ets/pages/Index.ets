@@ -145,7 +145,7 @@ struct Index {
       })
 
       Text(this.t('screen.servers.title'))
-        .fontSize(28)
+        .fontSize(20)
         .fontWeight(FontWeight.Bold)
         .fontColor('#1C1B1F')
         .layoutWeight(1)
@@ -1105,7 +1105,7 @@ struct Index {
 
       Scroll() {
         Column({ space: 4 }) {
-          this.DrawerMenuItem('首页节点', $r('app.media.ic_menu'), () => {
+          this.DrawerMenuItem('首页', $r('app.media.ic_menu'), () => {
             animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
               this.showSideBar = false;
             })

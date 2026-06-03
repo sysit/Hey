@@ -133,25 +133,27 @@ struct SubscriptionsPage {
             })
           }
 
-          IconButton({
-            icon: $r('app.media.ic_edit'),
-            buttonSize: 36,
-            iconSize: 20,
-            iconColor: '#4B5563',
-            onAction: () => {
-              this.openEditPage(group);
-            }
-          })
+          if (group.id !== 'sub-local') {
+            IconButton({
+              icon: $r('app.media.ic_edit'),
+              buttonSize: 36,
+              iconSize: 20,
+              iconColor: '#4B5563',
+              onAction: () => {
+                this.openEditPage(group);
+              }
+            })
 
-          IconButton({
-            icon: $r('app.media.ic_delete'),
-            buttonSize: 36,
-            iconSize: 20,
-            iconColor: '#EF4444',
-            onAction: () => {
-              this.removeSubscriptionGroup(group);
-            }
-          })
+            IconButton({
+              icon: $r('app.media.ic_delete'),
+              buttonSize: 36,
+              iconSize: 20,
+              iconColor: '#EF4444',
+              onAction: () => {
+                this.removeSubscriptionGroup(group);
+              }
+            })
+          }
         }
       }
       .width('100%')
@@ -185,6 +187,22 @@ struct SubscriptionsPage {
         .margin({ top: 12 })
         .justifyContent(FlexAlign.SpaceBetween)
         .alignItems(VerticalAlign.Center)
+      } else if (group.id === 'sub-local') {
+        Row() {
+          Text(`共 ${group.nodes.length} 个本地节点`)
+            .fontSize(13)
+            .fontColor('#6B7280')
+            .margin({ top: 6 })
+        }
+        .width('100%')
+
+        Row() {
+          Text(`最后添加：${this.formatDateTime(group.updatedAt)}`)
+            .fontSize(12)
+            .fontColor('#9CA3AF')
+        }
+        .width('100%')
+        .margin({ top: 12 })
       }
     }
     .width('100%')

@@ -35,6 +35,9 @@ export class SubscriptionsController {
   }
 
   async update(context: common.Context, groupId: string, urlValue: string, selectedNodeId: string, language: AppLanguage): Promise<SubscriptionsControllerState> {
+    if (groupId === 'sub-local') {
+      return this.buildState(await SubscriptionStore.load(context), language, '本地节点分组无需更新');
+    }
     const url = urlValue.trim();
     if (url.length === 0) {
       return this.buildState(await SubscriptionStore.load(context), language, translate(language, 'error.emptySubscriptionUrl'));
