@@ -72,9 +72,9 @@
 | 路由设置页 | `pages/Routing.ets` | ✅ | iOS 分组列表：流量模式/域名策略改单选行（右侧 ic_check），预置规则集改导航行（chevron→详情弹窗） |
 | 分应用代理页 | `pages/PerApp.ets` | ✅ | iOS 分组：主开关/过滤策略(单选行)/系统应用开关/应用列表(头像+包名+勾选)/手动添加(输入行+品牌按钮)；隐藏开发者键名，启用既有 perApp.* 文案 |
 | 资源文件页 | `pages/Assets.ets` + `pages/assets/*` | ✅ | iOS 分组：快捷操作/内置 Geo/自定义资源/备份还原四组卡片；BuiltinGeoCard 改纯分组卡内容；CustomAssetList 改 PageHeader+左滑列表（更新/编辑/删除）；弹窗令牌化 |
-| 日志页 | `pages/Logs.ets` `LogPanel`/`RuntimePanel` | 🌓 | 深色已适配；iOS 重排待做 |
+| 日志页 | `pages/Logs.ets` `LogPanel`/`RuntimePanel` | ✅ | 面板标题改 SectionHeader；运行状态/日志改分组卡，令牌化 |
 | 扫码页 | `pages/Scanner.ets` | 🌓 | 深色已适配；系统扫码 UI 不重排 |
-| 关于页 | `pages/About.ets` | 🌓 | 深色已适配；iOS 重排待做 |
+| 关于页 | `pages/About.ets` | ✅ | 三组卡片加 SectionHeader 标签；去阴影、令牌化；保留行按压高亮 |
 | 节点详情/编辑 | `pages/NodeDetail.ets` `NodeEdit.ets` | ✅ | NodeDetail 改信息组+JSON 组+危险删除行；NodeEdit 卡片标题→SectionHeader、子控件令牌化、保存按钮简化为品牌 pill |
 | 导入/JSON/导出 | `pages/Import.ets` `JsonImport.ets` `Export.ets` | ✅ | Import 协议网格→分组列表行；JSON/导出 改分组卡 + 透明 TextArea；保存/解析按钮简化为品牌 pill |
 | 订阅详情/编辑 | `pages/SubscriptionDetail.ets` `SubscriptionEdit.ets` + 面板 | ✅ | 详情：链接组+更新 pill+状态 tint 卡+节点列表分组卡；编辑：名称/链接分组卡+保存 pill；SubscriptionNodeListRow 令牌化 |
@@ -132,7 +132,7 @@
 
 ### 下一步（按优先级）
 1. ~~路由页 `pages/Routing.ets` 的 iOS 分组重排~~ ✅ 已完成。
-2. 其余 🌓 页面逐个 iOS 重排：~~`PerApp.ets`~~ ✅ → ~~`Assets.ets`(+`assets/*`)~~ ✅ → ~~`NodeDetail/NodeEdit`~~ ✅ → ~~`Import/JsonImport/Export`~~ ✅ → ~~`SubscriptionDetail/SubscriptionEdit`~~ ✅ → `About`（下一个） → `Logs`。
+2. 其余 🌓 页面逐个 iOS 重排：~~`PerApp.ets`~~ ✅ → ~~`Assets.ets`(+`assets/*`)~~ ✅ → ~~`NodeDetail/NodeEdit`~~ ✅ → ~~`Import/JsonImport/Export`~~ ✅ → ~~`SubscriptionDetail/SubscriptionEdit`~~ ✅ → ~~`About`~~ ✅ → ~~`Logs`~~ ✅。**全部子页面 iOS 重排已完成。**
 3. 安全区 inset 统一处理（若真机发现大标题被状态栏遮挡）。
 
 ### iOS 分组重排的样板（务必照此保持一致）
@@ -176,6 +176,7 @@ entry/src/main/ets/core/XrayConfig.ets
 | 2026-06-05 | 真机修复三连：①Index 加 `onPageShow` 刷新（加订阅后节点列表实时更新）②PageHeader 覆盖层 `hitTestBehavior(Transparent)` 修复返回键被遮挡失效 ③节点搜索改为 header 内就地展开（搜索框+取消，带动画），不再在下方另开输入框 |
 | 2026-06-05 | **子页面深色模式适配**：20 个子页面/组件的硬编码 hex 全量令牌化（~500 处），深色模式自动适配；新增 `infoTint` 令牌（base+dark）。已知保留的 3 处硬编码：①`nodeDelayColor()`/`delayColor` 的延迟状态色链（string 类型约束，中间调在深色下仍清晰）②`promptAction.Button` 系统弹窗色（BuiltinGeoCard） |
 | 2026-06-05 | **配色统一为单一暖橙**：全站 `info`/`infoTint` 蓝 → `brand`/`brandTint` 橙；左滑次要操作改中性灰；延迟「测速中」蓝改橙。无蓝色残留 |
+| 2026-06-05 | **关于页 + 日志页 iOS 分组重排（收尾）**：`About` 三组卡片各加 `SectionHeader` 标签，去阴影、字号/间距/圆角令牌化，行分割线 0.5px，保留 `AboutItem` 按压高亮。`Logs` 两个面板的内部大标题移到 `SectionHeader`，`RuntimeStatusPanel`/`RuntimeLogPanel` 改纯分组卡（自带 margin lg、Radius.lg、padding lg），日志清空按钮令牌化。至此全部 🌓 子页面 iOS 重排完成 |
 | 2026-06-05 | **订阅详情/编辑页 iOS 分组重排**：`SubscriptionDetail` 改灰底 + `SectionHeader`：订阅链接输入分组卡（link 图标 + 输入 + 清除/粘贴/扫码）+ 「获取并更新」品牌 pill + 成功/失败 tint 状态卡（去边框）+ 节点列表分组卡；空态居中占位。`SubscriptionEdit` 两张品牌色竖条卡 → `SectionHeader` + 分组卡（名称输入 / 链接输入行 + 小操作按钮）+ 脚注，保存按钮简化为品牌 pill。共享 `SubscriptionNodeListRow` 字号/间距/分割线令牌化（0.5px）。移除未用的 `IconButton` 导入、`isPressed` 与渐变/阴影/blur；`nodeDelayColor()` 字符串色链按既定约定保留。订阅更新/选节点/保存逻辑原样保留 |
 | 2026-06-05 | **导入/JSON/导出页 iOS 分组重排**：`Import` 三张品牌色阴影卡 → 灰底 + `SectionHeader` 三组（链接导入：输入卡 + 脚注 + 解析/扫码 pill 按钮；手动配置：8 协议由 2 列网格改分组列表行 + chevron；自定义 JSON：导航行）。`JsonImport` 输入卡改分组卡（粘贴/清空小按钮 + 透明等宽 TextArea），校验指示板去边框改 tint 卡，保存按钮简化为品牌 pill。`Export` 改 `SectionHeader` + 透明 TextArea 分组卡 + 脚注。统一移除渐变/阴影/按压缩放/blur 与未用的 `isPressed`；解析/校验/保存逻辑原样保留 |
 | 2026-06-05 | **节点详情/编辑页 iOS 分组重排**：`NodeDetail` 改灰底 + 节点信息组（名称/协议/来源信息行）+ 使用按钮（品牌/成功 pill）+ Outbound/原始链接分组卡 + 底部危险「删除」行；TextArea 透明融入卡片。`NodeEdit` 各表单卡片的品牌色标题条 → `SectionHeader`，卡片去阴影、改纯分组卡；`SegmentedControl`/`ToggleRow`/`PickerRow`/`EditorRow` 全令牌化（输入框 surfaceAlt + Radius.md，开关补 brand 选中色）；底部保存按钮由渐变+阴影+按压缩放简化为品牌 pill（禁用态 surfaceAlt），移除未用的 `isPressed` 状态与 blur。表单拼装与校验逻辑（saveManualNode 等）原样保留 |
