@@ -11,6 +11,7 @@ import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/Setting
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
+import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 @Entry
 @Component
@@ -44,69 +45,132 @@ struct SettingsPage {
     Column() {
       PageHeader({
         title: this.t('screen.settings.title'),
-        summary: this.t('settings.advanced.detail'),
         showBack: true
       })
+
       Scroll() {
-        Column({ space: 0 }) {
-          SectionHeader({ title: this.t('settings.language.section'), detail: this.t('settings.language.detail') })
-          this.LanguageToggle()
+        Column({ space: Space.lg }) {
+          // 界面
+          SectionHeader({ title: this.t('settings.language.section') })
+          Column() {
+            this.LanguageToggle()
+          }
+          .width('100%')
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.lg)
+          .clip(true)
+          .margin({ left: Space.lg, right: Space.lg })
+
+          // 核心
           SectionHeader({ title: this.t('settings.core'), detail: this.t('settings.core.detail') })
-          this.SettingToggle(this.t('settings.sniffing'), 'pref_sniffing_enabled', this.settingSniffing, 'sniffing')
-          this.SettingToggle(this.t('settings.routeOnly'), 'pref_route_only_enabled', this.settingRouteOnly, 'routeOnly')
-          this.SettingToggle(this.t('settings.allowInsecure'), 'pref_allow_insecure', this.settingAllowInsecure, 'allowInsecure')
+          Column() {
+            this.SettingToggle(this.t('settings.sniffing'), this.settingSniffing, 'sniffing')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.routeOnly'), this.settingRouteOnly, 'routeOnly')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.allowInsecure'), this.settingAllowInsecure, 'allowInsecure')
+          }
+          .width('100%')
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.lg)
+          .clip(true)
+          .margin({ left: Space.lg, right: Space.lg })
+
+          // VPN
           SectionHeader({ title: this.t('settings.vpn'), detail: this.t('settings.vpn.detail') })
-          this.SettingToggle(this.t('settings.perAppProxy'), 'pref_per_app_proxy', this.settingPerAppProxy, 'perApp')
-          this.SettingToggle(this.t('settings.localDns'), 'pref_local_dns_enabled', this.settingLocalDns, 'localDns')
-          this.SettingToggle(this.t('settings.fakeDns'), 'pref_fake_dns_enabled', this.settingFakeDns, 'fakeDns')
-          this.SettingToggle(this.t('settings.proxySharing'), 'pref_proxy_sharing_enabled', this.settingProxySharing, 'proxySharing')
-          this.SettingInput(this.t('settings.vpnDns'), 'pref_vpn_dns', this.settingVpnDns, 'vpnDns')
+          Column() {
+            this.SettingToggle(this.t('settings.perAppProxy'), this.settingPerAppProxy, 'perApp')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.localDns'), this.settingLocalDns, 'localDns')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.fakeDns'), this.settingFakeDns, 'fakeDns')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.proxySharing'), this.settingProxySharing, 'proxySharing')
+            this.RowDivider()
+            this.SettingInput(this.t('settings.vpnDns'), this.settingVpnDns, 'vpnDns')
+          }
+          .width('100%')
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.lg)
+          .clip(true)
+          .margin({ left: Space.lg, right: Space.lg })
+
+          // 传输
           SectionHeader({ title: this.t('settings.transport'), detail: this.t('settings.transport.detail') })
-          this.SettingToggle(this.t('settings.mux'), 'pref_mux_enabled', this.settingMux, 'mux')
-          this.SettingToggle(this.t('settings.fragment'), 'pref_fragment_enabled', this.settingFragment, 'fragment')
+          Column() {
+            this.SettingToggle(this.t('settings.mux'), this.settingMux, 'mux')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.fragment'), this.settingFragment, 'fragment')
+          }
+          .width('100%')
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.lg)
+          .clip(true)
+          .margin({ left: Space.lg, right: Space.lg })
+
+          // 进阶
           SectionHeader({ title: this.t('settings.advanced'), detail: this.t('settings.advanced.detail') })
-          this.SettingInput(this.t('settings.remoteDns'), 'pref_remote_dns', this.settingRemoteDns, 'remoteDns')
-          this.SettingInput(this.t('settings.domesticDns'), 'pref_domestic_dns', this.settingDomesticDns, 'domesticDns')
-          this.SettingInput(this.t('settings.delayTestUrl'), 'pref_delay_test_url', this.settingDelayTestUrl, 'delayTestUrl')
-          this.SettingInput(this.t('settings.logLevel'), 'pref_core_loglevel', this.settingLogLevel, 'logLevel')
+          Column() {
+            this.SettingInput(this.t('settings.remoteDns'), this.settingRemoteDns, 'remoteDns')
+            this.RowDivider()
+            this.SettingInput(this.t('settings.domesticDns'), this.settingDomesticDns, 'domesticDns')
+            this.RowDivider()
+            this.SettingInput(this.t('settings.delayTestUrl'), this.settingDelayTestUrl, 'delayTestUrl')
+            this.RowDivider()
+            this.SettingInput(this.t('settings.logLevel'), this.settingLogLevel, 'logLevel')
+          }
+          .width('100%')
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.lg)
+          .clip(true)
+          .margin({ left: Space.lg, right: Space.lg })
 
           if (this.lastError.length > 0) {
             Text(this.lastError)
-              .fontSize(12)
-              .fontColor('#B42318')
+              .fontSize(FontSz.footnote)
+              .fontColor(AppColor.danger)
               .width('100%')
-              .padding(10)
-              .backgroundColor('#FEF3F2')
-              .borderRadius(6)
+              .padding(Space.md)
+              .backgroundColor(AppColor.dangerTint)
+              .borderRadius(Radius.md)
+              .margin({ left: Space.lg, right: Space.lg })
           }
 
           Button(this.t('action.saveSettings'))
-            .height(40)
-            .width('88%')
-            .backgroundColor('#1C1B1F')
-            .fontColor('#FFFFFF')
-            .borderRadius(20)
-            .margin({ top: 18, bottom: 10 })
+            .height(46)
+            .width('100%')
+            .backgroundColor(AppColor.brand)
+            .fontColor(AppColor.onBrand)
+            .fontWeight(FontWeight.Medium)
+            .borderRadius(Radius.pill)
+            .margin({ left: Space.lg, right: Space.lg, top: Space.sm })
             .onClick(() => {
               this.persistSettings(true);
             })
         }
         .width('100%')
-        .padding({ bottom: 24 })
+        .padding({ top: Space.sm, bottom: Space.xxl })
       }
       .layoutWeight(1)
       .width('100%')
     }
     .height('100%')
     .width('100%')
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(AppColor.bg)
+  }
+
+  @Builder
+  private RowDivider() {
+    Divider()
+      .strokeWidth(0.5)
+      .color(AppColor.divider)
+      .margin({ left: Space.lg })
   }
 
   @Builder
   private LanguageToggle() {
     LanguageToggleRow({
       title: this.t('settings.language.title'),
-      settingKey: this.t('settings.language.key'),
       zhLabel: this.t('settings.language.zh'),
       enLabel: this.t('settings.language.en'),
       language: this.language,
@@ -117,10 +181,10 @@ struct SettingsPage {
   }
 
   @Builder
-  private SettingToggle(title: string, key: string, enabled: boolean, action: string) {
+  private SettingToggle(title: string, enabled: boolean, action: string) {
     SettingToggleRow({
       title,
-      settingKey: key,
+      settingKey: '',
       isEnabled: enabled,
       action,
       onLabel: this.t('action.on'),
@@ -132,10 +196,10 @@ struct SettingsPage {
   }
 
   @Builder
-  private SettingInput(title: string, key: string, value: string, action: string) {
+  private SettingInput(title: string, value: string, action: string) {
     SettingInputRow({
       title,
-      settingKey: key,
+      settingKey: '',
       value,
       action,
       onChange: (nextAction: string, nextValue: string) => {

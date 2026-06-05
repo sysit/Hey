@@ -8,6 +8,7 @@ import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
 import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
+import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 @Entry
 @Component
@@ -37,55 +38,54 @@ struct SubscriptionsPage {
         }
       })
 
-      Scroll() {
-        Column({ space: 14 }) {
-          if (this.subscriptionGroups.length === 0) {
-            Column({ space: 16 }) {
-              Image($r('app.media.ic_subscriptions'))
-                .width(64)
-                .height(64)
-                .fillColor('#9CA3AF')
-              Text('暂无订阅分组，点击右上角 + 添加')
-                .fontSize(14)
-                .fontColor('#9CA3AF')
-            }
-            .width('100%')
-            .height(300)
-            .justifyContent(FlexAlign.Center)
-          } else {
-            ForEach(this.subscriptionGroups, (group: SubscriptionGroup) => {
-              this.GroupCardItem(group)
-            }, (group: SubscriptionGroup) => group.id)
-          }
+      if (this.subscriptionGroups.length === 0) {
+        Column({ space: Space.lg }) {
+          Image($r('app.media.ic_subscriptions'))
+            .width(64)
+            .height(64)
+            .fillColor(AppColor.textTertiary)
+            .opacity(0.4)
+          Text('暂无订阅分组，点击右上角 + 添加')
+            .fontSize(FontSz.footnote)
+            .fontColor(AppColor.textTertiary)
         }
         .width('100%')
-        .alignItems(HorizontalAlign.Start)
-        .padding({ left: 16, right: 16, top: 16, bottom: 32 })
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+      } else {
+        List({ space: Space.md }) {
+          ForEach(this.subscriptionGroups, (group: SubscriptionGroup) => {
+            ListItem() {
+              this.GroupRow(group)
+            }
+            .swipeAction({ end: this.GroupSwipeActions(group) })
+          }, (group: SubscriptionGroup) => group.id)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .scrollBar(BarState.Off)
+        .padding({ left: Space.lg, right: Space.lg, top: Space.lg, bottom: Space.xxl })
       }
-      .layoutWeight(1)
-      .width('100%')
-      .align(Alignment.Top)
     }
     .height('100%')
     .width('100%')
-    .backgroundColor('#F3F4F6')
+    .backgroundColor(AppColor.bg)
   }
 
-  // 顶部操作栏构建器
   @Builder
   private HeaderActions() {
-    Row({ space: 8 }) {
+    Row({ space: Space.xs }) {
       if (this.isUpdatingAll) {
         LoadingProgress()
           .width(24)
           .height(24)
-          .color('#1C1B1F')
+          .color(AppColor.brand)
       } else {
         IconButton({
           icon: $r('app.media.ic_refresh'),
           buttonSize: 40,
           iconSize: 24,
-          iconColor: '#1C1B1F',
+          iconColor: AppColor.textSecondary,
           onAction: () => {
             this.updateAllSubscriptions();
           }
@@ -96,7 +96,7 @@ struct SubscriptionsPage {
         icon: $r('app.media.ic_add'),
         buttonSize: 40,
         iconSize: 24,
-        iconColor: '#1C1B1F',
+        iconColor: AppColor.brand,
         onAction: () => {
           this.openAddPage();
         }
@@ -105,118 +105,120 @@ struct SubscriptionsPage {
     .alignItems(VerticalAlign.Center)
   }
 
-  // 单个分组卡片组件
   @Builder
-  private GroupCardItem(group: SubscriptionGroup) {
-    Column() {
-      // 第一行：标题 + 右侧操作（分享、编辑、删除）
-      Row() {
-        Text(group.name)
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#111827')
-          .layoutWeight(1)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-        Row({ space: 4 }) {
-          // 非 Default 分组且包含 url 时显示分享
-          if (group.url.trim().length > 0) {
-            IconButton({
-              icon: $r('app.media.ic_share'),
-              buttonSize: 36,
-              iconSize: 20,
-              iconColor: '#4B5563',
-              onAction: () => {
-                this.copyUrlToClipboard(group.url);
-              }
-            })
-          }
-
-          if (group.id !== 'sub-local') {
-            IconButton({
-              icon: $r('app.media.ic_edit'),
-              buttonSize: 36,
-              iconSize: 20,
-              iconColor: '#4B5563',
-              onAction: () => {
-                this.openEditPage(group);
-              }
-            })
-
-            IconButton({
-              icon: $r('app.media.ic_delete'),
-              buttonSize: 36,
-              iconSize: 20,
-              iconColor: '#EF4444',
-              onAction: () => {
-                this.removeSubscriptionGroup(group);
-              }
-            })
-          }
-        }
+  private GroupRow(group: SubscriptionGroup) {
+    Row({ space: Space.md }) {
+      // 图标
+      Column() {
+        Image(group.id === 'sub-local' ? $r('app.media.ic_folder') : $r('app.media.ic_subscriptions'))
+          .width(20)
+          .height(20)
+          .fillColor(group.enabled || group.id === 'sub-local' ? AppColor.brand : AppColor.textTertiary)
       }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
+      .width(40)
+      .height(40)
+      .borderRadius(20)
+      .backgroundColor(group.enabled || group.id === 'sub-local' ? AppColor.brandTint : AppColor.surfaceAlt)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
 
-      // 有 URL 分组显示次行与末行
-      if (group.url.trim().length > 0) {
-        // 第二行：URL (截断)
-        Text(group.url)
-          .fontSize(13)
-          .fontColor('#6B7280')
-          .width('100%')
-          .margin({ top: 6 })
+      // 文本
+      Column({ space: 3 }) {
+        Text(group.name)
+          .fontSize(FontSz.callout)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppColor.textPrimary)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        // 第三行：更新时间 + 右侧 Switch 开关
-        Row() {
-          Text(this.formatDateTime(group.updatedAt))
-            .fontSize(12)
-            .fontColor('#9CA3AF')
+        Text(this.subtitleOf(group))
+          .fontSize(FontSz.footnote)
+          .fontColor(AppColor.textTertiary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-          Toggle({ type: ToggleType.Switch, isOn: group.enabled })
-            .selectedColor('#F97910')
-            .switchPointColor('#FFFFFF')
-            .onChange(() => {
-              this.toggleSubscriptionGroup(group);
-            })
-        }
-        .width('100%')
-        .margin({ top: 12 })
-        .justifyContent(FlexAlign.SpaceBetween)
-        .alignItems(VerticalAlign.Center)
-      } else if (group.id === 'sub-local') {
-        Row() {
-          Text(`共 ${group.nodes.length} 个本地节点`)
-            .fontSize(13)
-            .fontColor('#6B7280')
-            .margin({ top: 6 })
-        }
-        .width('100%')
+        Text(this.formatDateTime(group.updatedAt))
+          .fontSize(FontSz.caption)
+          .fontColor(AppColor.textTertiary)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
 
-        Row() {
-          Text(`最后添加：${this.formatDateTime(group.updatedAt)}`)
-            .fontSize(12)
-            .fontColor('#9CA3AF')
-        }
-        .width('100%')
-        .margin({ top: 12 })
+      // 右侧：开关（订阅组）/ 箭头（本地）
+      if (group.url.trim().length > 0) {
+        Toggle({ type: ToggleType.Switch, isOn: group.enabled })
+          .selectedColor(AppColor.brand)
+          .switchPointColor(AppColor.onBrand)
+          .onChange(() => {
+            this.toggleSubscriptionGroup(group);
+          })
+      } else {
+        Image($r('app.media.ic_chevron_right'))
+          .width(20)
+          .height(20)
+          .fillColor(AppColor.textTertiary)
       }
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .shadow({ radius: 6, color: '#08000000', offsetX: 0, offsetY: 2 })
+    .padding(Space.lg)
+    .backgroundColor(AppColor.surface)
+    .borderRadius(Radius.lg)
     .onClick(() => {
-      // 点击整行卡片（排除按钮和开关之后），进入详情页
       this.selectSubscriptionGroup(group);
     })
   }
 
-  // 辅助函数：格式化时间戳
+  @Builder
+  private GroupSwipeActions(group: SubscriptionGroup) {
+    Row() {
+      if (group.id !== 'sub-local') {
+        if (group.url.trim().length > 0) {
+          this.SwipeButton($r('app.media.ic_share'), this.t('action.share'), AppColor.brand, () => {
+            this.copyUrlToClipboard(group.url);
+          })
+        }
+        this.SwipeButton($r('app.media.ic_edit'), this.t('action.edit'), AppColor.textSecondary, () => {
+          this.openEditPage(group);
+        })
+        this.SwipeButton($r('app.media.ic_delete'), this.t('action.delete'), AppColor.danger, () => {
+          this.removeSubscriptionGroup(group);
+        })
+      }
+    }
+    .height('100%')
+  }
+
+  @Builder
+  private SwipeButton(icon: Resource, label: string, bg: ResourceColor, action: () => void) {
+    Column({ space: 3 }) {
+      Image(icon)
+        .width(20)
+        .height(20)
+        .fillColor(Color.White)
+      Text(label)
+        .fontSize(FontSz.caption)
+        .fontColor(Color.White)
+    }
+    .width(72)
+    .height('100%')
+    .backgroundColor(bg)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .onClick(() => {
+      action();
+    })
+  }
+
+  private subtitleOf(group: SubscriptionGroup): string {
+    if (group.url.trim().length > 0) {
+      return group.url;
+    }
+    if (group.id === 'sub-local') {
+      return `共 ${group.nodes.length} 个本地节点`;
+    }
+    return `${group.nodes.length} 个节点`;
+  }
+
   private formatDateTime(timestamp: number): string {
     if (timestamp <= 0) {
       return '从未更新';
@@ -250,7 +252,6 @@ struct SubscriptionsPage {
     const context = getContext(this) as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.selectGroup(context, group, this.language);
     this.applySubscriptionsState(state);
-    // 跳转到子详情页，传递 groupId
     router.pushUrl({
       url: AppRoute.SUBSCRIPTION_DETAIL,
       params: { groupId: group.id }
@@ -286,7 +287,6 @@ struct SubscriptionsPage {
     }
   }
 
-  // 路由跳转至编辑页面 (新建/编辑)
   private openAddPage() {
     router.pushUrl({
       url: AppRoute.SUBSCRIPTION_EDIT
