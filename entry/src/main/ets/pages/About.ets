@@ -24,7 +24,6 @@ struct AboutPage {
     Column() {
       PageHeader({
         title: this.t('screen.about.title'),
-        summary: this.t('about.section.detail'),
         showBack: true
       })
       Scroll() {
