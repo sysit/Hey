@@ -1,5 +1,6 @@
 import { DEFAULT_LANGUAGE } from '../../core/I18n';
 import { AppLanguage } from '../../core/Profile';
+import { AppColor, FontSz, Radius, Space } from '../../theme/Theme';
 
 export type ToggleSettingHandler = (action: string) => void;
 export type TextSettingHandler = (action: string, value: string) => void;
@@ -16,28 +17,35 @@ export struct SettingToggleRow {
   onToggle: ToggleSettingHandler = (_action: string) => {};
 
   build() {
-    Row({ space: 14 }) {
-      Column({ space: 3 }) {
+    Row({ space: Space.md }) {
+      Column({ space: 2 }) {
         Text(this.title)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#1C1B1F')
-        Text(this.settingKey)
-          .fontSize(13)
-          .fontColor('#49454F')
+          .fontSize(FontSz.callout)
+          .fontColor(AppColor.textPrimary)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        if (this.settingKey.length > 0) {
+          Text(this.settingKey)
+            .fontSize(FontSz.footnote)
+            .fontColor(AppColor.textTertiary)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
       }
+      .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+
       Toggle({ type: ToggleType.Switch, isOn: this.isEnabled })
-        .selectedColor('#F97910')
-        .switchPointColor('#FFFFFF')
+        .selectedColor(AppColor.brand)
+        .switchPointColor(AppColor.onBrand)
         .onChange((_isOn: boolean) => {
           this.onToggle(this.action);
         })
     }
     .width('100%')
-    .height(72)
-    .padding({ left: 24, right: 24, top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF')
+    .height(54)
+    .padding({ left: Space.lg, right: Space.lg })
+    .backgroundColor(AppColor.surface)
   }
 }
 
@@ -51,43 +59,44 @@ export struct LanguageToggleRow {
   onChange: LanguageSelectHandler = (_language: AppLanguage) => {};
 
   build() {
-    Row({ space: 12 }) {
-      Column({ space: 3 }) {
-        Text(this.title)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#1C1B1F')
-        Text(this.settingKey)
-          .fontSize(13)
-          .fontColor('#49454F')
-      }
-      .layoutWeight(1)
+    Row({ space: Space.md }) {
+      Text(this.title)
+        .fontSize(FontSz.callout)
+        .fontColor(AppColor.textPrimary)
+        .layoutWeight(1)
 
-      Button(this.zhLabel)
-        .height(32)
-        .width(96)
-        .fontSize(12)
-        .backgroundColor(this.language === 'zh' ? '#1C1B1F' : '#F2F2F2')
-        .fontColor(this.language === 'zh' ? '#FFFFFF' : '#374151')
-        .borderRadius(16)
-        .onClick(() => {
+      Row() {
+        this.SegItem(this.zhLabel, this.language === 'zh', () => {
           this.onChange('zh');
         })
-      Button(this.enLabel)
-        .height(32)
-        .width(96)
-        .fontSize(12)
-        .backgroundColor(this.language === 'en' ? '#1C1B1F' : '#F2F2F2')
-        .fontColor(this.language === 'en' ? '#FFFFFF' : '#374151')
-        .borderRadius(16)
-        .onClick(() => {
+        this.SegItem(this.enLabel, this.language === 'en', () => {
           this.onChange('en');
         })
+      }
+      .padding(2)
+      .backgroundColor(AppColor.surfaceAlt)
+      .borderRadius(Radius.md)
     }
     .width('100%')
-    .height(72)
-    .padding({ left: 24, right: 24, top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF')
+    .height(54)
+    .padding({ left: Space.lg, right: Space.lg })
+    .backgroundColor(AppColor.surface)
+  }
+
+  @Builder
+  private SegItem(label: string, selected: boolean, action: () => void) {
+    Text(label)
+      .fontSize(FontSz.footnote)
+      .fontWeight(selected ? FontWeight.Medium : FontWeight.Regular)
+      .fontColor(selected ? AppColor.onBrand : AppColor.textSecondary)
+      .textAlign(TextAlign.Center)
+      .height(28)
+      .width(72)
+      .borderRadius(Radius.sm)
+      .backgroundColor(selected ? AppColor.brand : Color.Transparent)
+      .onClick(() => {
+        action();
+      })
   }
 }
 
@@ -100,31 +109,28 @@ export struct SettingInputRow {
   onChange: TextSettingHandler = (_action: string, _value: string) => {};
 
   build() {
-    Column({ space: 8 }) {
-      Row() {
-        Text(this.title)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#1C1B1F')
-          .layoutWeight(1)
-        Text(this.settingKey)
-          .fontSize(13)
-          .fontColor('#49454F')
-      }
-      .width('100%')
-      TextInput({ text: this.value, placeholder: this.title })
-        .height(42)
+    Column({ space: Space.sm }) {
+      Text(this.title)
+        .fontSize(FontSz.callout)
+        .fontColor(AppColor.textPrimary)
         .width('100%')
-        .fontSize(16)
-        .fontColor('#1C1B1F')
-        .backgroundColor('#FFFFFF')
-        .border({ width: { bottom: 1 }, color: '#6B7280' })
+
+      TextInput({ text: this.value, placeholder: this.title })
+        .height(40)
+        .width('100%')
+        .fontSize(FontSz.body)
+        .fontColor(AppColor.textPrimary)
+        .placeholderColor(AppColor.textTertiary)
+        .backgroundColor(AppColor.surfaceAlt)
+        .borderRadius(Radius.md)
+        .padding({ left: Space.md, right: Space.md })
         .onChange((next: string) => {
           this.onChange(this.action, next);
         })
     }
     .width('100%')
-    .padding({ left: 24, right: 24, top: 14, bottom: 14 })
-    .backgroundColor('#FFFFFF')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.md })
+    .backgroundColor(AppColor.surface)
   }
 }

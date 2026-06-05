@@ -81,6 +81,10 @@
       "value": "#2563EB"
     },
     {
+      "name": "info_tint",
+      "value": "#E8F0FE"
+    },
+    {
       "name": "shadow_card",
       "value": "#14000000"
     },

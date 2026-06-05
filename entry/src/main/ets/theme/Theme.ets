@@ -36,6 +36,7 @@ export class AppColor {
   static readonly danger: Resource = $r('app.color.danger');
   static readonly dangerTint: Resource = $r('app.color.danger_tint');
   static readonly info: Resource = $r('app.color.info');
+  static readonly infoTint: Resource = $r('app.color.info_tint');
 
   // 阴影 / 蒙层
   static readonly shadowCard: Resource = $r('app.color.shadow_card');

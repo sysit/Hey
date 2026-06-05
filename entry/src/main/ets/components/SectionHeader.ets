@@ -6,21 +6,23 @@ export struct SectionHeader {
   detail: string = '';
 
   build() {
-    Row() {
+    Column({ space: 2 }) {
       Text(this.title)
-        .fontSize(FontSz.headline)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(AppColor.brand)
-        .layoutWeight(1)
+        .fontSize(FontSz.footnote)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppColor.textTertiary)
+        .width('100%')
       if (this.detail.length > 0) {
         Text(this.detail)
-          .fontSize(FontSz.footnote)
-          .fontColor(AppColor.textSecondary)
-          .maxLines(1)
+          .fontSize(FontSz.caption)
+          .fontColor(AppColor.textTertiary)
+          .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
       }
     }
     .width('100%')
-    .padding({ left: Space.xxl, right: Space.xxl, top: Space.xxl, bottom: Space.sm })
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: Space.lg + Space.xs, right: Space.lg, top: Space.lg, bottom: Space.sm })
   }
 }
