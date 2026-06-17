@@ -36,8 +36,8 @@ in-depth analysis of v2rayNG's features and design, see
 | Node select and save current profile | Present. |
 | Xray config generation | Present for outbound + native TUN inbound + basic direct/block outbounds. |
 | Persistent app settings | Present for core VPN, DNS, mux, sniffing, log and routing strategy; selected values are applied at connection start. |
-| VPN Extension start/stop | Present, with emulator timeout diagnostics. Needs real-device validation. |
-| Xray native TUN runtime | Present in HAP via `CGoSetTunFd` + Xray TUN inbound. Needs real-device closed-loop verification. |
+| VPN Extension start/stop | Present, with emulator timeout diagnostics. Real-device verified (2026-06-15). |
+| Xray native TUN runtime | Present in HAP via `CGoSetTunFd` + Xray TUN inbound. Real-device closed loop verified (2026-06-15): TUN → Xray → outbound → reachable. |
 | VMess/VLESS/Trojan/Shadowsocks parsing | Present. |
 | SOCKS/HTTP/WireGuard/Hysteria2 parsing | Present for share-link import and subscription discovery. Runtime connection for WireGuard/Hysteria2 still needs core validation. |
 | TUIC parsing | Pending. |
@@ -52,13 +52,19 @@ in-depth analysis of v2rayNG's features and design, see
 
 ## Native Bridge Status
 
-`libxray.so` exports 13 CGo functions; `napi_init.cpp` currently wires 4.
+`libxray.so` exports 13 CGo functions; `napi_init.cpp` wires 7 (M1, 2026-06-15).
 
-- Wired: `CGoRunXrayFromJSON`, `CGoStopXray`, `CGoPing`, `CGoSetTunFd`.
-- Idle: `CGoQueryStats` (real traffic stats), `CGoReadGeoFiles` / `CGoCountGeoData`
-  (geo validation), `CGoTestXray` (pre-connect config check), `CGoXrayVersion`,
+- Wired (runtime): `CGoRunXrayFromJSON`, `CGoStopXray`, `CGoPing`, `CGoSetTunFd`.
+- Wired (M1): `CGoQueryStats` (real per-tag traffic via the Xray metrics
+  `/debug/vars` endpoint), `CGoTestXray` (pre-connect config preflight),
+  `CGoXrayVersion` (core version on the About page).
+- Idle: `CGoReadGeoFiles` / `CGoCountGeoData` (geo validation),
   `CGoConvertShareLinksToXrayJson`, `CGOConvertXrayJsonToShareLinks`,
   `CGoGetFreePorts`, `CGoRunXray`.
 
-The current `getStats()` returns a C++-side approximate counter, not kernel
-stats. Wiring `CGoQueryStats` is tracked in roadmap Phase 1.
+> M1 note: the prebuilt `libxray.so` version script previously exported only the
+> 4 runtime symbols (`local: *` hid the rest). `scripts/build_libxray_ohos.sh`
+> now also exports `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`, so the bridge
+> code is complete but a **`libxray.so` rebuild + device retest** is required
+> before these three take effect. Until then the bridge degrades gracefully
+> (stats fall back, preflight is skipped, version shows the static label).
