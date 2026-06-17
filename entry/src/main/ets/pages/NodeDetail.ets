@@ -1,7 +1,11 @@
 import { common } from '@kit.AbilityKit';
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
+import { pasteboard } from '@kit.BasicServicesKit';
+import { generateBarcode, scanCore } from '@kit.ScanKit';
+import { image } from '@kit.ImageKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, ProxyNode } from '../core/Profile';
+import { formatOutboundJsonToShareLink } from '../core/ShareLinkParser';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -35,6 +39,7 @@ struct NodeDetailPage {
   @State private node: ProxyNode = EMPTY_NODE;
   @State private selectedNodeId: string = '';
   @State private lastError: string = '';
+  @State private qrImage: image.PixelMap | undefined = undefined;
 
   aboutToAppear(): void {
     this.loadState();
@@ -128,6 +133,40 @@ struct NodeDetailPage {
             .margin({ left: Space.lg, right: Space.lg })
           }
 
+          // 二维码分享
+          if (this.qrImage !== undefined) {
+            SectionHeader({ title: this.t('node.detail.qr') })
+            Column({ space: Space.md }) {
+              Image(this.qrImage)
+                .width(220)
+                .height(220)
+                .objectFit(ImageFit.Contain)
+                .backgroundColor(Color.White)
+                .borderRadius(Radius.md)
+              Text(this.t('node.detail.qr.hint'))
+                .fontSize(FontSz.footnote)
+                .fontColor(AppColor.textTertiary)
+                .textAlign(TextAlign.Center)
+              Button(this.t('node.detail.copyLink'))
+                .height(40)
+                .width('100%')
+                .backgroundColor(AppColor.surfaceAlt)
+                .fontColor(AppColor.textPrimary)
+                .fontSize(FontSz.callout)
+                .borderRadius(Radius.pill)
+                .onClick(() => {
+                  this.copyShareLink();
+                })
+            }
+            .width('100%')
+            .padding(Space.lg)
+            .backgroundColor(AppColor.surface)
+            .borderRadius(Radius.lg)
+            .clip(true)
+            .margin({ left: Space.lg, right: Space.lg })
+            .alignItems(HorizontalAlign.Center)
+          }
+
           // 删除（危险操作）
           Column() {
             Row() {
@@ -199,6 +238,49 @@ struct NodeDetailPage {
     this.selectedNodeId = state.selectedNodeId;
     const found = NODES_CONTROLLER.findNode(state.nodes, this.nodeId);
     this.node = found !== null ? found : EMPTY_NODE;
+    await this.generateQr();
+  }
+
+  private nodeShareLink(): string {
+    const raw = this.node.rawLink.trim();
+    if (raw.length > 0) {
+      return raw;
+    }
+    return formatOutboundJsonToShareLink(this.node.outboundJson, this.node.name);
+  }
+
+  private async generateQr(): Promise<void> {
+    const content = this.nodeShareLink();
+    if (content.length === 0) {
+      this.qrImage = undefined;
+      return;
+    }
+    try {
+      const options: generateBarcode.CreateOptions = {
+        scanType: scanCore.ScanType.QR_CODE,
+        height: 600,
+        width: 600
+      };
+      this.qrImage = await generateBarcode.createBarcode(content, options);
+    } catch (error) {
+      this.qrImage = undefined;
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('error.qrGenerate', 'error', JSON.stringify(error)));
+    }
+  }
+
+  private copyShareLink(): void {
+    const content = this.nodeShareLink();
+    if (content.length === 0) {
+      return;
+    }
+    try {
+      const systemPasteboard = pasteboard.getSystemPasteboard();
+      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, content);
+      systemPasteboard.setDataSync(pasteData);
+      promptAction.showToast({ message: this.t('prompt.copiedToClipboard') });
+    } catch (error) {
+      promptAction.showToast({ message: this.t('prompt.copiedToClipboard') });
+    }
   }
 
   private async selectNode(): Promise<void> {

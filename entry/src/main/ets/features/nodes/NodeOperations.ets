@@ -91,6 +91,28 @@ export function removeInvalidNodesFromList(nodes: Array<ProxyNode>): Array<Proxy
   return result;
 }
 
+// Drops nodes that failed their most recent delay test (timed out / errored).
+// Untested nodes (empty status) and in-flight ones ('testing') are kept, so a
+// post-test cleanup only removes nodes that were actually measured and failed.
+export function removeTestFailedNodesFromList(nodes: Array<ProxyNode>): Array<ProxyNode> {
+  const result = new Array<ProxyNode>();
+  for (let index = 0; index < nodes.length; index++) {
+    const node = nodes[index];
+    if (!isTestFailed(node)) {
+      result.push(node);
+    }
+  }
+  return result;
+}
+
+function isTestFailed(node: ProxyNode): boolean {
+  if (node.delayMs >= 0) {
+    return false;
+  }
+  const status = node.delayStatus;
+  return status.length > 0 && status !== 'ok' && status !== 'testing';
+}
+
 export function exportNodesText(nodes: Array<ProxyNode>): string {
   const lines = new Array<string>();
   for (let index = 0; index < nodes.length; index++) {
