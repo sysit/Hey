@@ -12,11 +12,13 @@ import {
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import {
   getNativeStats,
+  queryNativeTraffic,
   setNativeTunFd,
   startNativeXray,
   stopNativeXray,
-  validateNativeConfig
+  testNativeXrayConfig
 } from '../native/HeyNative';
+import { METRICS_SERVER_URL } from '../core/XrayConfig';
 import { DiagnosticLog } from '../services/DiagnosticLog';
 
 const LOG_DOMAIN: number = 0x0001;
@@ -62,11 +64,17 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
 
     try {
       this.emitInfo('VPN start requested.', `configBytes=${configJson.length}, mtu=${VPN_MTU}`);
-      const validation = validateNativeConfig(configJson);
-      if (!validation.ok) {
-        throw new Error(validation.message);
+      // Non-blocking preflight: surface config issues early in diagnostics, but
+      // never abort start on a not-ok result. CGoTestXray builds the core from
+      // the full config (including the `tun` inbound) before the TUN fd is set,
+      // so a false-positive here must not block the verified connection path —
+      // startNativeXray below remains the source of truth for real failures.
+      const validation = testNativeXrayConfig(configJson, this.context.filesDir);
+      if (validation.ok) {
+        this.emitInfo('Native config preflight passed.', validation.message);
+      } else {
+        this.emitInfo('Native config preflight warning.', validation.message);
       }
-      this.emitInfo('Native config validated.', validation.message);
 
       this.vpnConnection = vpnExtension.createVpnConnection(this.context);
       this.emitInfo('Creating VPN connection.');
@@ -160,14 +168,23 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
 
   private recordStats(): void {
     const stats: RuntimeStats = getNativeStats();
+    // Prefer real per-tag counters from the Xray metrics endpoint; fall back to
+    // the native bridge's own values when the metrics query is unavailable.
+    let uploadBytes = stats.uploadBytes;
+    let downloadBytes = stats.downloadBytes;
+    const traffic = queryNativeTraffic(METRICS_SERVER_URL);
+    if (traffic.ok) {
+      uploadBytes = traffic.uploadBytes;
+      downloadBytes = traffic.downloadBytes;
+    }
     DiagnosticLog.append(this.context, {
       at: Date.now(),
       level: 'info',
       source: 'vpn-stats',
       message: 'Native bridge stats.',
       details: stats.lastMessage,
-      uploadBytes: stats.uploadBytes,
-      downloadBytes: stats.downloadBytes,
+      uploadBytes,
+      downloadBytes,
       xrayRunning: stats.xrayRunning,
       tunRunning: stats.tunRunning
     });

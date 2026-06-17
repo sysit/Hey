@@ -5,6 +5,7 @@ import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
+import { nativeXrayVersion } from '../native/HeyNative';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
@@ -15,6 +16,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 struct AboutPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private isCheckingUpdate: boolean = false;
+  @State private coreVersion: string = '';
 
   aboutToAppear(): void {
     this.loadState();
@@ -106,7 +108,7 @@ struct AboutPage {
             this.RowDivider()
             AboutItem({
               title: this.t('about.core.title'),
-              detail: this.t('about.core.detail'),
+              detail: this.coreVersion.length > 0 ? `Xray-core ${this.coreVersion}` : this.t('about.core.detail'),
               onAction: () => {
                 this.openUrl('https://github.com/XTLS/Xray-core', this.t('about.core.title'));
               }
@@ -221,6 +223,10 @@ struct AboutPage {
   private async loadState(): Promise<void> {
     const context = getContext(this) as common.Context;
     this.language = (await SETTINGS_CONTROLLER.load(context)).language;
+    const version = nativeXrayVersion();
+    if (version.ok && version.message.length > 0) {
+      this.coreVersion = version.message;
+    }
   }
 
   private t(key: string): string {

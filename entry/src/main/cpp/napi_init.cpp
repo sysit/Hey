@@ -22,10 +22,12 @@ constexpr const char* LOG_TAG_NAME = "HeyNative";
 constexpr const char* XRAY_CONFIG_FILE = "hey-xray-config.json";
 constexpr const char* XRAY_CORE_LIB = "libxray.so";
 constexpr const char* PING_CONFIG_FILE = "hey-ping-config.json";
+constexpr const char* TEST_CONFIG_FILE = "hey-xray-test-config.json";
 
 using CGoPingFunc = char* (*)(char*);
 using CGoStringFunc = char* (*)(char*);
 using CGoStopFunc = char* (*)();
+using CGoVersionFunc = char* (*)();
 using CGoSetTunFdFunc = void (*)(int);
 
 std::atomic_bool g_xrayRunning(false);
@@ -38,6 +40,12 @@ CGoStringFunc g_runXrayFromJson = nullptr;
 CGoStopFunc g_stopXray = nullptr;
 CGoPingFunc g_pingXray = nullptr;
 CGoSetTunFdFunc g_setTunFd = nullptr;
+// Optional symbols. Resolved lazily and best-effort: an older libxray.so that
+// does not export these (e.g. built before they were added to the version
+// script) leaves them null and the bridge degrades gracefully.
+CGoStringFunc g_queryStats = nullptr;
+CGoStringFunc g_testXray = nullptr;
+CGoVersionFunc g_xrayVersion = nullptr;
 
 const char* BASE64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -168,6 +176,18 @@ napi_value CreateResult(napi_env env, bool ok, const std::string& message)
     return result;
 }
 
+// Like CreateResult but does not mutate g_lastMessage or log. Used by the
+// auxiliary query functions (stats/test/version) so they never clobber the
+// connection runtime state that getStats() reports.
+napi_value CreateResultQuiet(napi_env env, bool ok, const std::string& message)
+{
+    napi_value result = nullptr;
+    napi_create_object(env, &result);
+    napi_set_named_property(env, result, "ok", CreateBool(env, ok));
+    napi_set_named_property(env, result, "message", CreateString(env, message));
+    return result;
+}
+
 std::string Base64Encode(const std::string& input)
 {
     std::string output;
@@ -246,6 +266,27 @@ std::string JsonEscape(const std::string& input)
     return output.str();
 }
 
+// Decodes a libXray CGo return value (base64 of a CallResponse JSON
+// {"success":bool,"data":...,"err":string}) and reports it back to ArkTS as
+// {ok, message} where message is the decoded CallResponse JSON. Callers on the
+// ArkTS side JSON.parse the message to read `data`/`err`. Frees the raw pointer
+// returned by the Go c-shared library.
+napi_value BuildCallResult(napi_env env, char* raw, const std::string& nullMessage)
+{
+    if (raw == nullptr) {
+        return CreateResultQuiet(env, false, nullMessage);
+    }
+    std::string response(raw);
+    std::free(raw);
+
+    std::string decoded = Base64Decode(response);
+    if (decoded.find('{') == std::string::npos) {
+        decoded = response;
+    }
+    bool ok = decoded.find("\"success\":true") != std::string::npos;
+    return CreateResultQuiet(env, ok, decoded);
+}
+
 bool ResponseOk(const std::string& base64Response, std::string& message)
 {
     std::string decoded = Base64Decode(base64Response);
@@ -320,6 +361,42 @@ CGoPingFunc LoadCGoPing(std::string& message)
         return nullptr;
     }
     return g_pingXray;
+}
+
+// Best-effort resolution of an optional symbol from the already-loaded core.
+// Returns nullptr (without failing the core) when the symbol is not exported.
+void* LoadOptionalSymbol(const char* name)
+{
+    std::string message;
+    if (!LoadXrayCore(message) || g_xrayHandle == nullptr) {
+        return nullptr;
+    }
+    dlerror();
+    return dlsym(g_xrayHandle, name);
+}
+
+CGoStringFunc LoadQueryStats()
+{
+    if (g_queryStats == nullptr) {
+        g_queryStats = reinterpret_cast<CGoStringFunc>(LoadOptionalSymbol("CGoQueryStats"));
+    }
+    return g_queryStats;
+}
+
+CGoStringFunc LoadTestXray()
+{
+    if (g_testXray == nullptr) {
+        g_testXray = reinterpret_cast<CGoStringFunc>(LoadOptionalSymbol("CGoTestXray"));
+    }
+    return g_testXray;
+}
+
+CGoVersionFunc LoadXrayVersion()
+{
+    if (g_xrayVersion == nullptr) {
+        g_xrayVersion = reinterpret_cast<CGoVersionFunc>(LoadOptionalSymbol("CGoXrayVersion"));
+    }
+    return g_xrayVersion;
 }
 
 bool ParsePingResponse(const std::string& json, int64_t& delay, std::string& message)
@@ -438,6 +515,97 @@ napi_value PingOutbound(napi_env env, napi_callback_info info)
     int64_t delay = -1;
     bool ok = ParsePingResponse(decoded, delay, message);
     return CreatePingResult(env, ok, delay, message);
+}
+
+// Queries the running Xray metrics endpoint. `server` is the expvar URL, e.g.
+// "http://127.0.0.1:10845/debug/vars". libXray's CGoQueryStats simply HTTP GETs
+// it and wraps the body in a CallResponse; the body (Go expvar JSON containing
+// the per-tag stats) is returned to ArkTS as the result message for parsing.
+napi_value QueryStats(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResultQuiet(env, false, "Missing stats server.");
+    }
+
+    std::string server = GetStringArg(env, args[0]);
+    if (server.empty()) {
+        return CreateResultQuiet(env, false, "Stats server is empty.");
+    }
+
+    CGoStringFunc query = LoadQueryStats();
+    if (query == nullptr) {
+        return CreateResultQuiet(env, false, "Stats unavailable: CGoQueryStats not exported by libXray.");
+    }
+
+    std::string encoded = Base64Encode(server);
+    std::vector<char> buffer(encoded.begin(), encoded.end());
+    buffer.push_back('\0');
+
+    char* raw = query(buffer.data());
+    return BuildCallResult(env, raw, "CGoQueryStats returned null.");
+}
+
+// Pre-connect config validation. Writes the generated config to a file and asks
+// libXray to instantiate (but not start) the core, surfacing config errors
+// before the VPN tunnel is created. Degrades to success when CGoTestXray is not
+// exported so it never blocks startup on an older core build.
+napi_value TestXrayConfig(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2] = { nullptr, nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 2) {
+        return CreateResultQuiet(env, false, "Missing test arguments.");
+    }
+
+    std::string config = GetStringArg(env, args[0]);
+    std::string workDir = GetStringArg(env, args[1]);
+    if (config.empty()) {
+        return CreateResultQuiet(env, false, "Test config JSON is empty.");
+    }
+    if (workDir.empty()) {
+        return CreateResultQuiet(env, false, "Test requires a work directory.");
+    }
+    if (config.find("\"inbounds\"") == std::string::npos || config.find("\"outbounds\"") == std::string::npos) {
+        return CreateResultQuiet(env, false, "Generated Xray config must contain inbounds and outbounds.");
+    }
+
+    CGoStringFunc test = LoadTestXray();
+    if (test == nullptr) {
+        return CreateResultQuiet(env, true, "Preflight skipped: CGoTestXray not exported by libXray.");
+    }
+
+    std::string message;
+    std::string configPath = workDir + "/" + TEST_CONFIG_FILE;
+    if (!WriteTextFile(configPath, config, message)) {
+        return CreateResultQuiet(env, false, message);
+    }
+
+    std::ostringstream request;
+    request << "{\"datDir\":\"" << JsonEscape(workDir) << "\","
+            << "\"configPath\":\"" << JsonEscape(configPath) << "\"}";
+    std::string encoded = Base64Encode(request.str());
+    std::vector<char> buffer(encoded.begin(), encoded.end());
+    buffer.push_back('\0');
+
+    char* raw = test(buffer.data());
+    return BuildCallResult(env, raw, "CGoTestXray returned null.");
+}
+
+// Returns the bundled Xray core version (CallResponse with the version string in
+// `data`). Degrades to ok=false when CGoXrayVersion is not exported.
+napi_value XrayVersion(napi_env env, napi_callback_info info)
+{
+    (void)info;
+    CGoVersionFunc version = LoadXrayVersion();
+    if (version == nullptr) {
+        return CreateResultQuiet(env, false, "Xray version unavailable: CGoXrayVersion not exported by libXray.");
+    }
+    char* raw = version();
+    return BuildCallResult(env, raw, "CGoXrayVersion returned null.");
 }
 
 napi_value ValidateConfig(napi_env env, napi_callback_info info)
@@ -607,6 +775,9 @@ static napi_value Init(napi_env env, napi_value exports)
         { "stopXray", nullptr, StopXray, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getStats", nullptr, GetStats, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "pingOutbound", nullptr, PingOutbound, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "queryStats", nullptr, QueryStats, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "testXrayConfig", nullptr, TestXrayConfig, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "xrayVersion", nullptr, XrayVersion, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

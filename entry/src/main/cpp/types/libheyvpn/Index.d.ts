@@ -23,3 +23,6 @@ export const startXray: (configJson: string, workDir: string) => NativeResult;
 export const stopXray: () => NativeResult;
 export const getStats: () => RuntimeStats;
 export const pingOutbound: (configJson: string, datDir: string, url: string, timeoutSeconds: number, proxy: string) => NativePingResult;
+export const queryStats: (server: string) => NativeResult;
+export const testXrayConfig: (configJson: string, workDir: string) => NativeResult;
+export const xrayVersion: () => NativeResult;

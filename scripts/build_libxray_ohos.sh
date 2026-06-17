@@ -25,6 +25,9 @@ cat > "${EXPORTS_FILE}" <<'MAP'
     CGoStopXray;
     CGoPing;
     CGoSetTunFd;
+    CGoQueryStats;
+    CGoTestXray;
+    CGoXrayVersion;
   local: *;
 };
 MAP
