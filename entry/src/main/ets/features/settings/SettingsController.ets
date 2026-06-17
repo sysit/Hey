@@ -22,6 +22,9 @@ export interface SettingsDraft {
   delayTestUrl: string;
   trafficMode: string;
   routingDomainStrategy: string;
+  adBlockEnabled: boolean;
+  autoSortAfterTest: boolean;
+  autoRemoveInvalidAfterTest: boolean;
 }
 
 export class SettingsController {
@@ -53,7 +56,10 @@ export class SettingsController {
       logLevel: settings.logLevel,
       delayTestUrl: settings.delayTestUrl,
       trafficMode: settings.trafficMode,
-      routingDomainStrategy: settings.routingDomainStrategy
+      routingDomainStrategy: settings.routingDomainStrategy,
+      adBlockEnabled: settings.adBlockEnabled,
+      autoSortAfterTest: settings.autoSortAfterTest,
+      autoRemoveInvalidAfterTest: settings.autoRemoveInvalidAfterTest
     };
   }
 
@@ -88,7 +94,10 @@ export class SettingsController {
       logLevel: draft.logLevel.trim().length > 0 ? draft.logLevel.trim() : DEFAULT_APP_SETTINGS.logLevel,
       mode: DEFAULT_APP_SETTINGS.mode,
       trafficMode: draft.trafficMode,
-      routingDomainStrategy: draft.routingDomainStrategy
+      routingDomainStrategy: draft.routingDomainStrategy,
+      adBlockEnabled: draft.adBlockEnabled,
+      autoSortAfterTest: draft.autoSortAfterTest,
+      autoRemoveInvalidAfterTest: draft.autoRemoveInvalidAfterTest
     };
   }
 

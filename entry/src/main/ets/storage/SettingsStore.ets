@@ -36,7 +36,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   logLevel: 'warning',
   mode: 'VPN',
   trafficMode: 'rules',
-  routingDomainStrategy: 'AsIs'
+  routingDomainStrategy: 'AsIs',
+  adBlockEnabled: false,
+  autoSortAfterTest: false,
+  autoRemoveInvalidAfterTest: false
 };
 
 export class SettingsStore {
@@ -101,7 +104,10 @@ export class SettingsStore {
       logLevel: SettingsStore.stringValue(raw.logLevel, base.logLevel),
       mode: SettingsStore.stringValue(raw.mode, base.mode),
       trafficMode: SettingsStore.trafficModeValue(raw.trafficMode, base.trafficMode),
-      routingDomainStrategy: SettingsStore.stringValue(raw.routingDomainStrategy, base.routingDomainStrategy)
+      routingDomainStrategy: SettingsStore.stringValue(raw.routingDomainStrategy, base.routingDomainStrategy),
+      adBlockEnabled: SettingsStore.boolValue(raw.adBlockEnabled, base.adBlockEnabled),
+      autoSortAfterTest: SettingsStore.boolValue(raw.autoSortAfterTest, base.autoSortAfterTest),
+      autoRemoveInvalidAfterTest: SettingsStore.boolValue(raw.autoRemoveInvalidAfterTest, base.autoRemoveInvalidAfterTest)
     };
   }
 

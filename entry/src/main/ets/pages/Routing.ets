@@ -15,6 +15,7 @@ struct RoutingPage {
   @State private trafficMode: string = 'rules';
   @State private routingStrategy: string = 'AsIs';
   @State private routeOnlyEnabled: boolean = false;
+  @State private adBlockEnabled: boolean = false;
   private draft: SettingsDraft | null = null;
 
   aboutToAppear(): void {
@@ -86,12 +87,7 @@ struct RoutingPage {
               '• 匹配规则：\n  - 局域网私有IP (geoip:private) -> 直连(direct)\n  - 境内IP网段 (geoip:cn) -> 直连(direct)\n  - 境内常见域名 (geosite:cn) -> 直连(direct)\n• 其它未匹配流量自动通过代理出站'
             )
             this.RowDivider()
-            this.PresetRow(
-              this.t('routing.blockAds.title'),
-              this.t('routing.blockAds.detail'),
-              $r('app.media.ic_delete'),
-              '• 匹配规则：常见广告和追踪域名 (geosite:category-ads-all) -> 拦截阻断(block/blackhole)\n• 场景应用：屏蔽应用内广告和网页统计追踪，节省流量并提升页面加载效率'
-            )
+            this.AdBlockRow()
             this.RowDivider()
             this.PresetRow(
               this.t('routing.customRulesets.title'),
@@ -200,6 +196,48 @@ struct RoutingPage {
         .onChange((isOn: boolean) => {
           this.routeOnlyEnabled = isOn;
           this.persistSettings(this.t('settings.routeOnly') + ': ' + (isOn ? this.t('action.on') : this.t('action.off')));
+        })
+    }
+    .width('100%')
+    .padding(Space.lg)
+  }
+
+  @Builder
+  private AdBlockRow() {
+    Row({ space: Space.md }) {
+      Column() {
+        Image($r('app.media.ic_delete'))
+          .width(20)
+          .height(20)
+          .fillColor(this.adBlockEnabled ? AppColor.brand : AppColor.textTertiary)
+      }
+      .width(40)
+      .height(40)
+      .borderRadius(20)
+      .backgroundColor(this.adBlockEnabled ? AppColor.brandTint : AppColor.surfaceAlt)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+
+      Column({ space: 3 }) {
+        Text(this.t('routing.blockAds.title'))
+          .fontSize(FontSz.callout)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppColor.textPrimary)
+        Text(this.t('routing.blockAds.detail'))
+          .fontSize(FontSz.footnote)
+          .fontColor(AppColor.textTertiary)
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Toggle({ type: ToggleType.Switch, isOn: this.adBlockEnabled })
+        .selectedColor(AppColor.brand)
+        .switchPointColor(AppColor.onBrand)
+        .onChange((isOn: boolean) => {
+          this.adBlockEnabled = isOn;
+          this.persistSettings(this.t('routing.blockAds.title') + ': ' + (isOn ? this.t('action.on') : this.t('action.off')));
         })
     }
     .width('100%')
@@ -321,6 +359,7 @@ struct RoutingPage {
     this.trafficMode = this.draft.trafficMode;
     this.routingStrategy = this.draft.routingDomainStrategy;
     this.routeOnlyEnabled = this.draft.routeOnlyEnabled;
+    this.adBlockEnabled = this.draft.adBlockEnabled;
   }
 
   private async persistSettings(logMessage: string): Promise<void> {
@@ -330,6 +369,7 @@ struct RoutingPage {
     this.draft.trafficMode = this.trafficMode;
     this.draft.routingDomainStrategy = this.routingStrategy;
     this.draft.routeOnlyEnabled = this.routeOnlyEnabled;
+    this.draft.adBlockEnabled = this.adBlockEnabled;
     const context = getContext(this) as common.Context;
     const saved = await SETTINGS_CONTROLLER.save(context, this.draft);
     this.draft = SETTINGS_CONTROLLER.toDraft(saved);

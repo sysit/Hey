@@ -31,8 +31,13 @@ struct SettingsPage {
   @State private settingVpnDns: string = '1.1.1.1';
   @State private settingLogLevel: string = 'warning';
   @State private settingDelayTestUrl: string = 'https://www.gstatic.com/generate_204';
+  @State private settingAutoSortAfterTest: boolean = false;
+  @State private settingAutoRemoveAfterTest: boolean = false;
   @State private trafficMode: string = 'rules';
   @State private routingStrategy: string = 'AsIs';
+  // Round-tripped only (edited on the Routing page); preserved here so saving
+  // settings does not reset the ad-block preference.
+  @State private adBlockEnabled: boolean = false;
   @State private lastError: string = '';
   @State private perAppProxyList: string[] = [];
   @State private perAppProxyBypass: boolean = true;
@@ -118,6 +123,19 @@ struct SettingsPage {
             this.SettingInput(this.t('settings.delayTestUrl'), this.settingDelayTestUrl, 'delayTestUrl')
             this.RowDivider()
             this.SettingInput(this.t('settings.logLevel'), this.settingLogLevel, 'logLevel')
+          }
+          .width('100%')
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.lg)
+          .clip(true)
+          .margin({ left: Space.lg, right: Space.lg })
+
+          // 节点测速
+          SectionHeader({ title: this.t('settings.testing') })
+          Column() {
+            this.SettingToggle(this.t('settings.autoSortAfterTest'), this.settingAutoSortAfterTest, 'autoSortAfterTest')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.autoRemoveAfterTest'), this.settingAutoRemoveAfterTest, 'autoRemoveAfterTest')
           }
           .width('100%')
           .backgroundColor(AppColor.surface)
@@ -246,6 +264,12 @@ struct SettingsPage {
       case 'perApp':
         this.settingPerAppProxy = !this.settingPerAppProxy;
         break;
+      case 'autoSortAfterTest':
+        this.settingAutoSortAfterTest = !this.settingAutoSortAfterTest;
+        break;
+      case 'autoRemoveAfterTest':
+        this.settingAutoRemoveAfterTest = !this.settingAutoRemoveAfterTest;
+        break;
       default:
         break;
     }
@@ -320,7 +344,10 @@ struct SettingsPage {
       logLevel: this.settingLogLevel,
       delayTestUrl: this.settingDelayTestUrl,
       trafficMode: this.trafficMode,
-      routingDomainStrategy: this.routingStrategy
+      routingDomainStrategy: this.routingStrategy,
+      adBlockEnabled: this.adBlockEnabled,
+      autoSortAfterTest: this.settingAutoSortAfterTest,
+      autoRemoveInvalidAfterTest: this.settingAutoRemoveAfterTest
     };
   }
 
@@ -344,6 +371,9 @@ struct SettingsPage {
     this.settingDelayTestUrl = draft.delayTestUrl;
     this.trafficMode = draft.trafficMode;
     this.routingStrategy = draft.routingDomainStrategy;
+    this.adBlockEnabled = draft.adBlockEnabled;
+    this.settingAutoSortAfterTest = draft.autoSortAfterTest;
+    this.settingAutoRemoveAfterTest = draft.autoRemoveInvalidAfterTest;
   }
 
   private t(key: string): string {
