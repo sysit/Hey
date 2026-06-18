@@ -9,6 +9,7 @@ import {
 import { ProfileStore } from '../../storage/ProfileStore';
 import { SubscriptionStore } from '../../storage/SubscriptionStore';
 import { SubscriptionManager, SubscriptionUpdateResult } from '../../services/SubscriptionManager';
+import { SubscriptionBackgroundScheduler } from '../../services/SubscriptionBackgroundScheduler';
 import { formatOne, formatTwo, localizedSubscriptionStatusText, localizeCoreMessage } from '../../utils/LocalizationPresenter';
 
 export interface SubscriptionsControllerState {
@@ -137,6 +138,7 @@ export class SubscriptionsController {
     try {
       const normalizedInterval = normalizeSubscriptionUpdateInterval(updateIntervalMinutes);
       const subscription = await SubscriptionStore.addGroup(context, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl, autoUpdate, normalizedInterval);
+      await this.syncBackgroundSchedule(context);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.saveSubscriptionGroup', 'error', this.stringifyError(error)));
@@ -167,6 +169,7 @@ export class SubscriptionsController {
     try {
       const normalizedInterval = normalizeSubscriptionUpdateInterval(updateIntervalMinutes);
       const subscription = await SubscriptionStore.updateGroup(context, groupId, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl, autoUpdate, normalizedInterval);
+      await this.syncBackgroundSchedule(context);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.saveSubscriptionGroup', 'error', this.stringifyError(error)));
@@ -195,6 +198,8 @@ export class SubscriptionsController {
         }
       }
     }
+
+    await this.syncBackgroundSchedule(context);
     
     const msg = failedCount === 0 
       ? `已成功更新 ${successCount} 个订阅分组` 
@@ -226,6 +231,8 @@ export class SubscriptionsController {
       }
     }
 
+    await this.syncBackgroundSchedule(context);
+
     let message = '';
     if (updatedCount > 0 || failedCount > 0) {
       message = failedCount === 0
@@ -256,6 +263,7 @@ export class SubscriptionsController {
   async toggleGroup(context: common.Context, group: SubscriptionGroup, language: AppLanguage): Promise<SubscriptionsControllerState> {
     try {
       const subscription = await SubscriptionStore.toggleGroup(context, group.id);
+      await this.syncBackgroundSchedule(context);
       const status = group.enabled ? translate(language, 'common.disabled') : translate(language, 'common.enabled');
       return this.buildState(subscription, language, formatTwo(language, 'log.subscriptionGroupToggled', 'name', group.name, 'status', status));
     } catch (error) {
@@ -266,6 +274,7 @@ export class SubscriptionsController {
   async removeGroup(context: common.Context, group: SubscriptionGroup, language: AppLanguage): Promise<SubscriptionsControllerState> {
     try {
       const subscription = await SubscriptionStore.removeGroup(context, group.id);
+      await this.syncBackgroundSchedule(context);
       return this.buildState(subscription, language, formatOne(language, 'log.removedSubscriptionGroup', 'name', group.name));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.removeSubscriptionGroup', 'error', this.stringifyError(error)));
@@ -358,6 +367,14 @@ export class SubscriptionsController {
     }
     const validationMessage = SubscriptionManager.validateSubscriptionUrl(url, allowInsecureUrl);
     return validationMessage.length > 0 ? localizeCoreMessage(language, validationMessage) : '';
+  }
+
+  private async syncBackgroundSchedule(context: common.Context): Promise<void> {
+    try {
+      await SubscriptionBackgroundScheduler.sync(context);
+    } catch (error) {
+      console.error(`Subscription background schedule sync failed: ${JSON.stringify(error)}`);
+    }
   }
 
   // Keeps only nodes whose name matches the group's filter regex. An empty

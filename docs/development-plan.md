@@ -26,7 +26,7 @@
 | 真机 VPN 闭环 | ✅ **已真机验证通过（2026-06-15）**：`TUN fd → CGoSetTunFd → Xray native TUN → 出站` 端到端可上网 | 阻塞项解除，主线推进至 M1 |
 | Native 桥接 | M1 已接通 12 个（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），代码完成 | **待 `libxray.so` 重建（导出符号已加）+ 真机复测**；仅 `CGoRunXray` 仍闲置 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules` | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
-| 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 | 后台定时调度仍待补齐 |
+| 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线 | 待真机触发回归后台唤醒路径 |
 | 分享导出 | 文本/文件导出 + 节点二维码 + 系统分享面板 | 仍待真机回归不同分享目标兼容性 |
 | 深链导入 | ✅ Harmony Want / `hey://install-sub` / `hey://install-config` 已接入 EntryAbility 与首页解析 | 仍待真机回归外部应用触发路径 |
 | 高级路由 | 代理链、策略组/负载均衡运行核心已可通过 JSON 导入生成；添加节点页已可从已有普通节点创建代理链/策略组并保存为手动节点；策略组可按订阅分组与节点名正则动态展开成员；路由规则可选择当前高级出站目标 | 真机组合场景回归待补 |
@@ -163,6 +163,12 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - 更新：首页启动/返回时节流检查到期订阅，复用订阅拉取、过滤和保存逻辑；批量/自动刷新不再切换当前分组
 - 测试：新增纯函数单测覆盖间隔归一化、到期窗口、禁用/无 URL/未开启自动更新不触发
 
+**进展（2026-06-18 续）**：订阅 WorkScheduler 后台调度已接入：
+- 调度：按已开启自动更新且 URL 有效的订阅分组计算最短更新间隔，注册持久重复 `workScheduler` 任务
+- 后台：新增 `SubscriptionUpdateWorkAbility`，系统唤醒时调用到期刷新逻辑，完成后重新同步调度状态并写入诊断日志
+- 同步：订阅增删改、启停、批量/到期更新以及首页启动/回前台都会刷新 WorkScheduler 注册
+- 测试：新增调度计划纯函数单测覆盖无任务、最短间隔和最小 15 分钟归一化
+
 **进展（2026-06-18 续）**：运行中经由本地 HTTP 代理更新订阅已落地：
 - Xray：设置开启时生成 `http-in` 本地 HTTP inbound（`127.0.0.1:10808`），并将该 inbound 显式路由到 `proxy`
 - 共享：开启「允许来自局域网的连接」时，`http-in.listen` 改为 `0.0.0.0:10808`，对齐 v2rayNG 本地代理共享语义；内部订阅更新仍走 loopback
@@ -171,8 +177,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - 测试：新增配置生成单测覆盖开关关闭/开启时 HTTP inbound 与代理路由输出
 
 **任务**
-- **订阅自动更新**：前台到期刷新已完成；下一步用鸿蒙后台任务/定时（`backgroundTaskManager` 或 `reminderAgent`）
-  在应用不打开时也按 `updateInterval` 周期刷新
+- **订阅自动更新**：WorkScheduler 后台任务代码已接入；下一步真机验证应用不打开时的周期唤醒与网络拉取
 - **正则过滤** `filter`：按节点名筛选导入（2026-06-15 已完成）
 - **自定义 User-Agent** 与订阅级 `allowInsecureUrl` 已完成
 - **订阅分组重排**：上移/下移并持久化顺序（2026-06-18 已完成）
@@ -335,7 +340,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | 协议点检 | ✅ WireGuard `.conf` 整段解析完成，支持粘贴/扫码/文件导入 `[Interface]` + `[Peer]` 配置并归一化为 Xray outbound |
 | 2026-06-18 | M3 | ✅ 订阅级不安全 URL 开关（编辑页 `allowInsecureUrl` + 保存/更新 HTTP 校验 + 重定向校验 + 单测）；默认拒绝 `http://` 订阅，开启后允许 |
 | 2026-06-18 | M3 | ✅ 当前分组删除全部配置（Nodes 菜单确认弹窗 + Store/Controller 清空 active group nodes + 删除数量日志）；补齐 v2rayNG `removeAllServer` 的日常批处理路径 |
-| 2026-06-18 | M3 | ✅ 订阅自动更新设置与前台到期刷新（`autoUpdate`/`updateIntervalMinutes` + 1440/15 分钟规则 + 首页节流到期刷新 + 单测）；后台任务调度仍待补 |
+| 2026-06-18 | M3 | ✅ 订阅自动更新设置与前台到期刷新（`autoUpdate`/`updateIntervalMinutes` + 1440/15 分钟规则 + 首页节流到期刷新 + 单测）；当时后台任务调度尚未接入 |
+| 2026-06-18 | M3 | 🟡 订阅 WorkScheduler 后台调度接线（持久重复任务 + `SubscriptionUpdateWorkAbility` 到期刷新 + 增删改/首页同步注册 + 诊断日志 + 调度计划单测）；待真机触发回归 |
 | 2026-06-18 | M3 | ✅ 运行中经由本地 HTTP 代理更新订阅（`appendHttpProxy` 设置 + `http-in` inbound 10808 + 订阅拉取 `usingProxy` 优先/直连回退 + 单测） |
 | 2026-06-18 | M3 | ✅ 本地 HTTP 代理共享开关生效（`proxySharingEnabled` 开启时 `http-in.listen=0.0.0.0`，默认仍为 `127.0.0.1`，补配置生成单测） |
 | 2026-06-18 | M0 补点 | ✅ VPN 接口 DNS 不再写死，`settings.vpnDns` 会规范化后写入 Harmony `VpnConfig.dnsAddresses`，空值回退 `1.1.1.1/8.8.8.8` |

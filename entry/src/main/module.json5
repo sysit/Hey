@@ -61,6 +61,12 @@
         "exported": false
       },
       {
+        "name": "SubscriptionUpdateWorkAbility",
+        "srcEntry": "./ets/work/SubscriptionUpdateWorkAbility.ets",
+        "type": "workScheduler",
+        "exported": false
+      },
+      {
         "name": "EntryBackupAbility",
         "srcEntry": "./ets/entrybackupability/EntryBackupAbility.ets",
         "type": "backup",

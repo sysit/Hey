@@ -18,6 +18,7 @@ import {
   moveSubscriptionGroup,
   normalizeSubscriptionUpdateInterval
 } from '../main/ets/core/SubscriptionGroups';
+import { buildSubscriptionAutoUpdateSchedulePlan } from '../main/ets/core/SubscriptionSchedulerPlan';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
@@ -1286,6 +1287,35 @@ export default function localUnitTest() {
       group.enabled = true;
       group.url = '';
       expect(isSubscriptionAutoUpdateDue(group, 2000)).assertFalse();
+    });
+
+    it('builds subscription background auto update schedule plan', 0, () => {
+      const disabled = buildSubscriptionAutoUpdateSchedulePlan([]);
+      expect(disabled.enabled).assertFalse();
+      expect(disabled.enabledGroupCount).assertEqual(0);
+      expect(disabled.repeatCycleTimeMs).assertEqual(0);
+
+      const hourly = buildSubscriptionGroupFixture('sub-hourly', 'Hourly');
+      hourly.autoUpdate = true;
+      hourly.updateIntervalMinutes = 60;
+      const fast = buildSubscriptionGroupFixture('sub-fast', 'Fast');
+      fast.autoUpdate = true;
+      fast.updateIntervalMinutes = 5;
+      const skipped = buildSubscriptionGroupFixture('sub-skipped', 'Skipped');
+      skipped.autoUpdate = true;
+      skipped.url = '';
+
+      const plan = buildSubscriptionAutoUpdateSchedulePlan([hourly, fast, skipped]);
+      expect(plan.enabled).assertTrue();
+      expect(plan.enabledGroupCount).assertEqual(2);
+      expect(plan.intervalMinutes).assertEqual(MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES);
+      expect(plan.repeatCycleTimeMs).assertEqual(MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES * 60 * 1000);
+
+      fast.enabled = false;
+      const hourlyOnly = buildSubscriptionAutoUpdateSchedulePlan([hourly, fast, skipped]);
+      expect(hourlyOnly.enabled).assertTrue();
+      expect(hourlyOnly.enabledGroupCount).assertEqual(1);
+      expect(hourlyOnly.intervalMinutes).assertEqual(60);
     });
   });
 }

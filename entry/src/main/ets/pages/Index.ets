@@ -7,6 +7,7 @@ import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrenc
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
+import { SubscriptionBackgroundScheduler } from '../services/SubscriptionBackgroundScheduler';
 import { SubscriptionManager } from '../services/SubscriptionManager';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
@@ -98,6 +99,7 @@ struct Index {
     await this.loadNodes();
     await this.handlePendingDeepLink();
     await this.refreshDueSubscriptions();
+    await this.syncSubscriptionBackgroundSchedule();
   }
 
   // Imports a stashed deep link (hey://install-sub|install-config?url=...) once
@@ -853,6 +855,7 @@ struct Index {
     await this.loadSettings();
     await this.loadNodes();
     await this.refreshDueSubscriptions();
+    await this.syncSubscriptionBackgroundSchedule();
     await this.refreshRuntime();
   }
 
@@ -905,6 +908,15 @@ struct Index {
       SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
     } finally {
       this.subscriptionUpdating = false;
+    }
+  }
+
+  private async syncSubscriptionBackgroundSchedule(): Promise<void> {
+    try {
+      const context = getContext(this) as common.Context;
+      await SubscriptionBackgroundScheduler.sync(context);
+    } catch (error) {
+      SHARED_RUNTIME_CONTROLLER.appendLog(`Subscription background schedule sync failed: ${JSON.stringify(error)}`);
     }
   }
 
