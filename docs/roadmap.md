@@ -11,7 +11,7 @@
 | 应用骨架 / 导航 / i18n | ✅ 99% | 双语、分层清晰、路由完整，语言设置已支持 v2rayNG 风格 `auto` 跟随系统/中文/英文三态，UI 模式可按设置跟随系统/浅色/深色，About 页已接 GitHub release 更新检查，并支持 v2rayNG 风格 pre-release 检查开关 |
 | 原生 TUN 数据通路 | ✅ 93% | 代码就位且**真机闭环验证通过（2026-06-15）**——TUN→Xray→出站→可上网；`ipv6Enabled` 控制 IPv6 地址/路由，`preferIpv6` 控制 outbound Happy Eyeballs，待真机回归 |
 | 分享链接解析 | ✅ 91% | vless/vmess/trojan/ss/socks/http/wireguard/hy2 已覆盖，Reality `spx`/`pqv` 已按 v2rayNG 映射为 `spiderX`/`mldsa65Verify` 并可导入导出，WireGuard `.conf` 整段导入已支持；导入失败后可走 native 转换兜底支持 v2rayN 多行/base64 与 Clash.Meta YAML（待重建 `.so` 真机验证）；TUIC 在 v2rayNG 当前枚举中未启用且 Xray-core 官方配置不支持，暂不列为运行目标 |
-| 订阅管理 | 🟡 95% | 多分组 + 旧版迁移 + 编辑/重排/批量更新全部 + 订阅级不安全 URL 开关 + 当前分组删除全部 + 自动更新设置/前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线；待真机触发回归 |
+| 订阅管理 | 🟡 96% | 多分组 + 旧版迁移 + 编辑/重排/批量更新全部 + 订阅级不安全 URL 开关 + 当前分组删除全部 + 自动更新设置/前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线 + 订阅链接二维码/系统分享；待真机触发回归 |
 | Xray 配置生成 | 🟡 89% | 普通节点生成 TUN/DNS/routing/HTTP 代理和本地 SOCKS 配置，速度显示开启时才生成 metrics/stats/policy；DNS hosts 支持 v2rayNG `domain:address,...` 格式写入 `dns.hosts`，并内置 v2rayNG `googleapis.cn` 与 Android Private DNS 默认 hosts，用户 hosts 可覆盖默认值；remote/domestic DNS 会按自定义 proxy/direct/block 规则生成 `domains`、`expectIPs`、DNS 专用路由和 block hosts，出站域名预解析方式 `0/1/2` 已持久化，并会在启动前用 Harmony 系统 DNS 补齐 live 解析结果，再按模式写入 DNS hosts/UseIP 或替换 outbound 域名；HTTP/SOCKS 代理支持局域网共享监听，SOCKS 支持启动前动态端口；完整自定义 Xray config 可校验后原样运行；代理链和策略组 JSON 可生成多跳/负载均衡 outbounds，添加节点页可从已有普通节点创建代理链/策略组，策略组支持按订阅分组与节点名正则动态成员，路由规则可选择当前高级出站目标 |
 | 节点延迟测速 / 排序 | ✅ 84% | `CGoPing` 真测速 + 排序，测速 SOCKS inbound 优先使用 `CGoGetFreePorts` 动态端口；批量测速并发数已按 v2rayNG 设置接线；需真机验证 |
 | 路由设置页 | ✅ 82% | 广告拦截、自定义规则、预设规则集导入/导出均已生效；自定义规则可选择当前高级出站目标；真机规则回归待补 |
@@ -19,7 +19,7 @@
 | 分应用代理 | 🟡 80% | 开关、黑白名单、手动包名、应用枚举、批量全选/清除/反选、自动选中需代理应用、剪贴板导入导出和 VPN 应用映射已接线；默认模式对齐 v2rayNG 为“代理选中的应用”，空列表仍阻断自身包名防回路；仍受平台可见性限制，待真机回归 |
 | 设置页 | 🟡 93% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、fake DNS、DNS hosts、出站域名预解析方式（含启动前 live DNS 预解析）、速度显示、常驻速度通知、当前连接信息测试网址、语言跟随系统、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线 |
 | 扫码导入 | ✅ 82% | 粘贴导入和 ScanKit 相机扫码已接线；`startScanImmediate` 开启时进入扫码页自动拉起相机，待真机相机权限/机型回归 |
-| 导出 / 分享 | ✅ 82% | 文本/文件导出、节点二维码与系统分享面板已完成；后续主要是真机分享目标兼容回归 |
+| 导出 / 分享 | ✅ 84% | 文本/文件导出、节点二维码、订阅链接二维码与系统分享面板已完成；后续主要是真机分享目标兼容回归 |
 | 平台集成 | 🟡 52% | Want / URL Scheme 深链导入已完成；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；常驻速度通知已接 Harmony NotificationKit；2×2 桌面服务卡片基础入口已接 FormExtensionAbility/FormLink，并已通过保存 formId + updateForm 同步运行态，待真机通知权限、卡片添加/点击与系统刷新回归 |
 
 ### Native 桥接现状
@@ -78,7 +78,7 @@
 ### 阶段 4：体验功能补全（多数可并行）
 
 - ✅ 相机扫码（`@kit.ScanKit` scanBarcode）替代纯粘贴
-- 二维码生成（节点分享）
+- 二维码生成（节点/订阅分享）
 - Reality `mldsa65Verify` / `pqv` 后量子验签参数导入导出（已完成）
 - 完整自定义 Xray config 导入、编辑与原样运行（已完成）
 - 自动订阅更新 WorkScheduler 真机触发回归（代码接线已完成）
@@ -170,3 +170,4 @@
 | 2026-06-19 | 阶段 4 | ✅ 语言跟随系统完成；Settings 保存 v2rayNG `pref_language=auto/en/zh`，默认 `auto`，通过 Harmony 系统语言解析为中/英显示并补单测 |
 | 2026-06-19 | 阶段 3 | ✅ 分应用代理批处理完成；PerApp 页支持全选/清除/反选当前筛选列表，按 v2rayNG 剪贴板格式导入/导出 `bypass + package list`，默认“代理选中的应用”，导入后自动启用分应用代理 |
 | 2026-06-19 | 阶段 3 | ✅ 分应用自动选择完成；PerApp 页新增“自动选择代理应用”，按内置代理应用清单和 v2rayNG `com.google*` 强制匹配规则选择当前筛选列表，bypass 模式选择补集 |
+| 2026-06-19 | 阶段 4 | ✅ 订阅链接分享完成；订阅详情页可生成订阅 URL 二维码并复制/系统分享，订阅分组左滑分享走 Harmony 分享面板并回退剪贴板 |

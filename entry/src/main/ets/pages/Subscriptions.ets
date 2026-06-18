@@ -8,9 +8,9 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
+import { shareText, TextShareResult } from '../services/SystemShare';
 import { formatOne } from '../utils/LocalizationPresenter';
 import { router, promptAction } from '@kit.ArkUI';
-import { pasteboard } from '@kit.BasicServicesKit';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 @Entry
@@ -185,7 +185,7 @@ struct SubscriptionsPage {
         }, this.canMoveGroup(group.id, 1), false)
         if (group.url.trim().length > 0) {
           this.SwipeButton($r('app.media.ic_share'), this.t('action.share'), AppColor.brand, () => {
-            this.copyUrlToClipboard(group.url);
+            this.shareSubscriptionGroup(group);
           }, true, false)
         }
         this.SwipeButton($r('app.media.ic_edit'), this.t('action.edit'), AppColor.textSecondary, () => {
@@ -367,15 +367,26 @@ struct SubscriptionsPage {
     return index >= 0 && target >= 0 && target < this.subscriptionGroups.length;
   }
 
-  private copyUrlToClipboard(url: string) {
-    try {
-      const systemPasteboard = pasteboard.getSystemPasteboard();
-      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, url);
-      systemPasteboard.setDataSync(pasteData);
-      promptAction.showToast({ message: '订阅链接已复制到剪贴板' });
-    } catch (err) {
-      promptAction.showToast({ message: '复制失败' });
+  private async shareSubscriptionGroup(group: SubscriptionGroup): Promise<void> {
+    const url = group.url.trim();
+    if (url.length === 0) {
+      return;
     }
+    const context = getContext(this) as common.UIAbilityContext;
+    const result = await shareText(context, group.name, url);
+    this.handleShareResult(result);
+  }
+
+  private handleShareResult(result: TextShareResult): void {
+    if (result.systemShareStarted) {
+      promptAction.showToast({ message: this.t('share.started') });
+      return;
+    }
+    if (result.copiedToClipboard) {
+      promptAction.showToast({ message: this.t('share.fallbackCopied') });
+      return;
+    }
+    promptAction.showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
   }
 
   private t(key: string): string {

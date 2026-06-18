@@ -27,7 +27,7 @@
 | Native 桥接 | M1 已接通 12 个（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），代码完成 | **待 `libxray.so` 重建（导出符号已加）+ 真机复测**；仅 `CGoRunXray` 仍闲置 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules` | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线 | 待真机触发回归后台唤醒路径 |
-| 分享导出 | 文本/文件导出 + 节点二维码 + 系统分享面板 | 仍待真机回归不同分享目标兼容性 |
+| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板 | 仍待真机回归不同分享目标兼容性 |
 | 速度通知 | 🟡 常驻通知代码完成；连接运行且速度显示开启时每 3 秒刷新上传/下载速率与累计流量，停止或关闭设置时取消 | 待真机通知权限弹窗、通知中心展示与后台留存回归 |
 | 深链导入 | ✅ Harmony Want / `hey://install-sub` / `hey://install-config` 已接入 EntryAbility 与首页解析 | 仍待真机回归外部应用触发路径 |
 | 桌面入口 | 🟡 Harmony 服务卡片基础入口完成；2×2 卡片提供 toggle/start/stop/scan 四个控制深链入口，并通过保存 formId + updateForm 同步运行态 | 待真机添加卡片、点击调起和系统刷新回归 |
@@ -224,8 +224,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ **开机自动连接设置**：对应 v2rayNG `pref_is_booted`/`BootReceiver`，
   设置页可持久化“开机自动连接”；Harmony `AUTO_STARTUP` 启动原因会在主页加载设置和当前节点后触发启动当前节点
   （受系统自启动开关/权限控制，仍需真机重启回归）
-- ✅ **二维码生成**：节点分享生成 QR（ScanKit `generateBarcode.createBarcode`），
-  补齐"显示二维码 / 单行链接 / 完整 JSON"三种分享形态
+- ✅ **二维码生成**：节点分享与订阅链接分享生成 QR（ScanKit `generateBarcode.createBarcode`），
+  节点补齐"显示二维码 / 单行链接 / 完整 JSON"三种分享形态；订阅详情页可显示订阅 URL 二维码并复制/系统分享
 - 🟡 **桌面服务卡片 / 快捷方式**：一键启停、扫码（对应 QSTile/Widget/Shortcuts）；
   Harmony `ControlCardAbility` 已注册 2×2 ArkTS 服务卡片，卡片通过 `FormLink`
   跳转 `hey://toggle` / `hey://start` / `hey://stop` / `hey://scan`
@@ -411,5 +411,6 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | M4 | ✅ 语言跟随系统完成（`pref_language=auto/en/zh` 三态、默认 `auto`，通过 Harmony `i18n.System.getSystemLanguage()` 解析系统语言，设置页三段切换，补语言归一化与解析单测） |
 | 2026-06-19 | M3 | ✅ 分应用代理批处理完成（PerApp 页支持全选/清除/反选当前筛选列表，按 v2rayNG 剪贴板格式导入/导出 `bypass + package list`，默认模式对齐为代理选中应用，导入后自动启用分应用代理；补包名列表与 VPN 映射单测） |
 | 2026-06-19 | M3 | ✅ 分应用自动选择完成（PerApp 页新增自动选择需代理应用，使用内置代理应用清单并保留 v2rayNG `com.google*` 强制匹配、WebView 排除和 bypass 补集语义；补 helper 单测） |
+| 2026-06-19 | M4 | ✅ 订阅链接二维码/分享完成（订阅详情页生成订阅 URL QR，支持复制与系统分享；订阅分组左滑分享走 Harmony `sendData`，失败回退剪贴板；补分享 Want 单测） |
 | 2026-06-15 | 自查 | ✅ 字段一致性总扫：AppSettings/SettingsDraft 5 个构造点字段完整一致，SubscriptionGroup.filter 贯通，无需修改 |
 | 2026-06-15 | 自查 | ✅ 深链/metrics 配置形状核对 Xray 官方一致；自查清单收尾（净修复：预检非阻断 + 清理未用导入） |

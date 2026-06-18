@@ -1272,6 +1272,11 @@ export default function localUnitTest() {
       expect(want.parameters?.['ohos.extra.param.key.contentTitle']?.toString()).assertEqual('Hey nodes');
       expect(want.parameters?.['ohos.extra.param.key.shareAbstract']?.toString()).assertEqual('vless://example');
       expect(want.parameters?.['ohos.extra.param.key.shareUrl']?.toString()).assertEqual('vless://example');
+
+      const subscriptionWant = buildTextShareWant('Sub A', '  https://sub.example/list  ');
+      expect(subscriptionWant.parameters?.['ohos.extra.param.key.contentTitle']?.toString()).assertEqual('Sub A');
+      expect(subscriptionWant.parameters?.['ohos.extra.param.key.shareAbstract']?.toString()).assertEqual('https://sub.example/list');
+      expect(subscriptionWant.parameters?.['ohos.extra.param.key.shareUrl']?.toString()).assertEqual('https://sub.example/list');
     });
 
     it('builds and validates app backup payloads', 0, () => {
