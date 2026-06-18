@@ -110,6 +110,10 @@ export const MAX_VPN_MTU: number = 9000;
 export const DEFAULT_REAL_PING_CONCURRENCY: number = 16;
 export const MIN_REAL_PING_CONCURRENCY: number = 1;
 export const MAX_REAL_PING_CONCURRENCY: number = 128;
+export type AppUiModeNight = '0' | '1' | '2';
+export const UI_MODE_NIGHT_SYSTEM: AppUiModeNight = '0';
+export const UI_MODE_NIGHT_LIGHT: AppUiModeNight = '1';
+export const UI_MODE_NIGHT_DARK: AppUiModeNight = '2';
 
 export function normalizeVpnInterfaceAddressIndex(value: number | undefined, fallback: number = DEFAULT_VPN_INTERFACE_ADDRESS_INDEX): number {
   const safeFallback = fallback >= 0 && fallback < VPN_INTERFACE_ADDRESS_CONFIGS.length ? fallback : DEFAULT_VPN_INTERFACE_ADDRESS_INDEX;
@@ -163,6 +167,13 @@ export function normalizeRealPingConcurrency(value: number | undefined, fallback
   return concurrency;
 }
 
+export function normalizeUiModeNight(value: string | undefined, fallback: AppUiModeNight = UI_MODE_NIGHT_SYSTEM): AppUiModeNight {
+  if (value === UI_MODE_NIGHT_LIGHT || value === UI_MODE_NIGHT_DARK || value === UI_MODE_NIGHT_SYSTEM) {
+    return value;
+  }
+  return fallback === UI_MODE_NIGHT_LIGHT || fallback === UI_MODE_NIGHT_DARK ? fallback : UI_MODE_NIGHT_SYSTEM;
+}
+
 function normalizeRealPingConcurrencyFallback(value: number): number {
   if (Number.isNaN(value)) {
     return DEFAULT_REAL_PING_CONCURRENCY;
@@ -176,6 +187,7 @@ function normalizeRealPingConcurrencyFallback(value: number): number {
 
 export interface AppSettings {
   language: AppLanguage;
+  uiModeNight: AppUiModeNight;
   speedEnabled: boolean;
   confirmRemove: boolean;
   startScanImmediate: boolean;

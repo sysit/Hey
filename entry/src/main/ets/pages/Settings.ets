@@ -6,11 +6,15 @@ import {
   AppLanguage,
   resolveVpnInterfaceAddressConfig,
   RoutingRule,
+  UI_MODE_NIGHT_DARK,
+  UI_MODE_NIGHT_LIGHT,
+  UI_MODE_NIGHT_SYSTEM,
   VPN_BYPASS_LAN_BYPASS,
   VPN_BYPASS_LAN_FOLLOW_CONFIG,
   VPN_BYPASS_LAN_PROXY,
   VPN_INTERFACE_ADDRESS_CONFIGS
 } from '../core/Profile';
+import { applyColorMode } from '../core/ColorMode';
 import {
   LanguageToggleRow,
   SettingInputRow,
@@ -26,6 +30,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Component
 struct SettingsPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @State private settingUiModeNight: string = UI_MODE_NIGHT_SYSTEM;
   @State private settingSpeedEnabled: boolean = false;
   @State private settingConfirmRemove: boolean = false;
   @State private settingStartScanImmediate: boolean = false;
@@ -92,6 +97,8 @@ struct SettingsPage {
           SectionHeader({ title: this.t('settings.language.section') })
           Column() {
             this.LanguageToggle()
+            this.RowDivider()
+            this.SettingOption(this.t('settings.uiModeNight'), this.uiModeNightLabel(), 'uiModeNight')
             this.RowDivider()
             this.SettingToggle(this.t('settings.speedEnabled'), this.settingSpeedEnabled, 'speedEnabled')
             this.RowDivider()
@@ -469,6 +476,7 @@ struct SettingsPage {
     try {
       const context = getContext(this) as common.Context;
       const saved = await SETTINGS_CONTROLLER.save(context, this.buildDraft());
+      applyColorMode(context, saved.uiModeNight);
       this.applyDraft(SETTINGS_CONTROLLER.toDraft(saved));
       if (showMessage) {
         SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.settingsSaved'));
@@ -493,6 +501,7 @@ struct SettingsPage {
   private buildDraft(): SettingsDraft {
     return {
       language: this.language,
+      uiModeNight: this.settingUiModeNight,
       speedEnabled: this.settingSpeedEnabled,
       confirmRemove: this.settingConfirmRemove,
       startScanImmediate: this.settingStartScanImmediate,
@@ -543,6 +552,7 @@ struct SettingsPage {
 
   private applyDraft(draft: SettingsDraft): void {
     this.language = draft.language;
+    this.settingUiModeNight = draft.uiModeNight;
     this.settingSpeedEnabled = draft.speedEnabled;
     this.settingConfirmRemove = draft.confirmRemove;
     this.settingStartScanImmediate = draft.startScanImmediate;
@@ -616,6 +626,10 @@ struct SettingsPage {
       this.showVpnBypassLanMenu();
       return;
     }
+    if (action === 'uiModeNight') {
+      this.showUiModeNightMenu();
+      return;
+    }
     if (action === 'vpnInterfaceAddress') {
       this.showVpnInterfaceAddressMenu();
       return;
@@ -644,6 +658,26 @@ struct SettingsPage {
       if (result.index >= 0 && result.index < values.length) {
         this.settingVpnBypassLan = values[result.index];
         SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.vpnBypassLan')));
+        this.persistSettings(false);
+      }
+    });
+  }
+
+  private showUiModeNightMenu(): void {
+    const values: string[] = [UI_MODE_NIGHT_SYSTEM, UI_MODE_NIGHT_LIGHT, UI_MODE_NIGHT_DARK];
+    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button] = [
+      { text: this.t('settings.uiModeNight.system'), color: AppColor.brand } as promptAction.Button,
+      { text: this.t('settings.uiModeNight.light'), color: AppColor.brand } as promptAction.Button,
+      { text: this.t('settings.uiModeNight.dark'), color: AppColor.brand } as promptAction.Button
+    ];
+
+    promptAction.showActionMenu({
+      title: this.t('settings.uiModeNight'),
+      buttons
+    }).then((result) => {
+      if (result.index >= 0 && result.index < values.length) {
+        this.settingUiModeNight = values[result.index];
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.uiModeNight')));
         this.persistSettings(false);
       }
     });
@@ -752,6 +786,16 @@ struct SettingsPage {
       return this.t('settings.vpnBypassLan.proxy');
     }
     return this.t('settings.vpnBypassLan.bypass');
+  }
+
+  private uiModeNightLabel(): string {
+    if (this.settingUiModeNight === UI_MODE_NIGHT_LIGHT) {
+      return this.t('settings.uiModeNight.light');
+    }
+    if (this.settingUiModeNight === UI_MODE_NIGHT_DARK) {
+      return this.t('settings.uiModeNight.dark');
+    }
+    return this.t('settings.uiModeNight.system');
   }
 
   private logLevelLabel(): string {

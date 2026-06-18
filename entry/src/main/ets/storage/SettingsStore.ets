@@ -8,6 +8,7 @@ import {
   DEFAULT_VPN_INTERFACE_ADDRESS_INDEX,
   DEFAULT_VPN_MTU,
   normalizeRealPingConcurrency,
+  normalizeUiModeNight,
   normalizeVpnBypassLanMode,
   normalizeVpnInterfaceAddressIndex,
   normalizeVpnMtuValue,
@@ -19,6 +20,7 @@ const SETTINGS_KEY: string = 'app_settings';
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   language: DEFAULT_LANGUAGE,
+  uiModeNight: '0',
   speedEnabled: false,
   confirmRemove: false,
   startScanImmediate: false,
@@ -101,6 +103,7 @@ export class SettingsStore {
     const base = SettingsStore.copy(DEFAULT_APP_SETTINGS);
     return {
       language: normalizeLanguage(raw.language),
+      uiModeNight: normalizeUiModeNight(raw.uiModeNight, base.uiModeNight),
       speedEnabled: SettingsStore.boolValue(raw.speedEnabled, base.speedEnabled),
       confirmRemove: SettingsStore.boolValue(raw.confirmRemove, base.confirmRemove),
       startScanImmediate: SettingsStore.boolValue(raw.startScanImmediate, base.startScanImmediate),

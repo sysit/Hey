@@ -1,16 +1,15 @@
-import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
+import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { applyColorMode } from '../core/ColorMode';
+import { UI_MODE_NIGHT_SYSTEM } from '../core/Profile';
+import { SettingsStore } from '../storage/SettingsStore';
 
 const DOMAIN = 0x0000;
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    try {
-      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
-    } catch (err) {
-      hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
-    }
+    this.applyStoredColorMode();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
     this.stashDeepLink(want);
   }
@@ -54,11 +53,25 @@ export default class EntryAbility extends UIAbility {
 
   onForeground(): void {
     // Ability has brought to foreground
+    this.applyStoredColorMode();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
   }
 
   onBackground(): void {
     // Ability has back to background
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+  }
+
+  private applyStoredColorMode(): void {
+    SettingsStore.load(this.context).then((settings) => {
+      applyColorMode(this.context, settings.uiModeNight);
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, 'testTag', 'Failed to load colorMode. Cause: %{public}s', JSON.stringify(err));
+      try {
+        applyColorMode(this.context, UI_MODE_NIGHT_SYSTEM);
+      } catch (fallbackErr) {
+        hilog.error(DOMAIN, 'testTag', 'Failed to set fallback colorMode. Cause: %{public}s', JSON.stringify(fallbackErr));
+      }
+    });
   }
 }

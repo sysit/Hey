@@ -1,9 +1,10 @@
 import { common } from '@kit.AbilityKit';
-import { AppLanguage, AppSettings, normalizeRealPingConcurrency, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, RoutingRule } from '../../core/Profile';
+import { AppLanguage, AppSettings, normalizeRealPingConcurrency, normalizeUiModeNight, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, RoutingRule } from '../../core/Profile';
 import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore';
 
 export interface SettingsDraft {
   language: AppLanguage;
+  uiModeNight: string;
   speedEnabled: boolean;
   confirmRemove: boolean;
   startScanImmediate: boolean;
@@ -63,6 +64,7 @@ export class SettingsController {
   toDraft(settings: AppSettings): SettingsDraft {
     return {
       language: settings.language,
+      uiModeNight: settings.uiModeNight,
       speedEnabled: settings.speedEnabled,
       confirmRemove: settings.confirmRemove,
       startScanImmediate: settings.startScanImmediate,
@@ -114,6 +116,7 @@ export class SettingsController {
   buildSettings(draft: SettingsDraft): AppSettings {
     return {
       language: draft.language,
+      uiModeNight: normalizeUiModeNight(draft.uiModeNight, DEFAULT_APP_SETTINGS.uiModeNight),
       speedEnabled: draft.speedEnabled,
       confirmRemove: draft.confirmRemove,
       startScanImmediate: draft.startScanImmediate,

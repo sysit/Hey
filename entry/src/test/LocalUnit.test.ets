@@ -5,7 +5,7 @@ import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
-import { AppSettings, normalizeRealPingConcurrency, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
+import { AppSettings, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson } from '../main/ets/core/XrayConfig';
 import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
@@ -739,10 +739,12 @@ export default function localUnitTest() {
       settings.logLevel = 'error';
       settings.dnsHosts = 'dns.google:8.8.8.8,cloudflare-dns.com:1.1.1.1';
       settings.realPingConcurrency = 32;
+      settings.uiModeNight = '2';
       settings.speedEnabled = true;
       settings.confirmRemove = true;
       settings.startScanImmediate = true;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
+      expect(draft.uiModeNight).assertEqual('2');
       expect(draft.speedEnabled).assertTrue();
       expect(draft.confirmRemove).assertTrue();
       expect(draft.startScanImmediate).assertTrue();
@@ -769,6 +771,7 @@ export default function localUnitTest() {
       expect(draft.dnsHosts).assertEqual('dns.google:8.8.8.8,cloudflare-dns.com:1.1.1.1');
       expect(draft.realPingConcurrency).assertEqual('32');
       const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
+      expect(rebuilt.uiModeNight).assertEqual('2');
       expect(rebuilt.speedEnabled).assertTrue();
       expect(rebuilt.confirmRemove).assertTrue();
       expect(rebuilt.startScanImmediate).assertTrue();
@@ -827,6 +830,8 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).realPingConcurrency).assertEqual(128);
       draft.realPingConcurrency = 'bad';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).realPingConcurrency).assertEqual(16);
+      draft.uiModeNight = 'bad';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).uiModeNight).assertEqual('0');
     });
 
     it('normalizes real ping concurrency like v2rayNG', 0, () => {
@@ -834,6 +839,15 @@ export default function localUnitTest() {
       expect(normalizeRealPingConcurrency(0)).assertEqual(1);
       expect(normalizeRealPingConcurrency(5.8)).assertEqual(5);
       expect(normalizeRealPingConcurrency(256)).assertEqual(128);
+    });
+
+    it('normalizes ui mode night like v2rayNG', 0, () => {
+      expect(normalizeUiModeNight(undefined)).assertEqual('0');
+      expect(normalizeUiModeNight('0')).assertEqual('0');
+      expect(normalizeUiModeNight('1')).assertEqual('1');
+      expect(normalizeUiModeNight('2')).assertEqual('2');
+      expect(normalizeUiModeNight('bad')).assertEqual('0');
+      expect(normalizeUiModeNight('bad', '2')).assertEqual('2');
     });
 
     it('formats runtime values through shared helpers', 0, () => {
@@ -1144,6 +1158,7 @@ export default function localUnitTest() {
 function buildSettingsFixture(): AppSettings {
   return {
     language: 'zh',
+    uiModeNight: '0',
     speedEnabled: false,
     confirmRemove: false,
     startScanImmediate: false,
