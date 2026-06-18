@@ -97,9 +97,24 @@ struct Index {
   private async refreshFromStorage(): Promise<void> {
     await this.loadSettings();
     await this.loadNodes();
+    await this.handlePendingAutoStartupLaunch();
     await this.handlePendingDeepLink();
     await this.refreshDueSubscriptions();
     await this.syncSubscriptionBackgroundSchedule();
+  }
+
+  private async handlePendingAutoStartupLaunch(): Promise<void> {
+    const pending = AppStorage.get<boolean>('pendingAutoStartupLaunch') ?? false;
+    if (!pending) {
+      return;
+    }
+    AppStorage.setOrCreate('pendingAutoStartupLaunch', false);
+    if (!this.currentSettings.startOnBoot) {
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.autoStartupDisabled'));
+      return;
+    }
+    await this.handleControlDeepLink('start');
+    SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.autoStartupStartRequested'));
   }
 
   // Imports a stashed deep link (hey://install-sub|install-config?url=...) once
@@ -900,6 +915,8 @@ struct Index {
   private async loadInitialState(): Promise<void> {
     await this.loadSettings();
     await this.loadNodes();
+    await this.handlePendingAutoStartupLaunch();
+    await this.handlePendingDeepLink();
     await this.refreshDueSubscriptions();
     await this.syncSubscriptionBackgroundSchedule();
     await this.refreshRuntime();

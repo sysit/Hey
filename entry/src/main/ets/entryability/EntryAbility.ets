@@ -12,6 +12,7 @@ export default class EntryAbility extends UIAbility {
     this.applyStoredColorMode();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
     this.stashDeepLink(want);
+    this.stashAutoStartupLaunch(launchParam);
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -26,6 +27,12 @@ export default class EntryAbility extends UIAbility {
     const uri = want.uri;
     if (uri !== undefined && uri.length > 0) {
       AppStorage.setOrCreate('pendingDeepLink', uri);
+    }
+  }
+
+  private stashAutoStartupLaunch(launchParam: AbilityConstant.LaunchParam): void {
+    if (launchParam.launchReason === AbilityConstant.LaunchReason.AUTO_STARTUP) {
+      AppStorage.setOrCreate('pendingAutoStartupLaunch', true);
     }
   }
 

@@ -8,6 +8,7 @@ export interface SettingsDraft {
   speedEnabled: boolean;
   confirmRemove: boolean;
   startScanImmediate: boolean;
+  startOnBoot: boolean;
   groupAllDisplay: boolean;
   doubleColumnDisplay: boolean;
   sniffingEnabled: boolean;
@@ -73,6 +74,7 @@ export class SettingsController {
       speedEnabled: settings.speedEnabled,
       confirmRemove: settings.confirmRemove,
       startScanImmediate: settings.startScanImmediate,
+      startOnBoot: settings.startOnBoot,
       groupAllDisplay: settings.groupAllDisplay,
       doubleColumnDisplay: settings.doubleColumnDisplay,
       sniffingEnabled: settings.sniffingEnabled,
@@ -130,6 +132,7 @@ export class SettingsController {
       speedEnabled: draft.speedEnabled,
       confirmRemove: draft.confirmRemove,
       startScanImmediate: draft.startScanImmediate,
+      startOnBoot: draft.startOnBoot,
       groupAllDisplay: draft.groupAllDisplay,
       doubleColumnDisplay: draft.doubleColumnDisplay,
       sniffingEnabled: draft.sniffingEnabled,

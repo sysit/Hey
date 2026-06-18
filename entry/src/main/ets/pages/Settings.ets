@@ -38,6 +38,7 @@ struct SettingsPage {
   @State private settingSpeedEnabled: boolean = false;
   @State private settingConfirmRemove: boolean = false;
   @State private settingStartScanImmediate: boolean = false;
+  @State private settingStartOnBoot: boolean = false;
   @State private settingGroupAllDisplay: boolean = false;
   @State private settingDoubleColumnDisplay: boolean = false;
   @State private settingSniffing: boolean = true;
@@ -114,6 +115,8 @@ struct SettingsPage {
             this.SettingToggle(this.t('settings.confirmRemove'), this.settingConfirmRemove, 'confirmRemove')
             this.RowDivider()
             this.SettingToggle(this.t('settings.startScanImmediate'), this.settingStartScanImmediate, 'startScanImmediate')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.startOnBoot'), this.settingStartOnBoot, 'startOnBoot')
             this.RowDivider()
             this.SettingToggle(this.t('settings.groupAllDisplay'), this.settingGroupAllDisplay, 'groupAllDisplay')
             this.RowDivider()
@@ -384,6 +387,9 @@ struct SettingsPage {
       case 'startScanImmediate':
         this.settingStartScanImmediate = !this.settingStartScanImmediate;
         break;
+      case 'startOnBoot':
+        this.settingStartOnBoot = !this.settingStartOnBoot;
+        break;
       case 'groupAllDisplay':
         this.settingGroupAllDisplay = !this.settingGroupAllDisplay;
         break;
@@ -536,6 +542,7 @@ struct SettingsPage {
       speedEnabled: this.settingSpeedEnabled,
       confirmRemove: this.settingConfirmRemove,
       startScanImmediate: this.settingStartScanImmediate,
+      startOnBoot: this.settingStartOnBoot,
       groupAllDisplay: this.settingGroupAllDisplay,
       doubleColumnDisplay: this.settingDoubleColumnDisplay,
       sniffingEnabled: this.settingSniffing,
@@ -592,6 +599,7 @@ struct SettingsPage {
     this.settingSpeedEnabled = draft.speedEnabled;
     this.settingConfirmRemove = draft.confirmRemove;
     this.settingStartScanImmediate = draft.startScanImmediate;
+    this.settingStartOnBoot = draft.startOnBoot;
     this.settingGroupAllDisplay = draft.groupAllDisplay;
     this.settingDoubleColumnDisplay = draft.doubleColumnDisplay;
     this.settingSniffing = draft.sniffingEnabled;

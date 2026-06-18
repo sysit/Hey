@@ -210,6 +210,7 @@ export interface AppSettings {
   speedEnabled: boolean;
   confirmRemove: boolean;
   startScanImmediate: boolean;
+  startOnBoot: boolean;
   groupAllDisplay: boolean;
   doubleColumnDisplay: boolean;
   sniffingEnabled: boolean;

@@ -87,8 +87,8 @@
 
 - ✅ Want / 深链导入（对应 v2rayNG UrlScheme）
 - ✅ 控制深链入口：`hey://control?action=start|stop|toggle|scan` 与短 URI `hey://start`/`stop`/`toggle`/`scan`
+- ✅ 开机自动连接设置：持久化 `pref_is_booted` 等价设置，并在 Harmony `AUTO_STARTUP` 启动原因下自动启动当前节点（受系统自启动权限/开关限制，待真机重启回归）
 - 桌面快捷方式、服务卡片（widget）
-- 开机自启（受平台权限限制，量力而行）
 
 ## 三、依赖关系
 

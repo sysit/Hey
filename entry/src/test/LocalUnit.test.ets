@@ -355,6 +355,7 @@ export default function localUnitTest() {
         speedEnabled: false,
         confirmRemove: false,
         startScanImmediate: false,
+        startOnBoot: false,
         groupAllDisplay: false,
         doubleColumnDisplay: false,
         sniffingEnabled: true,
@@ -815,6 +816,7 @@ export default function localUnitTest() {
       settings.speedEnabled = true;
       settings.confirmRemove = true;
       settings.startScanImmediate = true;
+      settings.startOnBoot = true;
       settings.groupAllDisplay = true;
       settings.doubleColumnDisplay = true;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
@@ -822,6 +824,7 @@ export default function localUnitTest() {
       expect(draft.speedEnabled).assertTrue();
       expect(draft.confirmRemove).assertTrue();
       expect(draft.startScanImmediate).assertTrue();
+      expect(draft.startOnBoot).assertTrue();
       expect(draft.groupAllDisplay).assertTrue();
       expect(draft.doubleColumnDisplay).assertTrue();
       expect(draft.ipv6Enabled).assertTrue();
@@ -854,6 +857,7 @@ export default function localUnitTest() {
       expect(rebuilt.speedEnabled).assertTrue();
       expect(rebuilt.confirmRemove).assertTrue();
       expect(rebuilt.startScanImmediate).assertTrue();
+      expect(rebuilt.startOnBoot).assertTrue();
       expect(rebuilt.groupAllDisplay).assertTrue();
       expect(rebuilt.doubleColumnDisplay).assertTrue();
       expect(rebuilt.ipv6Enabled).assertTrue();
@@ -1352,6 +1356,7 @@ function buildSettingsFixture(): AppSettings {
     speedEnabled: false,
     confirmRemove: false,
     startScanImmediate: false,
+    startOnBoot: false,
     groupAllDisplay: false,
     doubleColumnDisplay: false,
     sniffingEnabled: true,

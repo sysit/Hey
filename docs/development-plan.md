@@ -219,6 +219,9 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ **控制深链入口**：对应 v2rayNG Tasker/shortcuts/QS tile 的基础控制动作，
   支持 `hey://control?action=start|stop|toggle|scan` 和短 URI
   `hey://start` / `hey://stop` / `hey://toggle` / `hey://scan`
+- ✅ **开机自动连接设置**：对应 v2rayNG `pref_is_booted`/`BootReceiver`，
+  设置页可持久化“开机自动连接”；Harmony `AUTO_STARTUP` 启动原因会在主页加载设置和当前节点后触发启动当前节点
+  （受系统自启动开关/权限控制，仍需真机重启回归）
 - **二维码生成**：节点分享生成 QR（鸿蒙 `@ohos.graphics` 或二维码库），
   补齐"显示二维码 / 单行链接 / 完整 JSON"三种分享形态
 - **桌面服务卡片 / 快捷方式**：一键启停、扫码（对应 QSTile/Widget/Shortcuts）
