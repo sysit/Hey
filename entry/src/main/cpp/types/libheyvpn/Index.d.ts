@@ -29,3 +29,5 @@ export const xrayVersion: () => NativeResult;
 export const countGeoData: (datDir: string, name: string, geoType: string) => NativeResult;
 export const readGeoFiles: (configJson: string) => NativeResult;
 export const getFreePorts: (count: number) => NativeResult;
+export const convertShareLinksToXrayJson: (text: string) => NativeResult;
+export const convertXrayJsonToShareLinks: (configJson: string) => NativeResult;

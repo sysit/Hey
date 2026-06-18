@@ -8,6 +8,7 @@ import { AppRoute } from '../shell/AppRoute';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
+import { convertNativeShareTextToOutbounds } from '../services/NativeShareConverter';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 @Entry
@@ -299,24 +300,41 @@ struct ImportPage {
 
       const saved = await NODES_CONTROLLER.saveProfile(context, value, this.language);
       if (saved.profile === null) {
-        this.lastError = saved.lastError;
+        const nativeResult = convertNativeShareTextToOutbounds(value);
+        if (!nativeResult.ok) {
+          this.lastError = nativeResult.message.length > 0 ? `${saved.lastError}\n${nativeResult.message}` : saved.lastError;
+          return;
+        }
+
+        let importedCount = 0;
+        let lastValidationError = '';
+        for (let index = 0; index < nativeResult.outbounds.length; index++) {
+          const outbound = nativeResult.outbounds[index];
+          const imported = await NODES_CONTROLLER.saveProfile(context, outbound.outboundJson, this.language, 'outbound');
+          if (imported.profile === null) {
+            lastValidationError = imported.lastError;
+            continue;
+          }
+          await SubscriptionStore.addManualNode(
+            context,
+            this.resolveNodeName(imported.profile.outboundJson, outbound.name),
+            imported.profile.outboundJson,
+            imported.profile.configType
+          );
+          importedCount++;
+        }
+
+        if (importedCount === 0) {
+          this.lastError = lastValidationError.length > 0 ? lastValidationError : saved.lastError;
+          return;
+        }
+
+        promptAction.showToast({ message: importedCount === 1 ? '节点解析成功' : `已导入 ${importedCount} 个节点` });
+        router.back();
         return;
       }
 
-      let nodeName = '链接导入';
-      try {
-        const obj = JSON.parse(saved.profile.outboundJson) as Record<string, Object>;
-        if (obj.tag && typeof obj.tag === 'string' && obj.tag.trim().length > 0) {
-          nodeName = obj.tag.trim();
-        } else if (obj.remarks && typeof obj.remarks === 'string' && obj.remarks.trim().length > 0) {
-          nodeName = obj.remarks.trim();
-        } else if (obj.name && typeof obj.name === 'string' && obj.name.trim().length > 0) {
-          nodeName = obj.name.trim();
-        }
-      } catch (err) {
-        // ignore
-      }
-
+      const nodeName = this.resolveNodeName(saved.profile.outboundJson, '链接导入');
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
       promptAction.showToast({ message: '节点解析成功' });
       router.back();
@@ -325,6 +343,23 @@ struct ImportPage {
     } finally {
       this.isBusy = false;
     }
+  }
+
+  private resolveNodeName(outboundJson: string, fallback: string): string {
+    let nodeName = fallback.trim().length > 0 ? fallback.trim() : '链接导入';
+    try {
+      const obj = JSON.parse(outboundJson) as Record<string, Object>;
+      if (obj.tag && typeof obj.tag === 'string' && obj.tag.trim().length > 0) {
+        nodeName = obj.tag.trim();
+      } else if (obj.remarks && typeof obj.remarks === 'string' && obj.remarks.trim().length > 0) {
+        nodeName = obj.remarks.trim();
+      } else if (obj.name && typeof obj.name === 'string' && obj.name.trim().length > 0) {
+        nodeName = obj.name.trim();
+      }
+    } catch (err) {
+      // Keep fallback.
+    }
+    return nodeName;
   }
 
   private t(key: string): string {

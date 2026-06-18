@@ -32,6 +32,18 @@ export interface NativeFreePortsResult {
   message: string;
 }
 
+export interface NativeXrayJsonResult {
+  ok: boolean;
+  configJson: string;
+  message: string;
+}
+
+export interface NativeTextResult {
+  ok: boolean;
+  text: string;
+  message: string;
+}
+
 // libXray wraps every CGo return value in a CallResponse. The native bridge
 // decodes the base64 envelope and hands us the JSON below as the message.
 interface CallResponseString {
@@ -78,6 +90,8 @@ interface NativeBridge {
   countGeoData(datDir: string, name: string, geoType: string): NativeResult;
   readGeoFiles(configJson: string): NativeResult;
   getFreePorts(count: number): NativeResult;
+  convertShareLinksToXrayJson(text: string): NativeResult;
+  convertXrayJsonToShareLinks(configJson: string): NativeResult;
 }
 
 const bridge = heyNative as NativeBridge;
@@ -171,6 +185,44 @@ export function getNativeFreePorts(count: number): NativeFreePortsResult {
     return { ok: true, ports: normalizePortArray(data.ports), message: '' };
   } catch (error) {
     return { ok: false, ports: [], message: `Free ports parse failed: ${JSON.stringify(error)}` };
+  }
+}
+
+// Converts v2rayN plain/base64 text, Xray JSON, or Clash.Meta YAML through
+// libXray and returns the full Xray config JSON from the CallResponse data.
+export function convertNativeShareLinksToXrayJson(text: string): NativeXrayJsonResult {
+  const result = bridge.convertShareLinksToXrayJson(text);
+  if (!result.ok) {
+    return { ok: false, configJson: '', message: extractCallError(result.message) };
+  }
+
+  try {
+    const configJson = extractCallDataAsText(result.message);
+    if (configJson.length === 0) {
+      return { ok: false, configJson: '', message: 'Native share conversion returned empty config.' };
+    }
+    return { ok: true, configJson, message: '' };
+  } catch (error) {
+    return { ok: false, configJson: '', message: `Share conversion parse failed: ${JSON.stringify(error)}` };
+  }
+}
+
+// Best-effort reverse conversion from a full Xray config to share links. Some
+// outbound protocols are skipped by libXray when no share-link format exists.
+export function convertNativeXrayJsonToShareLinks(configJson: string): NativeTextResult {
+  const result = bridge.convertXrayJsonToShareLinks(configJson);
+  if (!result.ok) {
+    return { ok: false, text: '', message: extractCallError(result.message) };
+  }
+
+  try {
+    const text = extractCallDataAsText(result.message);
+    if (text.length === 0) {
+      return { ok: false, text: '', message: 'Native share export returned empty text.' };
+    }
+    return { ok: true, text, message: '' };
+  } catch (error) {
+    return { ok: false, text: '', message: `Share export parse failed: ${JSON.stringify(error)}` };
   }
 }
 
@@ -301,4 +353,19 @@ function extractCallData(message: string): string {
     // Not a CallResponse envelope; fall back to the raw message.
   }
   return message;
+}
+
+function extractCallDataAsText(message: string): string {
+  const envelope = JSON.parse(message) as CallResponseAny;
+  const data = envelope.data;
+  if (data === undefined) {
+    return '';
+  }
+  if (typeof data === 'string') {
+    return data;
+  }
+  if (typeof data === 'number') {
+    return data.toString();
+  }
+  return JSON.stringify(data, null, 2);
 }

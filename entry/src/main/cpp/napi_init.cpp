@@ -50,6 +50,8 @@ CGoVersionFunc g_xrayVersion = nullptr;
 CGoStringFunc g_countGeoData = nullptr;
 CGoStringFunc g_readGeoFiles = nullptr;
 CGoFreePortsFunc g_getFreePorts = nullptr;
+CGoStringFunc g_convertShareLinksToXrayJson = nullptr;
+CGoStringFunc g_convertXrayJsonToShareLinks = nullptr;
 
 const char* BASE64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -427,6 +429,24 @@ CGoFreePortsFunc LoadGetFreePorts()
     return g_getFreePorts;
 }
 
+CGoStringFunc LoadConvertShareLinksToXrayJson()
+{
+    if (g_convertShareLinksToXrayJson == nullptr) {
+        g_convertShareLinksToXrayJson =
+            reinterpret_cast<CGoStringFunc>(LoadOptionalSymbol("CGoConvertShareLinksToXrayJson"));
+    }
+    return g_convertShareLinksToXrayJson;
+}
+
+CGoStringFunc LoadConvertXrayJsonToShareLinks()
+{
+    if (g_convertXrayJsonToShareLinks == nullptr) {
+        g_convertXrayJsonToShareLinks =
+            reinterpret_cast<CGoStringFunc>(LoadOptionalSymbol("CGOConvertXrayJsonToShareLinks"));
+    }
+    return g_convertXrayJsonToShareLinks;
+}
+
 bool ParsePingResponse(const std::string& json, int64_t& delay, std::string& message)
 {
     delay = -1;
@@ -735,6 +755,68 @@ napi_value GetFreePorts(napi_env env, napi_callback_info info)
     return BuildCallResult(env, raw, "CGoGetFreePorts returned null.");
 }
 
+// Converts v2rayN plain/base64 share text, Xray JSON, or Clash.Meta YAML to a
+// full Xray JSON config through libXray. ArkTS extracts the returned outbounds
+// and stores them as manual nodes.
+napi_value ConvertShareLinksToXrayJson(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResultQuiet(env, false, "Missing share text.");
+    }
+
+    std::string text = GetStringArg(env, args[0]);
+    if (text.empty()) {
+        return CreateResultQuiet(env, false, "Share text is empty.");
+    }
+
+    CGoStringFunc convert = LoadConvertShareLinksToXrayJson();
+    if (convert == nullptr) {
+        return CreateResultQuiet(
+            env, false, "Share conversion unavailable: CGoConvertShareLinksToXrayJson not exported by libXray.");
+    }
+
+    std::string encoded = Base64Encode(text);
+    std::vector<char> buffer(encoded.begin(), encoded.end());
+    buffer.push_back('\0');
+
+    char* raw = convert(buffer.data());
+    return BuildCallResult(env, raw, "CGoConvertShareLinksToXrayJson returned null.");
+}
+
+// Converts a full Xray JSON config to share links through libXray. Kept as a
+// best-effort bridge for export/share fallbacks; unsupported outbound protocols
+// are skipped by libXray.
+napi_value ConvertXrayJsonToShareLinks(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResultQuiet(env, false, "Missing Xray config JSON.");
+    }
+
+    std::string config = GetStringArg(env, args[0]);
+    if (config.empty()) {
+        return CreateResultQuiet(env, false, "Xray config JSON is empty.");
+    }
+
+    CGoStringFunc convert = LoadConvertXrayJsonToShareLinks();
+    if (convert == nullptr) {
+        return CreateResultQuiet(
+            env, false, "Share export unavailable: CGOConvertXrayJsonToShareLinks not exported by libXray.");
+    }
+
+    std::string encoded = Base64Encode(config);
+    std::vector<char> buffer(encoded.begin(), encoded.end());
+    buffer.push_back('\0');
+
+    char* raw = convert(buffer.data());
+    return BuildCallResult(env, raw, "CGOConvertXrayJsonToShareLinks returned null.");
+}
+
 napi_value ValidateConfig(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -908,6 +990,10 @@ static napi_value Init(napi_env env, napi_value exports)
         { "countGeoData", nullptr, CountGeoData, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "readGeoFiles", nullptr, ReadGeoFiles, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFreePorts", nullptr, GetFreePorts, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "convertShareLinksToXrayJson", nullptr, ConvertShareLinksToXrayJson, nullptr, nullptr, nullptr,
+            napi_default, nullptr },
+        { "convertXrayJsonToShareLinks", nullptr, ConvertXrayJsonToShareLinks, nullptr, nullptr, nullptr,
+            napi_default, nullptr },
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

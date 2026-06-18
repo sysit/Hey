@@ -31,6 +31,8 @@ cat > "${EXPORTS_FILE}" <<'MAP'
     CGoCountGeoData;
     CGoReadGeoFiles;
     CGoGetFreePorts;
+    CGoConvertShareLinksToXrayJson;
+    CGOConvertXrayJsonToShareLinks;
   local: *;
 };
 MAP

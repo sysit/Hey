@@ -3,6 +3,7 @@ import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate
 import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson } from '../main/ets/core/XrayConfig';
+import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
 import { parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
 import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
 import {
@@ -66,6 +67,17 @@ export default function localUnitTest() {
       expect(autoValidation.valid).assertTrue();
       expect(autoValidation.configType).assertEqual('full');
       expect(autoValidation.message).assertEqual('完整 Xray 配置校验通过。');
+    });
+
+    it('extracts importable outbounds from native-converted xray config', 0, () => {
+      const configJson = '{"outbounds":[{"tag":"alpha","protocol":"vless","settings":{"vnext":[]}},{"remarks":"Beta","protocol":"trojan","settings":{"servers":[]}},{"tag":"skip","protocol":"freedom"}]}';
+      const extracted = extractOutboundsFromXrayConfig(configJson);
+      expect(extracted.length).assertEqual(2);
+      expect(extracted[0].name).assertEqual('alpha');
+      expect(extracted[0].protocol).assertEqual('vless');
+      expect(extracted[0].outboundJson).assertContain('"protocol": "vless"');
+      expect(extracted[1].name).assertEqual('Beta');
+      expect(extractOutboundsFromXrayConfig('{"outbound":{"name":"single","protocol":"socks","settings":{}}}')[0].name).assertEqual('single');
     });
 
     it('builds runtime config from full custom config without wrapping', 0, () => {

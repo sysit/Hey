@@ -54,22 +54,25 @@ v2rayNG's features and design, see
 
 ## Native Bridge Status
 
-`libxray.so` exports 13 CGo functions; `napi_init.cpp` wires 10 (M1, refreshed 2026-06-18).
+`libxray.so` exports 13 CGo functions; `napi_init.cpp` wires 12 (M1, refreshed 2026-06-18).
 
 - Wired (runtime): `CGoRunXrayFromJSON`, `CGoStopXray`, `CGoPing`, `CGoSetTunFd`.
 - Wired (M1): `CGoQueryStats` (real per-tag traffic via the Xray metrics
   `/debug/vars` endpoint), `CGoTestXray` (pre-connect config preflight),
   `CGoXrayVersion` (core version on the About page),
   `CGoReadGeoFiles` / `CGoCountGeoData` (Geo file validation/count status on Assets),
-  `CGoGetFreePorts` (dynamic ports for real outbound delay tests).
-- Idle: `CGoConvertShareLinksToXrayJson`, `CGOConvertXrayJsonToShareLinks`,
-  `CGoRunXray`.
+  `CGoGetFreePorts` (dynamic ports for real outbound delay tests),
+  `CGoConvertShareLinksToXrayJson` / `CGOConvertXrayJsonToShareLinks`
+  (native share text ⇄ Xray JSON conversion).
+- Idle: `CGoRunXray`.
 
 > M1 note: the prebuilt `libxray.so` version script previously exported only the
 > 4 runtime symbols (`local: *` hid the rest). `scripts/build_libxray_ohos.sh`
 > now also exports `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion` plus the Geo
-> count/read symbols and `CGoGetFreePorts`, so the bridge code is complete but a
+> count/read symbols, `CGoGetFreePorts`, and the share conversion symbols, so
+> the bridge code is complete but a
 > **`libxray.so` rebuild + device retest** is required before these optional
 > paths take effect. Until then the bridge degrades gracefully (stats fall back,
 > preflight is skipped, version shows the static label, Geo count reports
-> unavailable, delay tests use the static fallback port).
+> unavailable, delay tests use the static fallback port, and import falls back to
+> the built-in single-link parser only).
