@@ -1320,12 +1320,14 @@ function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: 
 
   if (security === 'tls' || security === 'reality') {
     const tlsSettings = security === 'tls' ? stream.tlsSettings : stream.realitySettings;
+    if (security === 'tls') {
+      const insecureFlag = tlsSettings?.allowInsecure ? '1' : '0';
+      queryParams.set('insecure', insecureFlag);
+      queryParams.set('allowInsecure', insecureFlag);
+    }
     if (tlsSettings) {
       if (tlsSettings.serverName) {
         queryParams.set('sni', tlsSettings.serverName);
-      }
-      if (tlsSettings.allowInsecure) {
-        queryParams.set('insecure', '1');
       }
       if (tlsSettings.alpn && tlsSettings.alpn.length > 0) {
         queryParams.set('alpn', tlsSettings.alpn.join(','));

@@ -1563,7 +1563,9 @@ export default function localUnitTest() {
       expect(imported.outboundJson).assertContain('"wsSettings"');
       expect(imported.outboundJson).assertContain('"serverName": "trojan.example"');
       expect(imported.outboundJson).assertContain('"allowInsecure": true');
-      expect(formatOutboundJsonToShareLink(imported.outboundJson, 'trojan-demo')).assertContain('insecure=1');
+      const exportedTrojan = formatOutboundJsonToShareLink(imported.outboundJson, 'trojan-demo');
+      expect(exportedTrojan).assertContain('insecure=1');
+      expect(exportedTrojan).assertContain('allowInsecure=1');
 
       const aliasImported = parseShareLinkToOutboundJson('trojan://secret@example.com:443?security=tls&sni=trojan.example&allow_insecure=true&type=tcp#trojan-alias');
       expect(aliasImported.success).assertTrue();
@@ -1572,6 +1574,15 @@ export default function localUnitTest() {
       const mixedAliasImported = parseShareLinkToOutboundJson('trojan://secret@example.com:443?security=tls&sni=trojan.example&insecure=0&allowInsecure=1&type=tcp#trojan-mixed-alias');
       expect(mixedAliasImported.success).assertTrue();
       expect(mixedAliasImported.outboundJson).assertContain('"allowInsecure": true');
+
+      const secureVless = parseShareLinkToOutboundJson('vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&security=tls&sni=vless.example&insecure=0&type=tcp#vless-secure');
+      expect(secureVless.success).assertTrue();
+      const exportedSecureVless = formatOutboundJsonToShareLink(secureVless.outboundJson, 'vless-secure');
+      expect(exportedSecureVless).assertContain('insecure=0');
+      expect(exportedSecureVless).assertContain('allowInsecure=0');
+      const roundTripSecureVless = parseShareLinkToOutboundJson(exportedSecureVless);
+      expect(roundTripSecureVless.success).assertTrue();
+      expect(roundTripSecureVless.outboundJson).assertContain('"allowInsecure": false');
     });
 
     it('imports vmess and shadowsocks share links as outbound json', 0, () => {
