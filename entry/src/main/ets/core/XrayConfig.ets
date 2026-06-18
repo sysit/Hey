@@ -1016,10 +1016,10 @@ function cloneOutbound(outbound: XrayOutbound): XrayOutbound {
 function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSettings | undefined): void {
   applyWireguardIpv6Setting(outbound, settings);
   applyHysteria2FinalMaskSettings(outbound);
-  if (settings !== undefined && settings.muxEnabled) {
+  if (settings !== undefined && settings.muxEnabled && shouldApplyMux(outbound)) {
     const mux: XrayMuxConfig = {
       enabled: true,
-      concurrency: settings.muxConcurrency,
+      concurrency: shouldUseVlessFlowMuxConcurrency(outbound) ? -1 : settings.muxConcurrency,
       xudpConcurrency: settings.muxXudpConcurrency,
       xudpProxyUDP443: settings.muxXudpQuic
     };
@@ -1043,6 +1043,38 @@ function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSetti
     sockopt['domainStrategy'] = 'UseIP';
     sockopt['happyEyeballs'] = happyEyeballs;
   }
+}
+
+function shouldApplyMux(outbound: XrayOutbound): boolean {
+  const protocol = outbound.protocol?.toLowerCase() ?? '';
+  if (protocol === 'shadowsocks' || protocol === 'socks' || protocol === 'http' || protocol === 'trojan' ||
+    protocol === 'wireguard' || protocol === 'hysteria2' || protocol === 'hysteria') {
+    return false;
+  }
+  const streamSettings = outbound.streamSettings as Record<string, Object | string | number | boolean | undefined> | undefined;
+  if (streamSettings !== undefined && streamSettings['network'] === 'xhttp') {
+    return false;
+  }
+  return true;
+}
+
+function shouldUseVlessFlowMuxConcurrency(outbound: XrayOutbound): boolean {
+  if ((outbound.protocol?.toLowerCase() ?? '') !== 'vless' || outbound.settings === undefined) {
+    return false;
+  }
+  const settings = outbound.settings as Record<string, Object | string | number | boolean | undefined>;
+  const vnext = settings['vnext'];
+  if (!Array.isArray(vnext) || vnext.length === 0) {
+    return false;
+  }
+  const server = vnext[0] as Record<string, Object | string | number | boolean | undefined>;
+  const users = server['users'];
+  if (!Array.isArray(users) || users.length === 0) {
+    return false;
+  }
+  const user = users[0] as Record<string, Object | string | number | boolean | undefined>;
+  const flow = user['flow'];
+  return typeof flow === 'string' && flow.length > 0;
 }
 
 function applyHysteria2FinalMaskSettings(outbound: XrayOutbound): void {

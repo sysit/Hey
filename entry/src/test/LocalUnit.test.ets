@@ -40,6 +40,10 @@ const VLESS_REALITY_OUTBOUND: string =
   '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision"}]}]},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"serverName":"www.example.com","publicKey":"test-public-key","shortId":"abcd","fingerprint":"chrome"}}}';
 const TROJAN_OUTBOUND: string =
   '{"protocol":"trojan","tag":"relay","settings":{"servers":[{"address":"relay.example.com","port":443,"password":"secret"}]}}';
+const VMESS_TCP_OUTBOUND: string =
+  '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"vmess.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tlsSettings":{"serverName":"vmess.example.com"}}}';
+const VLESS_XHTTP_OUTBOUND: string =
+  '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"xhttp.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]},"streamSettings":{"network":"xhttp","security":"tls","xhttpSettings":{"path":"/xhttp","host":"cdn.example.com"}}}';
 const PROXY_CHAIN_CONFIG: string =
   `{"remarks":"chain-demo","outbounds":[${VLESS_REALITY_OUTBOUND},${TROJAN_OUTBOUND}]}`;
 const POLICY_GROUP_CONFIG: string =
@@ -451,7 +455,62 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"sniffing"');
       expect(result.configJson).assertContain('"routeOnly": true');
       expect(result.configJson).assertContain('"mux"');
+      expect(result.configJson).assertContain('"concurrency": -1');
       expect(result.configJson).assertContain('"9.9.9.9"');
+    });
+
+    it('applies mux only to v2rayNG supported outbound protocols', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.muxEnabled = true;
+      settings.muxConcurrency = 6;
+      settings.muxXudpConcurrency = 5;
+      settings.muxXudpQuic = 'allow';
+
+      const vmess = buildXrayConfigWithSettings(VMESS_TCP_OUTBOUND, settings);
+      expect(vmess.configJson).assertContain('"mux"');
+      expect(vmess.configJson).assertContain('"concurrency": 6');
+      expect(vmess.configJson).assertContain('"xudpConcurrency": 5');
+      expect(vmess.configJson).assertContain('"xudpProxyUDP443": "allow"');
+
+      const trojan = buildXrayConfigWithSettings(TROJAN_OUTBOUND, settings);
+      expect(trojan.configJson.indexOf('"mux"')).assertEqual(-1);
+
+      const xhttp = buildXrayConfigWithSettings(VLESS_XHTTP_OUTBOUND, settings);
+      expect(xhttp.configJson.indexOf('"mux"')).assertEqual(-1);
+
+      const wireguard = buildManualWireguardOutbound({
+        tag: 'WG',
+        host: 'wg.example.com',
+        port: '51820',
+        secretKey: 'private-key',
+        publicKey: 'public-key',
+        preSharedKey: '',
+        localAddress: '',
+        reserved: '',
+        mtu: ''
+      });
+      expect(wireguard.success).assertTrue();
+      const wgConfig = buildXrayConfigWithSettings(wireguard.outboundJson, settings);
+      expect(wgConfig.configJson.indexOf('"mux"')).assertEqual(-1);
+
+      const hysteria2 = buildManualHysteria2Outbound({
+        tag: 'HY2',
+        host: 'hy2.example.com',
+        port: '443',
+        password: 'secret',
+        sni: '',
+        alpn: '',
+        allowInsecure: false,
+        obfsPassword: '',
+        portHopping: '',
+        portHoppingInterval: '',
+        pinSHA256: '',
+        bandwidthDown: '',
+        bandwidthUp: ''
+      });
+      expect(hysteria2.success).assertTrue();
+      const hy2Config = buildXrayConfigWithSettings(hysteria2.outboundJson, settings);
+      expect(hy2Config.configJson.indexOf('"mux"')).assertEqual(-1);
     });
 
     it('controls speed metrics with the speed display setting', 0, () => {
