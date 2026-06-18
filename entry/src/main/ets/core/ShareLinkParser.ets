@@ -205,6 +205,7 @@ interface XrayHysteria2Server {
   insecure?: boolean;
   obfsPassword?: string;
   portHopping?: string;
+  portHoppingInterval?: string;
   pinSHA256?: string;
 }
 
@@ -716,6 +717,10 @@ function parseHysteria2Link(input: string): ShareLinkParseResult {
   const portHopping = queryValue(parsed.query, 'mport', '');
   if (portHopping.length > 0) {
     server.portHopping = portHopping;
+    const portHoppingInterval = queryValue(parsed.query, 'mportHopInt', '');
+    if (portHoppingInterval.length > 0) {
+      server.portHoppingInterval = portHoppingInterval;
+    }
   }
   const pinSHA256 = queryValue(parsed.query, 'pinSHA256', '');
   if (pinSHA256.length > 0) {
@@ -1281,6 +1286,29 @@ function formatQueryParams(params: Map<string, string>): string {
   return `?${parts.join('&')}`;
 }
 
+function normalizeHysteria2PortHoppingInterval(value: string | undefined): string {
+  const rawInterval = value === undefined ? '' : value.trim();
+  if (rawInterval.length === 0) {
+    return '';
+  }
+  const singleValue = Number(rawInterval);
+  if (!Number.isNaN(singleValue) && Math.floor(singleValue) === singleValue) {
+    return singleValue < 5 ? '' : String(singleValue);
+  }
+  const parts = rawInterval.split('-');
+  if (parts.length !== 2) {
+    return '';
+  }
+  const start = Number(parts[0].trim());
+  const end = Number(parts[1].trim());
+  if (Number.isNaN(start) || Number.isNaN(end) || Math.floor(start) !== start || Math.floor(end) !== end) {
+    return '';
+  }
+  const minStart = Math.max(5, start);
+  const minEnd = Math.max(minStart, end);
+  return String(Math.floor((minStart + minEnd) / 2));
+}
+
 function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: XrayStreamSettings): void {
   if (!stream) return;
   const network = stream.network || 'tcp';
@@ -1625,6 +1653,10 @@ function formatHysteria2(outbound: XrayOutbound, name: string): string {
   }
   if (server.portHopping) {
     queryParams.set('mport', server.portHopping);
+    const interval = normalizeHysteria2PortHoppingInterval(server.portHoppingInterval);
+    if (interval.length > 0) {
+      queryParams.set('mportHopInt', interval);
+    }
   }
   if (server.pinSHA256) {
     queryParams.set('pinSHA256', server.pinSHA256);

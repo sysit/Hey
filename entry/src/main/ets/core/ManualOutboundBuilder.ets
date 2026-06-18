@@ -27,6 +27,7 @@ export interface ManualHysteria2Input {
   allowInsecure: boolean;
   obfsPassword: string;
   portHopping: string;
+  portHoppingInterval: string;
   bandwidthDown: string;
   bandwidthUp: string;
 }
@@ -54,6 +55,7 @@ interface ManualHysteria2Server {
   insecure?: boolean;
   obfsPassword?: string;
   portHopping?: string;
+  portHoppingInterval?: string;
   bandwidthDown?: string;
   bandwidthUp?: string;
 }
@@ -134,6 +136,7 @@ export function buildManualHysteria2Outbound(input: ManualHysteria2Input): Manua
   assignIfPresent(server, 'alpn', input.alpn);
   assignIfPresent(server, 'obfsPassword', input.obfsPassword);
   assignIfPresent(server, 'portHopping', input.portHopping);
+  assignIfPresent(server, 'portHoppingInterval', input.portHoppingInterval);
   assignIfPresent(server, 'bandwidthDown', input.bandwidthDown);
   assignIfPresent(server, 'bandwidthUp', input.bandwidthUp);
 
@@ -225,6 +228,8 @@ function assignIfPresent(server: ManualHysteria2Server, key: string, value: stri
     server.obfsPassword = trimmed;
   } else if (key === 'portHopping') {
     server.portHopping = trimmed;
+  } else if (key === 'portHoppingInterval') {
+    server.portHoppingInterval = trimmed;
   } else if (key === 'bandwidthDown') {
     server.bandwidthDown = trimmed;
   } else if (key === 'bandwidthUp') {
