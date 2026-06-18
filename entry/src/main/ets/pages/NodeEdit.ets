@@ -311,6 +311,7 @@ interface FormStreamSettings {
   xhttpSettings?: FormXhttpSettings;
   tlsSettings?: FormTlsSettings;
   realitySettings?: FormTlsSettings;
+  finalmask?: Object;
 }
 
 type FormOutboundSettings = FormVlessSettings | FormVmessSettings | FormTrojanSettings | FormShadowsocksSettings | FormServerSettings | FormWireguardSettings | FormHysteria2Settings;
@@ -341,6 +342,7 @@ struct NodeEditPage {
   @State private transportType: string = 'tcp';
   @State private transportHost: string = '';
   @State private transportPath: string = '';
+  @State private transportFinalMask: string = '';
   
   // 安全传输层设置 (TLS / Reality)
   @State private tlsSecurity: string = 'none';
@@ -565,6 +567,9 @@ struct NodeEditPage {
                 })
                 this.EditorRow('伪装路径 (Path / ServiceName)', this.transportPath, '请求路径或 gRPC 服务名', (value: string) => {
                   this.transportPath = value;
+                })
+                this.EditorRow('FinalMask JSON (fm - 可选)', this.transportFinalMask, '{ "tcp": [], "udp": [] }', (value: string) => {
+                  this.transportFinalMask = value;
                 })
 
                 // 排除 Shadowsocks（xray 协议规范中 Shadowsocks 通常不配置外层 TLS/Reality）
@@ -938,6 +943,21 @@ struct NodeEditPage {
             host: this.transportHost.trim()
           };
           streamSettings.xhttpSettings = xhttpSettings;
+        }
+
+        const finalMaskText = this.transportFinalMask.trim();
+        if (finalMaskText.length > 0) {
+          try {
+            const finalMask = JSON.parse(finalMaskText) as Object;
+            if (finalMask === null || typeof finalMask !== 'object') {
+              this.lastError = 'FinalMask JSON 必须是对象或数组。';
+              return;
+            }
+            streamSettings.finalmask = finalMask;
+          } catch (error) {
+            this.lastError = 'FinalMask JSON 解析失败：' + JSON.stringify(error);
+            return;
+          }
         }
         
         outbound.streamSettings = streamSettings;

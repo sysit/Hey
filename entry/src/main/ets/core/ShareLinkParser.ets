@@ -103,6 +103,7 @@ interface XrayStreamSettings {
   grpcSettings?: XrayGrpcSettings;
   tlsSettings?: XrayTlsSettings;
   realitySettings?: XrayTlsSettings;
+  finalmask?: Object;
 }
 
 interface XrayVlessUser {
@@ -968,6 +969,10 @@ function buildStreamSettings(query: Map<string, string>, defaultSecurity: string
   }
 
   applySecuritySettings(stream, query, defaultSecurity, derivedSni);
+  const finalMask = parseOptionalJsonContainer(queryValue(query, 'fm', ''));
+  if (finalMask !== null) {
+    stream.finalmask = finalMask;
+  }
   return stream;
 }
 
@@ -1115,6 +1120,14 @@ function parseOptionalJsonObject(value: string): Object | null {
   } catch (error) {
     return null;
   }
+}
+
+function parseOptionalJsonContainer(value: string): Object | null {
+  const parsed = parseOptionalJsonObject(value);
+  if (parsed === null || typeof parsed !== 'object') {
+    return null;
+  }
+  return parsed;
 }
 
 function getPluginValue(plugin: string, key: string): string {
@@ -1278,6 +1291,10 @@ function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: 
         queryParams.set('pqv', tlsSettings.mldsa65Verify);
       }
     }
+  }
+
+  if (stream.finalmask) {
+    queryParams.set('fm', JSON.stringify(stream.finalmask));
   }
 
   if (network === 'ws' && stream.wsSettings) {

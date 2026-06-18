@@ -1419,6 +1419,18 @@ export default function localUnitTest() {
       expect(exported).assertContain('fp=randomized');
     });
 
+    it('round-trips v2rayNG finalMask fm share parameter', 0, () => {
+      const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&security=tls&sni=www.example.com&type=ws&host=cdn.example&path=%2Fws&fm=%7B%22tcp%22%3A%5B%7B%22type%22%3A%22fragment%22%7D%5D%7D#finalmask';
+      const imported = parseShareLinkToOutboundJson(link);
+      expect(imported.success).assertTrue();
+      expect(imported.outboundJson).assertContain('"finalmask"');
+      expect(imported.outboundJson).assertContain('"type": "fragment"');
+      expect(validateOutboundJson(imported.outboundJson).valid).assertTrue();
+
+      const exported = formatOutboundJsonToShareLink(imported.outboundJson, 'finalmask');
+      expect(exported).assertContain('fm=%7B%22tcp%22%3A%5B%7B%22type%22%3A%22fragment%22%7D%5D%7D');
+    });
+
     it('imports trojan ws tls share link as outbound json', 0, () => {
       const link = 'trojan://secret@example.com:443?security=tls&sni=trojan.example&insecure=1&type=ws&host=cdn.example&path=%2Fws#trojan-demo';
       const imported = parseShareLinkToOutboundJson(link);
