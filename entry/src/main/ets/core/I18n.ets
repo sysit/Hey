@@ -1724,7 +1724,10 @@ export function resolveLanguage(language: AppLanguage | string | undefined, syst
   if (normalized === APP_LANGUAGE_AUTO) {
     return resolveSystemLanguage(systemLanguage === undefined ? currentSystemLanguage() : systemLanguage);
   }
-  return normalized;
+  if (normalized === 'en') {
+    return 'en';
+  }
+  return 'zh';
 }
 
 export function translate(language: AppLanguage, key: string): string {
