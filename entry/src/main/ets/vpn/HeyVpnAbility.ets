@@ -84,9 +84,9 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       const bypassMode = settings.perAppProxyBypass ?? true;
       const appList = settings.perAppProxyList ?? [];
       const dnsAddresses = normalizeVpnDnsAddresses(settings.vpnDns);
-      const vpnConfig = createDefaultVpnConfig(perAppEnabled, bypassMode, appList, settings.vpnDns);
+      const vpnConfig = createDefaultVpnConfig(perAppEnabled, bypassMode, appList, settings.vpnDns, settings.preferIpv6);
       this.tunFd = await this.vpnConnection.create(vpnConfig);
-      this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}`);
+      this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}, ipv6=${settings.preferIpv6}`);
 
       const tunResult = setNativeTunFd(this.tunFd);
       if (!tunResult.ok) {

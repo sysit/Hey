@@ -14,6 +14,7 @@ export interface SettingsDraft {
   appendHttpProxy: boolean;
   muxEnabled: boolean;
   fragmentEnabled: boolean;
+  preferIpv6: boolean;
   proxySharingEnabled: boolean;
   allowInsecure: boolean;
   remoteDns: string;
@@ -51,6 +52,7 @@ export class SettingsController {
       appendHttpProxy: settings.appendHttpProxy,
       muxEnabled: settings.muxEnabled,
       fragmentEnabled: settings.fragmentEnabled,
+      preferIpv6: settings.preferIpv6,
       proxySharingEnabled: settings.proxySharingEnabled,
       allowInsecure: settings.allowInsecure,
       remoteDns: settings.remoteDns,
@@ -86,7 +88,7 @@ export class SettingsController {
       fragmentPackets: DEFAULT_APP_SETTINGS.fragmentPackets,
       fragmentLength: DEFAULT_APP_SETTINGS.fragmentLength,
       fragmentInterval: DEFAULT_APP_SETTINGS.fragmentInterval,
-      preferIpv6: DEFAULT_APP_SETTINGS.preferIpv6,
+      preferIpv6: draft.preferIpv6,
       proxySharingEnabled: draft.proxySharingEnabled,
       allowInsecure: draft.allowInsecure,
       localDnsPort: DEFAULT_APP_SETTINGS.localDnsPort,

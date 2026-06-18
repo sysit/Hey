@@ -24,6 +24,7 @@ struct SettingsPage {
   @State private settingAppendHttpProxy: boolean = false;
   @State private settingMux: boolean = false;
   @State private settingFragment: boolean = false;
+  @State private settingPreferIpv6: boolean = false;
   @State private settingProxySharing: boolean = false;
   @State private settingAllowInsecure: boolean = false;
   @State private settingPerAppProxy: boolean = false;
@@ -95,6 +96,8 @@ struct SettingsPage {
             this.SettingToggle(this.t('settings.proxySharing'), this.settingProxySharing, 'proxySharing')
             this.RowDivider()
             this.SettingToggle(this.t('settings.appendHttpProxy'), this.settingAppendHttpProxy, 'appendHttpProxy')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.preferIpv6'), this.settingPreferIpv6, 'preferIpv6')
             this.RowDivider()
             this.SettingInput(this.t('settings.vpnDns'), this.settingVpnDns, 'vpnDns')
           }
@@ -259,6 +262,9 @@ struct SettingsPage {
       case 'fragment':
         this.settingFragment = !this.settingFragment;
         break;
+      case 'preferIpv6':
+        this.settingPreferIpv6 = !this.settingPreferIpv6;
+        break;
       case 'proxySharing':
         this.settingProxySharing = !this.settingProxySharing;
         break;
@@ -344,6 +350,7 @@ struct SettingsPage {
       appendHttpProxy: this.settingAppendHttpProxy,
       muxEnabled: this.settingMux,
       fragmentEnabled: this.settingFragment,
+      preferIpv6: this.settingPreferIpv6,
       proxySharingEnabled: this.settingProxySharing,
       allowInsecure: this.settingAllowInsecure,
       remoteDns: this.settingRemoteDns,
@@ -372,6 +379,7 @@ struct SettingsPage {
     this.settingAppendHttpProxy = draft.appendHttpProxy;
     this.settingMux = draft.muxEnabled;
     this.settingFragment = draft.fragmentEnabled;
+    this.settingPreferIpv6 = draft.preferIpv6;
     this.settingProxySharing = draft.proxySharingEnabled;
     this.settingAllowInsecure = draft.allowInsecure;
     this.settingRemoteDns = draft.remoteDns;

@@ -7,8 +7,11 @@ export const VPN_COMMAND_KEY: string = 'command';
 export const VPN_COMMAND_STOP: string = 'stop';
 export const VPN_MTU: number = 1400;
 export const TUN_IPV4: string = '172.19.0.2';
+export const TUN_IPV6: string = 'fd00:172:19::2';
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
 export const DEFAULT_VPN_DNS_ADDRESSES: string[] = ['1.1.1.1', '8.8.8.8'];
+const ADDRESS_FAMILY_IPV4: number = 1;
+const ADDRESS_FAMILY_IPV6: number = 2;
 
 export function createVpnWant(configJson: string): Want {
   return {
@@ -44,9 +47,11 @@ export function createDefaultVpnConfig(
   perAppEnabled: boolean,
   bypassMode: boolean,
   appList: string[],
-  vpnDns?: string
+  vpnDns?: string,
+  preferIpv6?: boolean
 ): vpnExtension.VpnConfig {
   const selfBundle = BUNDLE_NAME;
+  const ipv6Enabled = preferIpv6 === true;
   let blockedApps: string[] = [];
   let trustedApps: string[] = [];
 
@@ -63,39 +68,69 @@ export function createDefaultVpnConfig(
     }
   }
 
-  const config: vpnExtension.VpnConfig = {
-    addresses: [
-      {
+  const addresses: Array<vpnExtension.LinkAddress> = [
+    {
+      address: {
+        address: TUN_IPV4,
+        family: ADDRESS_FAMILY_IPV4
+      },
+      prefixLength: 30
+    }
+  ];
+  const routes: Array<vpnExtension.RouteInfo> = [
+    {
+      interface: VPN_INTERFACE_NAME,
+      destination: {
         address: {
-          address: TUN_IPV4,
-          family: 1
-        },
-        prefixLength: 30
-      }
-    ],
-    routes: [
-      {
-        interface: VPN_INTERFACE_NAME,
-        destination: {
-          address: {
-            address: '0.0.0.0',
-            family: 1
-          },
-          prefixLength: 0
-        },
-        gateway: {
           address: '0.0.0.0',
-          family: 1,
-          port: 0
+          family: ADDRESS_FAMILY_IPV4
         },
-        hasGateway: false,
-        isDefaultRoute: true
-      }
-    ],
+        prefixLength: 0
+      },
+      gateway: {
+        address: '0.0.0.0',
+        family: ADDRESS_FAMILY_IPV4,
+        port: 0
+      },
+      hasGateway: false,
+      isDefaultRoute: true
+    }
+  ];
+
+  if (ipv6Enabled) {
+    addresses.push({
+      address: {
+        address: TUN_IPV6,
+        family: ADDRESS_FAMILY_IPV6
+      },
+      prefixLength: 126
+    });
+    routes.push({
+      interface: VPN_INTERFACE_NAME,
+      destination: {
+        address: {
+          address: '::',
+          family: ADDRESS_FAMILY_IPV6
+        },
+        prefixLength: 0
+      },
+      gateway: {
+        address: '::',
+        family: ADDRESS_FAMILY_IPV6,
+        port: 0
+      },
+      hasGateway: false,
+      isDefaultRoute: true
+    });
+  }
+
+  const config: vpnExtension.VpnConfig = {
+    addresses,
+    routes,
     dnsAddresses: normalizeVpnDnsAddresses(vpnDns),
     mtu: VPN_MTU,
     isIPv4Accepted: true,
-    isIPv6Accepted: false
+    isIPv6Accepted: ipv6Enabled
   };
 
   if (blockedApps.length > 0) {

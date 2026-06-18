@@ -12,6 +12,7 @@ import {
   normalizeSubscriptionUpdateInterval
 } from '../main/ets/core/SubscriptionGroups';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
+import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
 import { buildTextShareWant } from '../main/ets/services/SystemShare';
 import { formatBytes, formatDuration } from '../main/ets/utils/Formatters';
@@ -246,6 +247,15 @@ export default function localUnitTest() {
       expect(normalizeLanguage('en')).assertEqual('en');
       expect(normalizeLanguage('zh')).assertEqual('zh');
       expect(normalizeLanguage('fr')).assertEqual('zh');
+    });
+
+    it('round-trips prefer ipv6 through settings draft', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.preferIpv6 = true;
+      const draft = SETTINGS_CONTROLLER.toDraft(settings);
+      expect(draft.preferIpv6).assertTrue();
+      const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
+      expect(rebuilt.preferIpv6).assertTrue();
     });
 
     it('formats runtime values through shared helpers', 0, () => {

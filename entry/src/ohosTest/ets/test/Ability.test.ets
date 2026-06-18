@@ -49,5 +49,22 @@ export default function abilityTest() {
       expect(dnsAddresses.join('|')).assertEqual('9.9.9.9|1.0.0.1');
       expect(config.blockedApplications?.join('|')).assertEqual(BUNDLE_NAME);
     });
+
+    it('adds ipv6 interface address and route when enabled', 0, () => {
+      const ipv4Only = createDefaultVpnConfig(false, true, [], '1.1.1.1', false);
+      expect(ipv4Only.isIPv6Accepted).assertFalse();
+      expect(ipv4Only.addresses.length).assertEqual(1);
+
+      const ipv6Config = createDefaultVpnConfig(false, true, [], '1.1.1.1', true);
+      const routes = ipv6Config.routes === undefined ? [] : ipv6Config.routes;
+      expect(ipv6Config.isIPv6Accepted).assertTrue();
+      expect(ipv6Config.addresses.length).assertEqual(2);
+      expect(ipv6Config.addresses[1].address.address).assertEqual('fd00:172:19::2');
+      expect(ipv6Config.addresses[1].address.family).assertEqual(2);
+      expect(routes.length).assertEqual(2);
+      expect(routes[1].destination.address.address).assertEqual('::');
+      expect(routes[1].destination.address.family).assertEqual(2);
+      expect(routes[1].isDefaultRoute).assertTrue();
+    });
   });
 }
