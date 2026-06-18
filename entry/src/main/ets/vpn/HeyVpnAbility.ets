@@ -5,6 +5,7 @@ import Want from '@ohos.app.ability.Want';
 import { RuntimeStats } from '../core/Profile';
 import {
   createDefaultVpnConfig,
+  normalizeVpnDnsAddresses,
   VPN_COMMAND_KEY,
   VPN_COMMAND_STOP,
   VPN_MTU
@@ -82,8 +83,10 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       const perAppEnabled = settings.perAppProxyEnabled;
       const bypassMode = settings.perAppProxyBypass ?? true;
       const appList = settings.perAppProxyList ?? [];
-      this.tunFd = await this.vpnConnection.create(createDefaultVpnConfig(perAppEnabled, bypassMode, appList));
-      this.emitInfo('VPN created.', `tunFd=${this.tunFd}`);
+      const dnsAddresses = normalizeVpnDnsAddresses(settings.vpnDns);
+      const vpnConfig = createDefaultVpnConfig(perAppEnabled, bypassMode, appList, settings.vpnDns);
+      this.tunFd = await this.vpnConnection.create(vpnConfig);
+      this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}`);
 
       const tunResult = setNativeTunFd(this.tunFd);
       if (!tunResult.ok) {

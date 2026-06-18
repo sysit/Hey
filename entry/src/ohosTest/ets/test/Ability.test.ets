@@ -2,9 +2,11 @@ import { describe, it, expect } from '@ohos/hypium';
 import { buildXrayConfig } from '../../../main/ets/core/XrayConfig';
 import {
   BUNDLE_NAME,
+  createDefaultVpnConfig,
   createStopCommandVpnWant,
   createStopVpnWant,
   createVpnWant,
+  normalizeVpnDnsAddresses,
   VPN_ABILITY_NAME,
   VPN_COMMAND_KEY,
   VPN_COMMAND_STOP
@@ -36,6 +38,16 @@ export default function abilityTest() {
       expect(want.bundleName).assertEqual(BUNDLE_NAME);
       expect(want.abilityName).assertEqual(VPN_ABILITY_NAME);
       expect(want.parameters?.[VPN_COMMAND_KEY]?.toString()).assertEqual(VPN_COMMAND_STOP);
+    });
+
+    it('normalizes vpn dns settings for the vpn interface', 0, () => {
+      expect(normalizeVpnDnsAddresses('').join('|')).assertEqual('1.1.1.1|8.8.8.8');
+      expect(normalizeVpnDnsAddresses('9.9.9.9, 1.0.0.1, 9.9.9.9').join('|')).assertEqual('9.9.9.9|1.0.0.1');
+
+      const config = createDefaultVpnConfig(false, true, [], '9.9.9.9, 1.0.0.1');
+      const dnsAddresses = config.dnsAddresses === undefined ? [] : config.dnsAddresses;
+      expect(dnsAddresses.join('|')).assertEqual('9.9.9.9|1.0.0.1');
+      expect(config.blockedApplications?.join('|')).assertEqual(BUNDLE_NAME);
     });
   });
 }

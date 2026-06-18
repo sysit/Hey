@@ -8,6 +8,7 @@ export const VPN_COMMAND_STOP: string = 'stop';
 export const VPN_MTU: number = 1400;
 export const TUN_IPV4: string = '172.19.0.2';
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
+export const DEFAULT_VPN_DNS_ADDRESSES: string[] = ['1.1.1.1', '8.8.8.8'];
 
 export function createVpnWant(configJson: string): Want {
   return {
@@ -42,7 +43,8 @@ export function createStopCommandVpnWant(): Want {
 export function createDefaultVpnConfig(
   perAppEnabled: boolean,
   bypassMode: boolean,
-  appList: string[]
+  appList: string[],
+  vpnDns?: string
 ): vpnExtension.VpnConfig {
   const selfBundle = BUNDLE_NAME;
   let blockedApps: string[] = [];
@@ -90,7 +92,7 @@ export function createDefaultVpnConfig(
         isDefaultRoute: true
       }
     ],
-    dnsAddresses: ['1.1.1.1', '8.8.8.8'],
+    dnsAddresses: normalizeVpnDnsAddresses(vpnDns),
     mtu: VPN_MTU,
     isIPv4Accepted: true,
     isIPv6Accepted: false
@@ -104,4 +106,24 @@ export function createDefaultVpnConfig(
   }
 
   return config;
+}
+
+export function normalizeVpnDnsAddresses(vpnDns?: string): string[] {
+  if (vpnDns === undefined || vpnDns.trim().length === 0) {
+    return DEFAULT_VPN_DNS_ADDRESSES.slice();
+  }
+
+  const parts = vpnDns.split(',');
+  const result: string[] = [];
+  for (let index = 0; index < parts.length; index++) {
+    const address = parts[index].trim();
+    if (address.length > 0 && result.indexOf(address) < 0) {
+      result.push(address);
+    }
+  }
+
+  if (result.length === 0) {
+    return DEFAULT_VPN_DNS_ADDRESSES.slice();
+  }
+  return result;
 }
