@@ -8,6 +8,7 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
+import { formatOne } from '../utils/LocalizationPresenter';
 import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
@@ -21,6 +22,7 @@ struct SubscriptionsPage {
   @State private isUpdatingAll: boolean = false;
   @State private isBusy: boolean = false;
   private subscriptionProxyPort: number = 0;
+  private confirmRemove: boolean = false;
 
   aboutToAppear(): void {
     this.loadState();
@@ -250,6 +252,7 @@ struct SubscriptionsPage {
       const context = getContext(this) as common.Context;
       const settings = await SETTINGS_CONTROLLER.load(context);
       this.language = settings.language;
+      this.confirmRemove = settings.confirmRemove;
       this.subscriptionProxyPort = settings.appendHttpProxy && SHARED_RUNTIME_CONTROLLER.isRunning() ? LOCAL_HTTP_PROXY_PORT : 0;
       this.applySubscriptionsState(await SUBSCRIPTIONS_CONTROLLER.load(context, this.language));
     } finally {
@@ -279,7 +282,35 @@ struct SubscriptionsPage {
     promptAction.showToast({ message: state.subscriptionMessage });
   }
 
-  private async removeSubscriptionGroup(group: SubscriptionGroup): Promise<void> {
+  private removeSubscriptionGroup(group: SubscriptionGroup): void {
+    if (this.confirmRemove) {
+      AlertDialog.show({
+        title: this.t('menu.deleteConfig'),
+        message: this.f1('subscription.deleteConfirm', 'name', group.name),
+        autoCancel: true,
+        alignment: DialogAlignment.Bottom,
+        offset: { dx: 0, dy: -20 },
+        primaryButton: {
+          value: this.t('action.delete'),
+          fontColor: AppColor.onBrand,
+          backgroundColor: AppColor.danger,
+          action: () => {
+            this.removeSubscriptionGroupImmediately(group);
+          }
+        },
+        secondaryButton: {
+          value: this.t('action.cancel'),
+          fontColor: AppColor.textSecondary,
+          backgroundColor: AppColor.bg,
+          action: () => {}
+        }
+      });
+      return;
+    }
+    this.removeSubscriptionGroupImmediately(group);
+  }
+
+  private async removeSubscriptionGroupImmediately(group: SubscriptionGroup): Promise<void> {
     const context = getContext(this) as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.removeGroup(context, group, this.language);
     this.applySubscriptionsState(state);
@@ -349,5 +380,9 @@ struct SubscriptionsPage {
 
   private t(key: string): string {
     return translate(this.language, key);
+  }
+
+  private f1(key: string, name: string, value: string): string {
+    return formatOne(this.language, key, name, value);
   }
 }

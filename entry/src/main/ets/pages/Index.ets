@@ -1016,7 +1016,35 @@ struct Index {
     this.openRoute(AppRoute.EXPORT);
   }
 
-  private async removeNode(node: ProxyNode): Promise<void> {
+  private removeNode(node: ProxyNode): void {
+    if (this.currentSettings.confirmRemove) {
+      AlertDialog.show({
+        title: this.t('menu.deleteConfig'),
+        message: this.f1('node.deleteConfirm', 'name', node.name),
+        autoCancel: true,
+        alignment: DialogAlignment.Bottom,
+        offset: { dx: 0, dy: -20 },
+        primaryButton: {
+          value: this.t('action.delete'),
+          fontColor: AppColor.onBrand,
+          backgroundColor: AppColor.danger,
+          action: () => {
+            this.removeNodeImmediately(node);
+          }
+        },
+        secondaryButton: {
+          value: this.t('action.cancel'),
+          fontColor: AppColor.textSecondary,
+          backgroundColor: AppColor.bg,
+          action: () => {}
+        }
+      });
+      return;
+    }
+    this.removeNodeImmediately(node);
+  }
+
+  private async removeNodeImmediately(node: ProxyNode): Promise<void> {
     const context = getContext(this) as common.Context;
     const state = await NODES_CONTROLLER.removeNode(context, node.id, this.language);
     this.applyNodesState(state);

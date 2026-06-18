@@ -19,6 +19,7 @@ const SETTINGS_KEY: string = 'app_settings';
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   language: DEFAULT_LANGUAGE,
+  confirmRemove: false,
   sniffingEnabled: true,
   routeOnlyEnabled: false,
   perAppProxyEnabled: false,
@@ -98,6 +99,7 @@ export class SettingsStore {
     const base = SettingsStore.copy(DEFAULT_APP_SETTINGS);
     return {
       language: normalizeLanguage(raw.language),
+      confirmRemove: SettingsStore.boolValue(raw.confirmRemove, base.confirmRemove),
       sniffingEnabled: SettingsStore.boolValue(raw.sniffingEnabled, base.sniffingEnabled),
       routeOnlyEnabled: SettingsStore.boolValue(raw.routeOnlyEnabled, base.routeOnlyEnabled),
       perAppProxyEnabled: SettingsStore.boolValue(raw.perAppProxyEnabled, base.perAppProxyEnabled),

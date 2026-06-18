@@ -4,6 +4,7 @@ import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore
 
 export interface SettingsDraft {
   language: AppLanguage;
+  confirmRemove: boolean;
   sniffingEnabled: boolean;
   routeOnlyEnabled: boolean;
   perAppProxyEnabled: boolean;
@@ -60,6 +61,7 @@ export class SettingsController {
   toDraft(settings: AppSettings): SettingsDraft {
     return {
       language: settings.language,
+      confirmRemove: settings.confirmRemove,
       sniffingEnabled: settings.sniffingEnabled,
       routeOnlyEnabled: settings.routeOnlyEnabled,
       perAppProxyEnabled: settings.perAppProxyEnabled,
@@ -108,6 +110,7 @@ export class SettingsController {
   buildSettings(draft: SettingsDraft): AppSettings {
     return {
       language: draft.language,
+      confirmRemove: draft.confirmRemove,
       sniffingEnabled: draft.sniffingEnabled,
       routeOnlyEnabled: draft.routeOnlyEnabled,
       perAppProxyEnabled: draft.perAppProxyEnabled,

@@ -26,6 +26,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Component
 struct SettingsPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @State private settingConfirmRemove: boolean = false;
   @State private settingSniffing: boolean = true;
   @State private settingRouteOnly: boolean = false;
   @State private settingLocalDns: boolean = false;
@@ -89,6 +90,8 @@ struct SettingsPage {
           SectionHeader({ title: this.t('settings.language.section') })
           Column() {
             this.LanguageToggle()
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.confirmRemove'), this.settingConfirmRemove, 'confirmRemove')
           }
           .width('100%')
           .backgroundColor(AppColor.surface)
@@ -340,6 +343,9 @@ struct SettingsPage {
       case 'sniffing':
         this.settingSniffing = !this.settingSniffing;
         break;
+      case 'confirmRemove':
+        this.settingConfirmRemove = !this.settingConfirmRemove;
+        break;
       case 'routeOnly':
         this.settingRouteOnly = !this.settingRouteOnly;
         break;
@@ -475,6 +481,7 @@ struct SettingsPage {
   private buildDraft(): SettingsDraft {
     return {
       language: this.language,
+      confirmRemove: this.settingConfirmRemove,
       sniffingEnabled: this.settingSniffing,
       routeOnlyEnabled: this.settingRouteOnly,
       perAppProxyEnabled: this.settingPerAppProxy,
@@ -522,6 +529,7 @@ struct SettingsPage {
 
   private applyDraft(draft: SettingsDraft): void {
     this.language = draft.language;
+    this.settingConfirmRemove = draft.confirmRemove;
     this.settingSniffing = draft.sniffingEnabled;
     this.settingRouteOnly = draft.routeOnlyEnabled;
     this.settingPerAppProxy = draft.perAppProxyEnabled;

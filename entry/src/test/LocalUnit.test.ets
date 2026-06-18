@@ -346,6 +346,7 @@ export default function localUnitTest() {
     it('applies app settings when generating xray config', 0, () => {
       const settings: AppSettings = {
         language: 'zh',
+        confirmRemove: false,
         sniffingEnabled: true,
         routeOnlyEnabled: true,
         perAppProxyEnabled: false,
@@ -716,7 +717,9 @@ export default function localUnitTest() {
       settings.logLevel = 'error';
       settings.dnsHosts = 'dns.google:8.8.8.8,cloudflare-dns.com:1.1.1.1';
       settings.realPingConcurrency = 32;
+      settings.confirmRemove = true;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
+      expect(draft.confirmRemove).assertTrue();
       expect(draft.preferIpv6).assertTrue();
       expect(draft.localDnsPort).assertEqual('1053');
       expect(draft.localSocksEnabled).assertTrue();
@@ -740,6 +743,7 @@ export default function localUnitTest() {
       expect(draft.dnsHosts).assertEqual('dns.google:8.8.8.8,cloudflare-dns.com:1.1.1.1');
       expect(draft.realPingConcurrency).assertEqual('32');
       const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
+      expect(rebuilt.confirmRemove).assertTrue();
       expect(rebuilt.preferIpv6).assertTrue();
       expect(rebuilt.localDnsPort).assertEqual(1053);
       expect(rebuilt.localSocksEnabled).assertTrue();
@@ -1112,6 +1116,7 @@ export default function localUnitTest() {
 function buildSettingsFixture(): AppSettings {
   return {
     language: 'zh',
+    confirmRemove: false,
     sniffingEnabled: true,
     routeOnlyEnabled: false,
     perAppProxyEnabled: false,
