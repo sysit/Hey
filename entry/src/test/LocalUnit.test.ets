@@ -1028,16 +1028,21 @@ export default function localUnitTest() {
     });
 
     it('imports vless reality share link as outbound json', 0, () => {
-      const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.example.com&fp=chrome&pbk=test-public-key&sid=abcd&spx=%2Fbot&pqv=test-mldsa65-verify&type=tcp#demo';
+      const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.example.com&fp=chrome&ech=test-ech-config&pcs=test-pinned-ca256&pbk=test-public-key&sid=abcd&spx=%2Fbot&pqv=test-mldsa65-verify&type=tcp#demo';
       const imported = parseShareLinkToOutboundJson(link);
       expect(imported.success).assertTrue();
       expect(imported.protocol).assertEqual('vless');
       expect(imported.outboundJson).assertContain('"protocol": "vless"');
       expect(imported.outboundJson).assertContain('"realitySettings"');
+      expect(imported.outboundJson).assertContain('"echConfigList": "test-ech-config"');
+      expect(imported.outboundJson).assertContain('"pinnedPeerCertSha256": "test-pinned-ca256"');
       expect(imported.outboundJson).assertContain('"publicKey": "test-public-key"');
       expect(imported.outboundJson).assertContain('"spiderX": "/bot"');
       expect(imported.outboundJson).assertContain('"mldsa65Verify": "test-mldsa65-verify"');
-      expect(formatOutboundJsonToShareLink(imported.outboundJson, 'demo')).assertContain('pqv=test-mldsa65-verify');
+      const exported = formatOutboundJsonToShareLink(imported.outboundJson, 'demo');
+      expect(exported).assertContain('ech=test-ech-config');
+      expect(exported).assertContain('pcs=test-pinned-ca256');
+      expect(exported).assertContain('pqv=test-mldsa65-verify');
 
       const validation = normalizeOutboundInput(link);
       expect(validation.valid).assertTrue();
@@ -1046,7 +1051,7 @@ export default function localUnitTest() {
     });
 
     it('imports trojan ws tls share link as outbound json', 0, () => {
-      const link = 'trojan://secret@example.com:443?security=tls&sni=trojan.example&type=ws&host=cdn.example&path=%2Fws#trojan-demo';
+      const link = 'trojan://secret@example.com:443?security=tls&sni=trojan.example&insecure=1&type=ws&host=cdn.example&path=%2Fws#trojan-demo';
       const imported = parseShareLinkToOutboundJson(link);
       expect(imported.success).assertTrue();
       expect(imported.protocol).assertEqual('trojan');
@@ -1054,6 +1059,16 @@ export default function localUnitTest() {
       expect(imported.outboundJson).assertContain('"password": "secret"');
       expect(imported.outboundJson).assertContain('"wsSettings"');
       expect(imported.outboundJson).assertContain('"serverName": "trojan.example"');
+      expect(imported.outboundJson).assertContain('"allowInsecure": true');
+      expect(formatOutboundJsonToShareLink(imported.outboundJson, 'trojan-demo')).assertContain('insecure=1');
+
+      const aliasImported = parseShareLinkToOutboundJson('trojan://secret@example.com:443?security=tls&sni=trojan.example&allow_insecure=true&type=tcp#trojan-alias');
+      expect(aliasImported.success).assertTrue();
+      expect(aliasImported.outboundJson).assertContain('"allowInsecure": true');
+
+      const mixedAliasImported = parseShareLinkToOutboundJson('trojan://secret@example.com:443?security=tls&sni=trojan.example&insecure=0&allowInsecure=1&type=tcp#trojan-mixed-alias');
+      expect(mixedAliasImported.success).assertTrue();
+      expect(mixedAliasImported.outboundJson).assertContain('"allowInsecure": true');
     });
 
     it('imports vmess and shadowsocks share links as outbound json', 0, () => {

@@ -141,6 +141,7 @@
 | 2026-06-18 | 阶段 4 | ✅ 双列显示设置完成；Settings 保存 `doubleColumnDisplay`（默认关闭），开启后节点页按双列列表展示配置并保留选择/滑动操作 |
 | 2026-06-18 | 阶段 4 | ✅ 当前连接信息测试网址完成；Settings 保存 `ipApiUrl`（默认 `https://api.ip.sb/geoip`），VPN 启动成功且本地 HTTP 代理可用时经代理查询出口国家/IP 并写入运行日志 |
 | 2026-06-18 | 阶段 4 | ✅ Reality `pqv`/`mldsa65Verify` 参数完成；分享链接、Clash.Meta 订阅、节点导出和 NodeEdit Reality 表单均保留后量子验签公钥 |
+| 2026-06-18 | 阶段 4 | ✅ TLS/Reality `ech`/`pcs` 参数完成；分享链接导入导出保留 ECH 与证书钉住参数，并兼容 `insecure`/`allowInsecure`/`allow_insecure` 三种不安全 TLS 查询名 |
 | 2026-06-18 | 阶段 0 | ✅ IPv6 启用与优先 IPv6 拆分完成；`ipv6Enabled` 控制 VPN IPv6 地址/路由与 WireGuard IPv6 local address，`preferIpv6` 仅控制 outbound Happy Eyeballs |
 | 2026-06-18 | 阶段 5 | 🟡 代理链运行核心完成；JSON 导入支持 `proxy-chain`，运行时生成多跳 outbounds 并通过 `sockopt.dialerProxy` 串联，真机组合场景待回归 |
 | 2026-06-18 | 阶段 5 | 🟡 策略组/负载均衡运行核心完成；JSON 导入支持 `policy-group`，运行时生成 `routing.balancers`、leastPing/leastLoad 观测配置与默认 balancer 路由 |

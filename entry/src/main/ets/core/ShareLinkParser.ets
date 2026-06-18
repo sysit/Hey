@@ -31,6 +31,8 @@ interface XrayTlsSettings {
   serverName?: string;
   alpn?: Array<string>;
   fingerprint?: string;
+  echConfigList?: string;
+  pinnedPeerCertSha256?: string;
   publicKey?: string;
   shortId?: string;
   spiderX?: string;
@@ -1003,7 +1005,7 @@ function applySecuritySettings(stream: XrayStreamSettings, query: Map<string, st
 
 function buildTlsSettings(query: Map<string, string>, security: string, derivedSni: string): XrayTlsSettings {
   const settings: XrayTlsSettings = {
-    allowInsecure: queryValue(query, 'allowInsecure', '') === '1'
+    allowInsecure: queryBooleanValue(query, ['insecure', 'allowInsecure', 'allow_insecure'], false)
   };
 
   const sni = queryValue(query, 'sni', derivedSni);
@@ -1017,6 +1019,15 @@ function buildTlsSettings(query: Map<string, string>, security: string, derivedS
   const alpn = splitCsv(queryValue(query, 'alpn', ''));
   if (alpn.length > 0) {
     settings.alpn = alpn;
+  }
+  const echConfigList = queryValue(query, 'ech', '');
+  if (echConfigList.length > 0) {
+    settings.echConfigList = echConfigList;
+  }
+  const pinnedPeerCertSha256 = queryValue(query, 'pcs', '');
+  if (pinnedPeerCertSha256.length > 0) {
+    settings.pinnedPeerCertSha256 = pinnedPeerCertSha256;
+    settings.allowInsecure = false;
   }
   const publicKey = queryValue(query, 'pbk', '');
   if (publicKey.length > 0) {
@@ -1046,6 +1057,24 @@ function queryValue(query: Map<string, string>, key: string, fallback: string): 
     return fallback;
   }
   return value;
+}
+
+function queryBooleanValue(query: Map<string, string>, keys: Array<string>, fallback: boolean): boolean {
+  let hasFalseValue = false;
+  for (let index = 0; index < keys.length; index++) {
+    const value = query.get(keys[index]);
+    if (value === undefined || value.length === 0) {
+      continue;
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === '1' || normalized === 'true') {
+      return true;
+    }
+    if (normalized === '0' || normalized === 'false') {
+      hasFalseValue = true;
+    }
+  }
+  return hasFalseValue ? false : fallback;
 }
 
 function splitCsv(value: string): Array<string> {
@@ -1229,6 +1258,12 @@ function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: 
       }
       if (tlsSettings.fingerprint) {
         queryParams.set('fp', tlsSettings.fingerprint);
+      }
+      if (tlsSettings.echConfigList) {
+        queryParams.set('ech', tlsSettings.echConfigList);
+      }
+      if (tlsSettings.pinnedPeerCertSha256) {
+        queryParams.set('pcs', tlsSettings.pinnedPeerCertSha256);
       }
       if (tlsSettings.publicKey) {
         queryParams.set('pbk', tlsSettings.publicKey);
