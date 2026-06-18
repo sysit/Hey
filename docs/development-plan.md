@@ -198,6 +198,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - 存储：手动节点和当前 profile 记录 `configType`，旧 outbound 节点保持兼容
 - 运行：完整 config 启动时直接传给 VPN 扩展，不再套用 Hey 生成的 TUN/routing/DNS/HTTP 代理配置
 - 导出/清理：完整 config 节点可作为 JSON 文本导出，删除无效节点和去重不会误判为无效 outbound
+- 编辑：节点详情可打开手动 custom/full 节点，编辑配置名称与 JSON 内容；保存时重新校验并更新原节点，若该节点正被选中则同步当前 profile
 
 **进展（2026-06-18 续）**：节点配置文件导出已落地：
 - Export 页可将当前分组导出内容复制到剪贴板或通过系统文件选择器保存为 `.txt`
@@ -206,7 +207,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 
 **任务**
 - ✅ **完整自定义配置导入**：对应 v2rayNG `ServerCustomConfigActivity` 的粘贴导入与运行路径
-  （2026-06-18 已完成；文件选择导入已补齐，高级编辑待补）
+  （2026-06-18 已完成；文件选择导入和高级编辑已补齐）
 - ✅ **文件导出**：Export 页保存当前分组节点到 `.txt` 文件（2026-06-18 已完成；系统分享面板已补齐）
 - ✅ **URL Scheme / Want 深链导入**：对应 v2rayNG `v2rayng://install-config` 与
   `install-sub`，在 `EntryAbility.onCreate/onNewWant` 解析 Want 并导入
@@ -331,6 +332,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M3 | ✅ 本地 HTTP 代理共享开关生效（`proxySharingEnabled` 开启时 `http-in.listen=0.0.0.0`，默认仍为 `127.0.0.1`，补配置生成单测） |
 | 2026-06-18 | M0 补点 | ✅ VPN 接口 DNS 不再写死，`settings.vpnDns` 会规范化后写入 Harmony `VpnConfig.dnsAddresses`，空值回退 `1.1.1.1/8.8.8.8` |
 | 2026-06-18 | M4 | ✅ 系统分享面板接入（批量导出文本 + 单节点分享链接走 `ohos.want.action.sendData`，失败回退剪贴板，并补分享 Want 单测） |
+| 2026-06-18 | M4 | ✅ 完整自定义 Xray config 编辑完成（节点详情入口 + JSON 导入页编辑模式 + 手动节点原位更新 + 当前 profile 同步 + 单测覆盖命名解析） |
 | 2026-06-18 | M0 补点 | ✅ TUN IPv6 设置接线完成（Settings `preferIpv6` 开关持久化 + VPN IPv6 client `/126` 地址 + `::/0` 默认路由 + `isIPv6Accepted`） |
 | 2026-06-18 | M0 补点 | ✅ `preferIpv6` 继续贯通到生成的 Xray outbound：开启时写入 `sockopt.domainStrategy=UseIP` 与 `happyEyeballs.prioritizeIPv6/interleave`，并覆盖 fragment 共存单测 |
 | 2026-06-18 | M0 补点 | ✅ VPN MTU 可配置完成（Settings `vpnMtu` 保存并规范化到 `1280..9000`，同步写入 Harmony `VpnConfig.mtu` 与 Xray `tun.settings.mtu`） |

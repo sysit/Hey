@@ -12,6 +12,7 @@ import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController
 import { shareText, TextShareResult } from '../services/SystemShare';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
+import { AppRoute } from '../shell/AppRoute';
 import { formatOne } from '../utils/LocalizationPresenter';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
@@ -43,6 +44,10 @@ struct NodeDetailPage {
   @State private qrImage: image.PixelMap | undefined = undefined;
 
   aboutToAppear(): void {
+    this.loadState();
+  }
+
+  onPageShow(): void {
     this.loadState();
   }
 
@@ -84,6 +89,22 @@ struct NodeDetailPage {
             .onClick(() => {
               this.selectNode();
             })
+
+          if (this.canEditCustomJson()) {
+            Button(this.t('node.detail.editJson'))
+              .height(44)
+              .width('100%')
+              .enabled(this.node.id.length > 0 && !SHARED_RUNTIME_CONTROLLER.isBusy())
+              .backgroundColor(AppColor.surfaceAlt)
+              .fontColor(AppColor.textPrimary)
+              .fontSize(FontSz.callout)
+              .fontWeight(FontWeight.Medium)
+              .borderRadius(Radius.pill)
+              .margin({ left: Space.lg, right: Space.lg })
+              .onClick(() => {
+                this.openJsonEditor();
+              })
+          }
 
           if (this.lastError.length > 0) {
             Text(this.lastError)
@@ -339,6 +360,22 @@ struct NodeDetailPage {
     await NODES_CONTROLLER.removeNode(context, this.node.id, this.language);
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.nodeRemoved', 'name', this.node.name));
     router.back();
+  }
+
+  private canEditCustomJson(): boolean {
+    return this.node.id.length > 0 &&
+      this.node.sourceUrl.trim().length === 0 &&
+      this.node.rawLink.trim().length === 0 &&
+      ((this.node.configType ?? 'outbound') === 'full' || this.node.protocol === 'custom');
+  }
+
+  private openJsonEditor(): void {
+    router.pushUrl({
+      url: AppRoute.JSON_IMPORT,
+      params: {
+        nodeId: this.node.id
+      }
+    });
   }
 
   private t(key: string): string {

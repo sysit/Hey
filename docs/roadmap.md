@@ -79,7 +79,7 @@
 - ✅ 相机扫码（`@kit.ScanKit` scanBarcode）替代纯粘贴
 - 二维码生成（节点分享）
 - TUIC 协议解析 + 运行
-- 完整自定义 Xray config 导入与原样运行（已完成）
+- 完整自定义 Xray config 导入、编辑与原样运行（已完成）
 - 自动订阅更新后台调度（前台到期刷新已完成）
 - 运行中经由本地代理更新订阅（已完成）
 
@@ -113,6 +113,7 @@
 | 2026-06-18 | 阶段 4 | ✅ 运行中经由本地 HTTP 代理更新订阅完成；`appendHttpProxy` 生成 `http-in` 并让订阅拉取优先走代理、失败回退直连 |
 | 2026-06-18 | 阶段 4 | ✅ 完整自定义 Xray config 导入与原样运行完成；手动节点/profile 记录 `configType`，导出/清无效兼容 full config |
 | 2026-06-18 | 阶段 4 | ✅ 自定义配置文件选择导入完成；JSON 导入页支持 `.json`/`.txt`/`.conf` 文件读取后校验保存 |
+| 2026-06-18 | 阶段 4 | ✅ 完整自定义 Xray config 编辑完成；节点详情可打开手动 custom/full 节点，编辑名称与 JSON，校验后更新原节点并同步当前 profile |
 | 2026-06-18 | 阶段 4 | ✅ 节点配置文件导出完成；Export 页支持当前分组复制文本与保存 `.txt` 文件 |
 | 2026-06-18 | 阶段 4 | ✅ WireGuard `.conf` 整段导入完成；`[Interface]`/`[Peer]` 文本会归一化为 Xray wireguard outbound |
 | 2026-06-18 | 阶段 4 | ✅ 系统分享面板完成；Export 批量文本和节点详情单节点链接走 Harmony `sendData` 分享，失败回退剪贴板 |

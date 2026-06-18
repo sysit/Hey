@@ -11,6 +11,13 @@ import { normalizeConfigInput } from '../core/XrayConfig';
 const PREFERENCES_NAME: string = 'hey_vpn_subscription';
 const SUBSCRIPTION_KEY: string = 'subscription_profile';
 
+export interface ManualNodeUpdateResult {
+  updated: boolean;
+  selected: boolean;
+  node: ProxyNode | null;
+  profile: SubscriptionProfile;
+}
+
 export class SubscriptionStore {
   static async load(context: common.Context): Promise<SubscriptionProfile> {
     const store = await preferences.getPreferences(context, PREFERENCES_NAME);
@@ -324,6 +331,65 @@ export class SubscriptionStore {
     
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
+  }
+
+  static async updateManualNode(context: common.Context, nodeId: string, name: string, outboundJson: string, configType?: XrayConfigType): Promise<ManualNodeUpdateResult> {
+    const profile = await SubscriptionStore.load(context);
+    const validation = normalizeConfigInput(outboundJson, configType);
+    const resolvedConfigType = SubscriptionStore.resolveConfigType(validation.configType, configType);
+    const protocol = validation.valid ? SubscriptionStore.protocolForConfigType(resolvedConfigType, validation.protocol) : 'unknown';
+    const normalizedJson = validation.valid ? validation.normalizedJson : outboundJson;
+    const now = Date.now();
+    let selected = false;
+
+    for (let groupIndex = 0; groupIndex < profile.groups.length; groupIndex++) {
+      const group = profile.groups[groupIndex];
+      for (let nodeIndex = 0; nodeIndex < group.nodes.length; nodeIndex++) {
+        const node = group.nodes[nodeIndex];
+        if (node.id !== nodeId) {
+          continue;
+        }
+        if (node.sourceUrl.trim().length > 0 || node.rawLink.trim().length > 0) {
+          return {
+            updated: false,
+            selected: false,
+            node: null,
+            profile
+          };
+        }
+        const finalName = name.trim().length > 0 ? name.trim() : (node.name.length > 0 ? node.name : `手动-${protocol.toUpperCase()}`);
+        const nextNode: ProxyNode = {
+          id: node.id,
+          name: finalName,
+          protocol,
+          outboundJson: normalizedJson,
+          configType: resolvedConfigType,
+          sourceUrl: '',
+          rawLink: '',
+          updatedAt: now,
+          delayMs: -1,
+          delayTestAt: 0,
+          delayStatus: ''
+        };
+        group.nodes[nodeIndex] = nextNode;
+        group.updatedAt = now;
+        selected = profile.selectedNodeId === nodeId || group.selectedNodeId === nodeId;
+        await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
+        return {
+          updated: true,
+          selected,
+          node: nextNode,
+          profile: await SubscriptionStore.load(context)
+        };
+      }
+    }
+
+    return {
+      updated: false,
+      selected: false,
+      node: null,
+      profile
+    };
   }
 
   private static async save(context: common.Context, profile: SubscriptionProfile): Promise<void> {

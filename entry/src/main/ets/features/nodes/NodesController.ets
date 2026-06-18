@@ -33,6 +33,14 @@ export interface SaveProfileResult {
   lastError: string;
 }
 
+export interface UpdateManualNodeResult {
+  success: boolean;
+  message: string;
+  node: ProxyNode | null;
+  selected: boolean;
+  lastError: string;
+}
+
 export class NodesController {
   async load(context: common.Context, language: AppLanguage): Promise<NodesControllerState> {
     const profile = await ProfileStore.load(context);
@@ -121,6 +129,54 @@ export class NodesController {
   async removeNode(context: common.Context, nodeId: string, language: AppLanguage): Promise<NodesControllerState> {
     const subscription = await SubscriptionStore.removeNode(context, nodeId);
     return this.stateFromSubscription(context, subscription, language, '');
+  }
+
+  async updateManualNode(context: common.Context, nodeId: string, name: string, outboundJson: string, language: AppLanguage, configType?: XrayConfigType): Promise<UpdateManualNodeResult> {
+    const validation = normalizeConfigInput(outboundJson, configType);
+    const message = localizeCoreMessage(language, validation.message);
+    const resolvedConfigType = this.resolveConfigType(validation, configType);
+    if (!validation.valid) {
+      return {
+        success: false,
+        message,
+        node: null,
+        selected: false,
+        lastError: message
+      };
+    }
+
+    try {
+      const result = await SubscriptionStore.updateManualNode(context, nodeId, name, validation.normalizedJson, resolvedConfigType);
+      if (!result.updated || result.node === null) {
+        const lastError = language === 'en' ? 'This node cannot be edited as a manual JSON config.' : '此节点不能作为手动 JSON 配置编辑。';
+        return {
+          success: false,
+          message,
+          node: null,
+          selected: false,
+          lastError
+        };
+      }
+      if (result.selected) {
+        await ProfileStore.save(context, result.node.outboundJson, result.node.configType ?? resolvedConfigType);
+      }
+      return {
+        success: true,
+        message,
+        node: result.node,
+        selected: result.selected,
+        lastError: ''
+      };
+    } catch (error) {
+      const lastError = formatOne(language, 'error.saveProfile', 'error', JSON.stringify(error));
+      return {
+        success: false,
+        message,
+        node: null,
+        selected: false,
+        lastError
+      };
+    }
   }
 
   async dedupeActiveGroupNodes(context: common.Context, language: AppLanguage): Promise<NodesControllerState> {

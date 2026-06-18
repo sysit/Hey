@@ -4,7 +4,8 @@ import { pasteboard } from '@kit.BasicServicesKit';
 import { picker, fileIo as fs } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
-import { AppLanguage } from '../core/Profile';
+import { resolveJsonConfigNodeName } from '../core/JsonConfigNames';
+import { AppLanguage, ProxyNode, XrayConfigType } from '../core/Profile';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -15,15 +16,24 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 const MAX_IMPORT_FILE_BYTES: number = 2 * 1024 * 1024;
 
+interface JsonImportParams {
+  nodeId?: string;
+}
+
 @Entry
 @Component
 struct JsonImportPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @State private nodeName: string = '';
   @State private outboundJson: string = '';
   @State private validationMessage: string = '';
   @State private validationOk: boolean = false;
+  @State private editMode: boolean = false;
   @State private isBusy: boolean = false;
   @State private lastError: string = '';
+  private editNodeId: string = '';
+  private editConfigType: XrayConfigType | undefined = undefined;
+  private stateLoaded: boolean = false;
 
   aboutToAppear(): void {
     this.loadState();
@@ -32,7 +42,7 @@ struct JsonImportPage {
   build() {
     Column() {
       PageHeader({
-        title: translate(this.language, 'screen.jsonImport.title'),
+        title: this.editMode ? this.t('jsonImport.editTitle') : translate(this.language, 'screen.jsonImport.title'),
         showBack: true
       })
 
@@ -40,8 +50,30 @@ struct JsonImportPage {
         Scroll() {
           Column({ space: Space.lg }) {
             // 输入卡片
-            SectionHeader({ title: 'Xray JSON 配置' })
+            SectionHeader({ title: this.t('jsonImport.sectionTitle') })
             Column() {
+              if (this.editMode) {
+                Column({ space: Space.sm }) {
+                  Text(this.t('jsonImport.name'))
+                    .fontSize(FontSz.footnote)
+                    .fontColor(AppColor.textSecondary)
+                    .width('100%')
+                  TextInput({ text: this.nodeName, placeholder: this.t('jsonImport.namePlaceholder') })
+                    .height(44)
+                    .fontSize(FontSz.body)
+                    .fontColor(AppColor.textPrimary)
+                    .placeholderColor(AppColor.textTertiary)
+                    .backgroundColor(AppColor.surfaceAlt)
+                    .borderRadius(Radius.md)
+                    .padding({ left: Space.md, right: Space.md })
+                    .onChange((value: string) => {
+                      this.nodeName = value;
+                    })
+                }
+                .width('100%')
+                .padding({ left: Space.lg, right: Space.lg, top: Space.md })
+              }
+
               // 粘贴 / 清空 操作行
               Row({ space: Space.sm }) {
                 Blank()
@@ -175,7 +207,7 @@ struct JsonImportPage {
                   .color(AppColor.onBrand)
                   .margin({ right: Space.sm })
               }
-              Text('导入此 JSON 配置')
+              Text(this.saveButtonText())
                 .fontSize(FontSz.headline)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.isSaveEnabled() ? AppColor.onBrand : AppColor.textTertiary)
@@ -187,7 +219,7 @@ struct JsonImportPage {
           .enabled(this.isSaveEnabled())
           .backgroundColor(this.isSaveEnabled() ? AppColor.brand : AppColor.surfaceAlt)
           .onClick(() => {
-            this.importJsonNode();
+            this.saveJsonNode();
           })
         }
         .width('100%')
@@ -203,13 +235,36 @@ struct JsonImportPage {
   }
 
   private isSaveEnabled(): boolean {
-    return this.outboundJson.trim().length > 0 && this.validationOk && !this.isBusy;
+    return this.outboundJson.trim().length > 0 &&
+      this.validationOk &&
+      !this.isBusy &&
+      (!this.editMode || this.nodeName.trim().length > 0);
   }
 
   private async loadState(): Promise<void> {
+    if (this.stateLoaded) {
+      return;
+    }
     const context = getContext(this) as common.Context;
     this.language = (await SETTINGS_CONTROLLER.load(context)).language;
+    const params = router.getParams() as JsonImportParams;
+    if (params !== undefined && params.nodeId !== undefined && params.nodeId.length > 0) {
+      this.editMode = true;
+      this.editNodeId = params.nodeId;
+      const state = await NODES_CONTROLLER.load(context, this.language);
+      const node = NODES_CONTROLLER.findNode(state.nodes, this.editNodeId);
+      if (node === null) {
+        this.lastError = this.t('jsonImport.editMissing');
+      } else if (!this.isEditableJsonNode(node)) {
+        this.lastError = this.t('jsonImport.editUnsupported');
+      } else {
+        this.nodeName = node.name;
+        this.outboundJson = node.outboundJson;
+        this.editConfigType = node.configType ?? 'full';
+      }
+    }
     this.validateConfig();
+    this.stateLoaded = true;
   }
 
   private validateConfig(): void {
@@ -219,9 +274,17 @@ struct JsonImportPage {
       this.validationMessage = '';
       return;
     }
-    const validation = NODES_CONTROLLER.validateConfig(value, this.language);
+    const validation = NODES_CONTROLLER.validateConfig(value, this.language, this.editMode ? this.editConfigType : undefined);
     this.validationOk = validation.valid;
     this.validationMessage = validation.message;
+  }
+
+  private async saveJsonNode(): Promise<void> {
+    if (this.editMode) {
+      await this.updateJsonNode();
+      return;
+    }
+    await this.importJsonNode();
   }
 
   private async importJsonNode(): Promise<void> {
@@ -240,22 +303,7 @@ struct JsonImportPage {
       }
 
       const normalizedJson = validation.normalizedJson;
-      // 提取 JSON 中 tag 字段作为节点名，若无则使用默认名称
-      let nodeName = validation.configType === 'full' ? '完整配置导入' :
-        validation.configType === 'proxy-chain' ? '代理链导入' :
-        validation.configType === 'policy-group' ? '策略组导入' : 'JSON导入';
-      try {
-        const obj = JSON.parse(normalizedJson) as Record<string, Object>;
-        if (obj.tag && typeof obj.tag === 'string' && obj.tag.trim().length > 0) {
-          nodeName = obj.tag.trim();
-        } else if ((validation.configType === 'full' || validation.configType === 'proxy-chain' || validation.configType === 'policy-group') && obj.remarks && typeof obj.remarks === 'string' && obj.remarks.trim().length > 0) {
-          nodeName = obj.remarks.trim();
-        } else if ((validation.configType === 'full' || validation.configType === 'proxy-chain' || validation.configType === 'policy-group') && obj.name && typeof obj.name === 'string' && obj.name.trim().length > 0) {
-          nodeName = obj.name.trim();
-        }
-      } catch (err) {
-        // ignore
-      }
+      const nodeName = resolveJsonConfigNodeName(normalizedJson, validation.configType);
 
       const savedProfile = await NODES_CONTROLLER.saveProfile(context, normalizedJson, this.language, validation.configType);
       if (savedProfile.profile === null) {
@@ -265,10 +313,46 @@ struct JsonImportPage {
 
       await SubscriptionStore.addManualNode(context, nodeName, normalizedJson, validation.configType);
       SHARED_RUNTIME_CONTROLLER.appendLog('自定义 JSON 节点导入成功');
-      promptAction.showToast({ message: '节点导入成功' });
+      promptAction.showToast({ message: this.t('jsonImport.imported') });
       router.back();
     } catch (error) {
       this.lastError = '导入失败：' + JSON.stringify(error);
+    } finally {
+      this.isBusy = false;
+    }
+  }
+
+  private async updateJsonNode(): Promise<void> {
+    const value = this.outboundJson.trim();
+    if (value.length === 0 || !this.validationOk || this.editNodeId.length === 0) {
+      return;
+    }
+
+    this.isBusy = true;
+    try {
+      const context = getContext(this) as common.Context;
+      const validation = NODES_CONTROLLER.validateConfig(value, this.language, this.editConfigType);
+      if (!validation.valid) {
+        this.lastError = validation.message;
+        return;
+      }
+      const result = await NODES_CONTROLLER.updateManualNode(
+        context,
+        this.editNodeId,
+        this.nodeName,
+        validation.normalizedJson,
+        this.language,
+        validation.configType
+      );
+      if (!result.success) {
+        this.lastError = result.lastError;
+        return;
+      }
+      SHARED_RUNTIME_CONTROLLER.appendLog('自定义 JSON 节点已更新');
+      promptAction.showToast({ message: this.t('jsonImport.updated') });
+      router.back();
+    } catch (error) {
+      this.lastError = '保存失败：' + JSON.stringify(error);
     } finally {
       this.isBusy = false;
     }
@@ -345,5 +429,19 @@ struct JsonImportPage {
         fs.closeSync(file);
       }
     }
+  }
+
+  private isEditableJsonNode(node: ProxyNode): boolean {
+    return node.sourceUrl.trim().length === 0 &&
+      node.rawLink.trim().length === 0 &&
+      ((node.configType ?? 'outbound') === 'full' || node.protocol === 'custom');
+  }
+
+  private saveButtonText(): string {
+    return this.editMode ? this.t('jsonImport.saveEdit') : this.t('jsonImport.importButton');
+  }
+
+  private t(key: string): string {
+    return translate(this.language, key);
   }
 }

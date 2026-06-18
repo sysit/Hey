@@ -2,6 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { buildPolicyGroupConfigFromNodes, buildPolicyGroupConfigFromSubscription, buildProxyChainConfigFromNodes, isAdvancedOutboundBuildableNode, normalizePolicyGroupBuilderStrategy, resolveDynamicPolicyGroupConfigJson } from '../main/ets/core/AdvancedOutboundBuilder';
 import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData, parseAppBackupPayload } from '../main/ets/core/AppBackup';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate } from '../main/ets/core/I18n';
+import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
@@ -314,6 +315,14 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"metrics"')).assertEqual(-1);
       expect(result.configJson.indexOf('"http-in"')).assertEqual(-1);
       expect(result.httpProxyPort === undefined).assertTrue();
+    });
+
+    it('resolves editable json config node names', 0, () => {
+      expect(resolveJsonConfigNodeName(VLESS_REALITY_OUTBOUND, 'outbound')).assertEqual('proxy');
+      expect(resolveJsonConfigNodeName(FULL_XRAY_CONFIG, 'full')).assertEqual('Custom full config');
+      expect(resolveJsonConfigNodeName('{"type":"policy-group","name":"PG","outbounds":[]}', 'policy-group')).assertEqual('PG');
+      expect(resolveJsonConfigNodeName('{', 'full', 'Fallback')).assertEqual('Fallback');
+      expect(defaultJsonConfigNodeName('full')).assertEqual('完整配置导入');
     });
 
     it('imports wireguard conf files as outbound json', 0, () => {
