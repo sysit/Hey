@@ -7,7 +7,7 @@ import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/et
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
-import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
+import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
@@ -460,6 +460,11 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"mux"');
       expect(result.configJson).assertContain('"concurrency": -1');
       expect(result.configJson).assertContain('"9.9.9.9"');
+
+      settings.routingDomainStrategy = 'bad';
+      result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson).assertContain('"domainStrategy": "AsIs"');
+      expect(result.configJson.indexOf('"domainStrategy": "bad"')).assertEqual(-1);
     });
 
     it('applies mux only to v2rayNG supported outbound protocols', 0, () => {
@@ -1227,6 +1232,7 @@ export default function localUnitTest() {
       settings.realPingConcurrency = 32;
       settings.outboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_REPLACE;
       settings.mode = APP_MODE_PROXY_ONLY;
+      settings.routingDomainStrategy = 'IPOnDemand';
       settings.uiModeNight = '2';
       settings.speedEnabled = true;
       settings.confirmRemove = true;
@@ -1271,6 +1277,7 @@ export default function localUnitTest() {
       expect(draft.realPingConcurrency).assertEqual('32');
       expect(draft.outboundDomainResolveMethod).assertEqual(OUTBOUND_DOMAIN_RESOLVE_REPLACE);
       expect(draft.mode).assertEqual(APP_MODE_PROXY_ONLY);
+      expect(draft.routingDomainStrategy).assertEqual('IPOnDemand');
       const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
       expect(rebuilt.uiModeNight).assertEqual('2');
       expect(rebuilt.speedEnabled).assertTrue();
@@ -1307,6 +1314,7 @@ export default function localUnitTest() {
       expect(rebuilt.realPingConcurrency).assertEqual(32);
       expect(rebuilt.outboundDomainResolveMethod).assertEqual(OUTBOUND_DOMAIN_RESOLVE_REPLACE);
       expect(rebuilt.mode).assertEqual(APP_MODE_PROXY_ONLY);
+      expect(rebuilt.routingDomainStrategy).assertEqual('IPOnDemand');
 
       draft.vpnInterfaceAddressIndex = 99;
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnInterfaceAddressIndex).assertEqual(0);
@@ -1334,6 +1342,8 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).logLevel).assertEqual('warning');
       draft.outboundDomainResolveMethod = 'bad' as OutboundDomainResolveMethod;
       expect(SETTINGS_CONTROLLER.buildSettings(draft).outboundDomainResolveMethod).assertEqual(OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS);
+      draft.routingDomainStrategy = 'bad';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).routingDomainStrategy).assertEqual('AsIs');
       draft.dnsHosts = '  ';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).dnsHosts).assertEqual('');
       draft.realPingConcurrency = '0';
@@ -1354,6 +1364,10 @@ export default function localUnitTest() {
       expect(normalizeRealPingConcurrency(0)).assertEqual(1);
       expect(normalizeRealPingConcurrency(5.8)).assertEqual(5);
       expect(normalizeRealPingConcurrency(256)).assertEqual(128);
+      expect(normalizeRoutingDomainStrategy(undefined)).assertEqual('AsIs');
+      expect(normalizeRoutingDomainStrategy('IPIfNonMatch')).assertEqual('IPIfNonMatch');
+      expect(normalizeRoutingDomainStrategy('IPOnDemand')).assertEqual('IPOnDemand');
+      expect(normalizeRoutingDomainStrategy('bad')).assertEqual('AsIs');
       expect(resolveDelayTestUrl(undefined)).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('')).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('  https://probe.example/ping  ')).assertEqual('https://probe.example/ping');

@@ -125,6 +125,9 @@ export type OutboundDomainResolveMethod = '0' | '1' | '2';
 export const OUTBOUND_DOMAIN_RESOLVE_NONE: OutboundDomainResolveMethod = '0';
 export const OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS: OutboundDomainResolveMethod = '1';
 export const OUTBOUND_DOMAIN_RESOLVE_REPLACE: OutboundDomainResolveMethod = '2';
+export const ROUTING_DOMAIN_STRATEGY_AS_IS: string = 'AsIs';
+export const ROUTING_DOMAIN_STRATEGY_IP_IF_NON_MATCH: string = 'IPIfNonMatch';
+export const ROUTING_DOMAIN_STRATEGY_IP_ON_DEMAND: string = 'IPOnDemand';
 
 export function normalizeVpnInterfaceAddressIndex(value: number | undefined, fallback: number = DEFAULT_VPN_INTERFACE_ADDRESS_INDEX): number {
   const safeFallback = fallback >= 0 && fallback < VPN_INTERFACE_ADDRESS_CONFIGS.length ? fallback : DEFAULT_VPN_INTERFACE_ADDRESS_INDEX;
@@ -205,6 +208,17 @@ export function normalizeOutboundDomainResolveMethod(
     return value;
   }
   return fallback;
+}
+
+export function normalizeRoutingDomainStrategy(value: string | undefined, fallback: string = ROUTING_DOMAIN_STRATEGY_AS_IS): string {
+  if (value === ROUTING_DOMAIN_STRATEGY_AS_IS || value === ROUTING_DOMAIN_STRATEGY_IP_IF_NON_MATCH ||
+    value === ROUTING_DOMAIN_STRATEGY_IP_ON_DEMAND) {
+    return value;
+  }
+  if (fallback === ROUTING_DOMAIN_STRATEGY_IP_IF_NON_MATCH || fallback === ROUTING_DOMAIN_STRATEGY_IP_ON_DEMAND) {
+    return fallback;
+  }
+  return ROUTING_DOMAIN_STRATEGY_AS_IS;
 }
 
 export function isVpnRuntimeMode(value: string | undefined): boolean {
