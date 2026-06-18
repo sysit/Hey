@@ -17,10 +17,10 @@
 | 路由设置页 | ✅ 82% | 广告拦截、自定义规则、预设规则集导入/导出均已生效；自定义规则可选择当前高级出站目标；真机规则回归待补 |
 | Geo 资产管理 | ✅ 93% | 下载 / 自定义 URL / 剪贴板备份还原 / WebDAV ZIP 云备份还原已实现，恢复兼容旧 JSON 包；Geo 文件 native 计数/校验已接线，待重建 `.so` 真机验证 |
 | 分应用代理 | 🟡 70% | 开关、黑白名单、手动包名、应用枚举和 VPN 应用映射已接线；仍受平台可见性限制，待真机回归 |
-| 设置页 | 🟡 89% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、DNS hosts、速度显示、当前连接信息测试网址、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线 |
+| 设置页 | 🟡 90% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、DNS hosts、速度显示、常驻速度通知、当前连接信息测试网址、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线 |
 | 扫码导入 | ✅ 82% | 粘贴导入和 ScanKit 相机扫码已接线；`startScanImmediate` 开启时进入扫码页自动拉起相机，待真机相机权限/机型回归 |
 | 导出 / 分享 | ✅ 82% | 文本/文件导出、节点二维码与系统分享面板已完成；后续主要是真机分享目标兼容回归 |
-| 平台集成 | 🟡 35% | Want / URL Scheme 深链导入已完成；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；桌面快捷方式 / 服务卡片仍待补 |
+| 平台集成 | 🟡 40% | Want / URL Scheme 深链导入已完成；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；常驻速度通知已接 Harmony NotificationKit，待真机通知权限/展示回归；桌面快捷方式 / 服务卡片仍待补 |
 
 ### Native 桥接现状
 
@@ -88,6 +88,7 @@
 - ✅ Want / 深链导入（对应 v2rayNG UrlScheme）
 - ✅ 控制深链入口：`hey://control?action=start|stop|toggle|scan` 与短 URI `hey://start`/`stop`/`toggle`/`scan`
 - ✅ 开机自动连接设置：持久化 `pref_is_booted` 等价设置，并在 Harmony `AUTO_STARTUP` 启动原因下自动启动当前节点（受系统自启动权限/开关限制，待真机重启回归）
+- 🟡 常驻速度通知：运行中且速度显示开启时发布 ongoing 通知，每 3 秒刷新上传/下载速率与累计流量（待真机通知权限/展示回归）
 - 桌面快捷方式、服务卡片（widget）
 
 ## 三、依赖关系
@@ -156,3 +157,4 @@
 | 2026-06-18 | 阶段 5 | ✅ WebDAV 云备份/还原基础完成；Assets 页可保存 WebDAV 配置并上传/下载 Hey JSON 备份包，支持 Basic Auth 与 best-effort MKCOL |
 | 2026-06-18 | 阶段 5 | ✅ WebDAV ZIP 备份格式完成；默认 `backups/backup_ng.zip`，ZIP 内含 `hey_backup.json`，上传/下载走二进制并兼容旧 JSON 恢复 |
 | 2026-06-18 | 阶段 5 | ✅ 控制深链入口完成；注册 `hey://control?action=start|stop|toggle|scan` 与短 URI，首页可通过外部 Want 启停/切换连接或打开扫码页，对齐 v2rayNG Tasker/shortcuts/QS tile 的基础控制能力 |
+| 2026-06-18 | 阶段 5 | 🟡 常驻速度通知代码完成；运行中且速度显示开启时通过 NotificationKit 发布 ongoing 通知，按 3 秒节流刷新上传/下载速率和累计流量，停止或关闭设置时取消，待真机回归 |

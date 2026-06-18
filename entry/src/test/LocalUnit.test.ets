@@ -5,7 +5,7 @@ import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
-import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, DEFAULT_IP_API_URL, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
+import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, DEFAULT_IP_API_URL, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
@@ -20,6 +20,7 @@ import {
   normalizeSubscriptionUpdateInterval
 } from '../main/ets/core/SubscriptionGroups';
 import { buildSubscriptionAutoUpdateSchedulePlan } from '../main/ets/core/SubscriptionSchedulerPlan';
+import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
@@ -963,6 +964,32 @@ export default function localUnitTest() {
       expect(formatBytes(512)).assertEqual('512 B');
       expect(formatBytes(2048)).assertEqual('2.0 KB');
       expect(formatDuration(65)).assertEqual('01:05');
+    });
+
+    it('builds throttled speed notification copy from runtime stats', 0, () => {
+      const stats: RuntimeStats = {
+        uploadBytes: 3048,
+        downloadBytes: 6096,
+        xrayRunning: true,
+        tunRunning: true,
+        lastMessage: ''
+      };
+      const previous = sampleSpeedNotificationStats({
+        uploadBytes: 1000,
+        downloadBytes: 2000,
+        xrayRunning: true,
+        tunRunning: true,
+        lastMessage: ''
+      }, 1000);
+      const current = sampleSpeedNotificationStats(stats, 3000);
+      const rates = calculateSpeedNotificationRates(previous, current);
+      expect(rates.uploadBytesPerSecond).assertEqual(1024);
+      expect(rates.downloadBytesPerSecond).assertEqual(2048);
+      expect(buildSpeedNotificationText('en', rates)).assertEqual('Upload 1.0 KB/s | Download 2.0 KB/s');
+      expect(buildSpeedNotificationAdditionalText('en', stats, '00:02')).assertEqual('Duration 00:02 | Total 3.0 KB / 6.0 KB');
+      expect(shouldPublishSpeedNotification(1000, 0, false)).assertTrue();
+      expect(shouldPublishSpeedNotification(2000, 1000, true)).assertFalse();
+      expect(shouldPublishSpeedNotification(4000, 1000, true)).assertTrue();
     });
 
     it('builds system text share wants', 0, () => {

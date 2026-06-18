@@ -7,6 +7,7 @@ import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrenc
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
+import { SPEED_NOTIFICATION_MANAGER } from '../services/SpeedNotificationManager';
 import { SubscriptionBackgroundScheduler } from '../services/SubscriptionBackgroundScheduler';
 import { SubscriptionManager } from '../services/SubscriptionManager';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
@@ -1396,6 +1397,15 @@ struct Index {
     this.elapsedText = state.elapsedText;
     this.stats = state.stats;
     this.lastError = state.lastError;
+    this.syncSpeedNotification();
+  }
+
+  private syncSpeedNotification(): void {
+    const context = getContext(this) as common.Context;
+    SPEED_NOTIFICATION_MANAGER.sync(context, this.status, this.speedEnabled, this.stats, this.elapsedText, this.language)
+      .catch((error: Error) => {
+        SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
+      });
   }
 
   private visibleNodes(): Array<ProxyNode> {
