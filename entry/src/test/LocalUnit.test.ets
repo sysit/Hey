@@ -823,6 +823,17 @@ export default function localUnitTest() {
       expect(enabled.configJson).assertContain('"com.only.app"');
     });
 
+    it('keeps route only sniffing when protocol sniffing is disabled', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.sniffingEnabled = false;
+      settings.localDnsEnabled = false;
+      settings.fakeDnsEnabled = false;
+      settings.routeOnlyEnabled = true;
+
+      const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson).assertContain('"sniffing": {\n        "enabled": false,\n        "destOverride": [],\n        "routeOnly": true\n      }');
+    });
+
     it('appends local http proxy inbound when enabled', 0, () => {
       const settings = buildSettingsFixture();
       let result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);

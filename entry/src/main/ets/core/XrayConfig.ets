@@ -1997,22 +1997,25 @@ function isIpLiteral(host: string): boolean {
 
 function buildTunSniffing(settings: AppSettings | undefined): XraySniffingConfig | undefined {
   const destOverride = new Array<string>();
-  if (settings === undefined || settings.sniffingEnabled) {
+  const sniffAllTlsAndHttp = settings === undefined || settings.sniffingEnabled;
+  const fakeDns = settings !== undefined && settings.localDnsEnabled && settings.fakeDnsEnabled;
+  const routeOnly = settings !== undefined && settings.routeOnlyEnabled;
+  if (sniffAllTlsAndHttp) {
     destOverride.push('http');
     destOverride.push('tls');
     destOverride.push('quic');
   }
-  if (settings !== undefined && settings.localDnsEnabled && settings.fakeDnsEnabled) {
+  if (fakeDns) {
     destOverride.push('fakedns');
   }
-  if (destOverride.length === 0) {
+  if (destOverride.length === 0 && !routeOnly) {
     return undefined;
   }
   const sniffing: XraySniffingConfig = {
-    enabled: true,
+    enabled: fakeDns || sniffAllTlsAndHttp,
     destOverride
   };
-  if (settings !== undefined && settings.routeOnlyEnabled) {
+  if (routeOnly) {
     sniffing.routeOnly = true;
   }
   return sniffing;

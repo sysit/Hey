@@ -369,6 +369,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M2 | ✅ 自定义路由规则编辑/生效（规则模型 + Route 页增删改/启停/排序 + `routing.rules` 生成 + 单测） |
 | 2026-06-18 | M2 | ✅ 预设规则集导入/导出（5 组内置预设 + 剪贴板 JSON 导入/导出 + locked 规则保留 + 单测）；M2 路由规则主功能闭环，仍待真机验证规则实效 |
 | 2026-06-19 | M2 | ✅ routeOnly process 路由语义完成（`routeOnlyEnabled` 开启时写入 TUN sniffing `routeOnly` 并允许自定义规则输出 `process`；关闭时过滤 process-only 规则或移除 process 条件；补配置生成单测） |
+| 2026-06-19 | M2 | ✅ routeOnly sniffing 边界对齐 v2rayNG（普通 sniffing 与 FakeDNS 都关闭时仍生成 `enabled=false`、空 `destOverride`、`routeOnly=true` 的 sniffing 对象；补配置生成单测） |
 | 2026-06-18 | M3 | ✅ 订阅分组重排（纯排序函数 + Store 持久化 + Subs 页滑动上移/下移 + 单测）；批量更新全部确认已落地 |
 | 2026-06-18 | 协议点检 | ✅ WireGuard `.conf` 整段解析完成，支持粘贴/扫码/文件导入 `[Interface]` + `[Peer]` 配置并归一化为 Xray outbound |
 | 2026-06-18 | M3 | ✅ 订阅级不安全 URL 开关（编辑页 `allowInsecureUrl` + 保存/更新 HTTP 校验 + 重定向校验 + 单测）；默认拒绝 `http://` 订阅，开启后允许 |
