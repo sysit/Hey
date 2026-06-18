@@ -473,6 +473,69 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"example.com": "127.0.0.1"');
     });
 
+    it('adds v2rayng style dns domain servers and dns routing rules', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.remoteDns = '9.9.9.9,1.1.1.1';
+      settings.domesticDns = '223.5.5.5,119.29.29.29';
+      settings.routingRules = [
+        {
+          id: 'proxy-dns-domain',
+          remarks: 'Proxy DNS domain',
+          domain: ['domain:proxy.example'],
+          ip: [],
+          process: [],
+          outboundTag: 'proxy',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        },
+        {
+          id: 'direct-dns-domain',
+          remarks: 'Direct DNS domain',
+          domain: ['domain:direct.example', 'geosite:cn'],
+          ip: [],
+          process: [],
+          outboundTag: 'direct',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        },
+        {
+          id: 'blocked-dns-domain',
+          remarks: 'Blocked DNS domain',
+          domain: ['domain:blocked.example'],
+          ip: [],
+          process: [],
+          outboundTag: 'block',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        }
+      ];
+
+      const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson).assertContain('"tag": "dns"');
+      expect(result.configJson).assertContain('"enableParallelQuery": true');
+      expect(result.configJson).assertContain('"address": "9.9.9.9"');
+      expect(result.configJson).assertContain('"domain:proxy.example"');
+      expect(result.configJson).assertContain('"tag": "domestic-dns-0"');
+      expect(result.configJson).assertContain('"domain:direct.example"');
+      expect(result.configJson).assertContain('"tag": "domestic-dns-0_cn_expect"');
+      expect(result.configJson).assertContain('"expectIPs"');
+      expect(result.configJson).assertContain('"geoip:cn"');
+      expect(result.configJson).assertContain('"domain:blocked.example": "127.0.0.1"');
+      expect(result.configJson).assertContain('"inboundTag": [\n        "dns"');
+      expect(result.configJson).assertContain('"outboundTag": "proxy"');
+      expect(result.configJson).assertContain('"inboundTag": [\n        "domestic-dns-0"');
+      expect(result.configJson).assertContain('"outboundTag": "direct"');
+    });
+
     it('applies outbound domain pre-resolve settings to generated xray config', 0, () => {
       const settings = buildSettingsFixture();
       settings.dnsHosts = 'example.com:203.0.113.8';

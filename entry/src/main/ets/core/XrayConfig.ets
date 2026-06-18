@@ -43,6 +43,9 @@ interface XrayHappyEyeballsConfig {
 interface XrayDnsServerConfig {
   address: string;
   domains?: Array<string>;
+  expectIPs?: Array<string>;
+  skipFallback?: boolean;
+  tag?: string;
 }
 
 interface XrayInboundConfig {
@@ -62,6 +65,8 @@ interface XraySocksAccount {
 interface XrayDnsConfig {
   servers: Array<string | XrayDnsServerConfig>;
   hosts?: Object;
+  tag?: string;
+  enableParallelQuery?: boolean;
 }
 
 interface DnsHostsParseResult {
@@ -235,9 +240,14 @@ export const METRICS_SERVER_URL: string = 'http://127.0.0.1:10845/debug/vars';
 const METRICS_OUT_TAG: string = 'metrics_out';
 const METRICS_IN_TAG: string = 'metrics_in';
 const DNS_OUT_TAG: string = 'dns-out';
+const DNS_TAG: string = 'dns';
+const DOMESTIC_DNS_TAG_PREFIX: string = 'domestic-dns-';
 const DEFAULT_WIREGUARD_IPV4_ADDRESS: string = '172.16.0.2/32';
 const DEFAULT_LOG_LEVEL: string = 'warning';
 const DEFAULT_ROUTING_DOMAIN_STRATEGY: string = 'AsIs';
+const GEOSITE_CN_DOMAIN: string = 'geosite:cn';
+const GEOIP_CN_EXPECT: string = 'geoip:cn';
+const DNS_BLOCK_HOST: string = '127.0.0.1';
 
 function isSupportedProtocol(protocol: string): boolean {
   return SUPPORTED_PROTOCOLS.indexOf(protocol.toLowerCase()) >= 0;
@@ -1124,6 +1134,7 @@ function buildXrayConfigFromOutbounds(
 
   const dns = buildDnsConfig(settings);
   applyOutboundDomainResolveSettings(outbounds, dns, settings);
+  prependDnsRoutingRules(routingRules, dns, proxyTarget);
 
   const config: XrayFullConfig = {
     log: {
@@ -1235,25 +1246,160 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
     };
     return defaultDns;
   }
+  const remoteDns = parseCsvStrings(settings.remoteDns);
+  const domesticDns = parseCsvStrings(settings.domesticDns);
   const servers: Array<string | XrayDnsServerConfig> = [];
   addCsvValues(servers, settings.remoteDns);
-  addCsvValues(servers, settings.domesticDns);
+  addDnsProxyDomainServer(servers, remoteDns, collectDnsRuleDomains(settings, ['proxy', 'proxy-chain', 'policy-group']));
+  addDomesticDnsServers(servers, domesticDns, collectDnsRuleDomains(settings, ['direct']));
   if (servers.length === 0) {
     servers.push('1.1.1.1');
   }
   const dns: XrayDnsConfig = {
-    servers
+    servers,
+    tag: DNS_TAG
   };
+  if (remoteDns.length + domesticDns.length > 2) {
+    dns.enableParallelQuery = true;
+  }
   if (settings.localDnsEnabled && settings.fakeDnsEnabled) {
     dns.servers.unshift({
       address: 'fakedns',
       domains: buildFakeDnsDomains(settings)
     });
   }
-  if (settings.dnsHosts.length > 0) {
-    dns.hosts = parseDnsHostsValue(settings.dnsHosts).value;
-  }
+  applyDnsHosts(dns, settings);
   return dns;
+}
+
+function addDnsProxyDomainServer(
+  servers: Array<string | XrayDnsServerConfig>,
+  remoteDns: Array<string>,
+  proxyDomains: Array<string>
+): void {
+  if (remoteDns.length === 0 || proxyDomains.length === 0) {
+    return;
+  }
+  servers.push({
+    address: remoteDns[0],
+    domains: proxyDomains
+  });
+}
+
+function addDomesticDnsServers(
+  servers: Array<string | XrayDnsServerConfig>,
+  domesticDns: Array<string>,
+  directDomains: Array<string>
+): void {
+  const cnDomains = new Array<string>();
+  const regularDomains = new Array<string>();
+  for (let index = 0; index < directDomains.length; index++) {
+    const domain = directDomains[index];
+    if (isCnRegionDnsDomain(domain)) {
+      addUniqueString(cnDomains, domain);
+    } else {
+      addUniqueString(regularDomains, domain);
+    }
+  }
+
+  for (let index = 0; index < domesticDns.length; index++) {
+    const tag = `${DOMESTIC_DNS_TAG_PREFIX}${index}`;
+    servers.push({
+      address: domesticDns[index],
+      domains: regularDomains.slice(),
+      skipFallback: true,
+      tag
+    });
+    if (cnDomains.length > 0) {
+      servers.push({
+        address: domesticDns[index],
+        domains: cnDomains.slice(),
+        expectIPs: [GEOIP_CN_EXPECT],
+        skipFallback: true,
+        tag: `${tag}_cn_expect`
+      });
+    }
+  }
+}
+
+function applyDnsHosts(dns: XrayDnsConfig, settings: AppSettings): void {
+  const hosts: Record<string, string | Array<string>> = {};
+  const blockDomains = collectDnsRuleDomains(settings, ['block']);
+  for (let index = 0; index < blockDomains.length; index++) {
+    hosts[blockDomains[index]] = DNS_BLOCK_HOST;
+  }
+
+  const parsedHosts = settings.dnsHosts.trim().length > 0 ? parseDnsHostsValue(settings.dnsHosts) : undefined;
+  if (parsedHosts !== undefined) {
+    const userKeys = Object.keys(parsedHosts.hosts);
+    for (let index = 0; index < userKeys.length; index++) {
+      hosts[userKeys[index]] = parsedHosts.hosts[userKeys[index]];
+    }
+  }
+
+  if (Object.keys(hosts).length > 0) {
+    dns.hosts = hosts as Object;
+    return;
+  }
+  if (parsedHosts !== undefined) {
+    dns.hosts = parsedHosts.value;
+  }
+}
+
+function prependDnsRoutingRules(rules: Array<XrayRoutingRule>, dns: XrayDnsConfig, proxyTarget: XrayRoutingTarget): void {
+  const dnsRules = new Array<XrayRoutingRule>();
+  const domesticTags = collectDomesticDnsTags(dns);
+  if (domesticTags.length > 0) {
+    dnsRules.push({
+      type: 'field',
+      inboundTag: domesticTags,
+      outboundTag: 'direct'
+    });
+  }
+  if (dns.tag !== undefined && dns.tag.length > 0) {
+    const proxyRule: XrayRoutingRule = {
+      type: 'field',
+      inboundTag: [dns.tag]
+    };
+    applyRoutingTarget(proxyRule, proxyTarget);
+    dnsRules.push(proxyRule);
+  }
+  for (let index = dnsRules.length - 1; index >= 0; index--) {
+    rules.unshift(dnsRules[index]);
+  }
+}
+
+function collectDomesticDnsTags(dns: XrayDnsConfig): Array<string> {
+  const tags = new Array<string>();
+  for (let index = 0; index < dns.servers.length; index++) {
+    const server = dns.servers[index];
+    if (typeof server === 'string') {
+      continue;
+    }
+    const tag = server.tag ?? '';
+    if (tag.startsWith(DOMESTIC_DNS_TAG_PREFIX)) {
+      addUniqueString(tags, tag);
+    }
+  }
+  return tags;
+}
+
+function collectDnsRuleDomains(settings: AppSettings, outboundTags: Array<string>): Array<string> {
+  const domains = new Array<string>();
+  for (let index = 0; index < settings.routingRules.length; index++) {
+    const rule = settings.routingRules[index];
+    if (!rule.enabled || outboundTags.indexOf(rule.outboundTag) < 0) {
+      continue;
+    }
+    addStringArrayValues(domains, rule.domain);
+  }
+  return domains;
+}
+
+function isCnRegionDnsDomain(domain: string): boolean {
+  const normalized = domain.trim();
+  return normalized === GEOSITE_CN_DOMAIN ||
+    (normalized.startsWith('geosite:') && (normalized.endsWith('-cn') || normalized.endsWith('@cn')));
 }
 
 function applyOutboundDomainResolveSettings(outbounds: Array<XrayOutbound>, dns: XrayDnsConfig, settings: AppSettings | undefined): void {
@@ -1790,11 +1936,24 @@ function addCsvValues(target: Array<string | XrayDnsServerConfig>, value: string
   }
 }
 
+function parseCsvStrings(value: string): Array<string> {
+  const result = new Array<string>();
+  const parts = value.split(',');
+  for (let index = 0; index < parts.length; index++) {
+    addUniqueString(result, parts[index]);
+  }
+  return result;
+}
+
+function addUniqueString(target: Array<string>, value: string): void {
+  const item = value.trim();
+  if (item.length > 0 && target.indexOf(item) < 0) {
+    target.push(item);
+  }
+}
+
 function addStringArrayValues(target: Array<string>, values: Array<string>): void {
   for (let index = 0; index < values.length; index++) {
-    const item = values[index].trim();
-    if (item.length > 0 && target.indexOf(item) < 0) {
-      target.push(item);
-    }
+    addUniqueString(target, values[index]);
   }
 }
