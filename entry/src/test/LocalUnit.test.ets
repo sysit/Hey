@@ -2,7 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate } from '../main/ets/core/I18n';
 import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
-import { LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson } from '../main/ets/core/XrayConfig';
+import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson } from '../main/ets/core/XrayConfig';
 import { parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
 import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
 import {
@@ -250,6 +250,14 @@ export default function localUnitTest() {
       result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
       expect(result.configJson).assertContain(`"listen": "${LOCAL_HTTP_PROXY_LAN_HOST}"`);
       expect(result.httpProxyHost).assertEqual(LOCAL_HTTP_PROXY_LAN_HOST);
+    });
+
+    it('uses requested socks port for delay test config', 0, () => {
+      const customPort = 19081;
+      const result = buildDelayTestConfig(VLESS_REALITY_OUTBOUND, customPort);
+      expect(result.configJson).assertContain('"tag": "delay_socks_in"');
+      expect(result.configJson).assertContain(`"port": ${customPort}`);
+      expect(result.configJson.indexOf(`"port": ${DELAY_TEST_SOCKS_PORT}`)).assertEqual(-1);
     });
 
     it('applies prefer ipv6 to outbound happy eyeballs', 0, () => {

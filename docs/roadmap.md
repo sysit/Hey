@@ -13,7 +13,7 @@
 | 分享链接解析 | ✅ 88% | vless/vmess/trojan/ss/socks/http/wireguard/hy2 已覆盖，WireGuard `.conf` 整段导入已支持；**缺 TUIC** |
 | 订阅管理 | 🟡 91% | 多分组 + 旧版迁移 + 编辑/重排/批量更新全部 + 订阅级不安全 URL 开关 + 当前分组删除全部 + 自动更新设置/前台到期刷新 + 本地 HTTP 代理经由更新；**缺后台调度** |
 | Xray 配置生成 | 🟡 73% | 普通节点生成 TUN/metrics/DNS/routing/HTTP 代理配置，HTTP 代理支持局域网共享监听；完整自定义 Xray config 可校验后原样运行；高级出站目标仍待补 |
-| 节点延迟测速 / 排序 | ✅ 80% | `CGoPing` 真测速 + 排序，需真机验证 |
+| 节点延迟测速 / 排序 | ✅ 82% | `CGoPing` 真测速 + 排序，测速 SOCKS inbound 优先使用 `CGoGetFreePorts` 动态端口；需真机验证 |
 | 路由设置页 | ✅ 80% | 广告拦截、自定义规则、预设规则集导入/导出均已生效；高级出站目标与真机规则回归待补 |
 | Geo 资产管理 | ✅ 90% | 下载 / 自定义 URL / 备份还原已实现；Geo 文件 native 计数/校验已接线，待重建 `.so` 真机验证 |
 | 分应用代理 | 🟡 70% | 开关、黑白名单、手动包名、应用枚举和 VPN 应用映射已接线；仍受平台可见性限制，待真机回归 |
@@ -24,13 +24,13 @@
 
 ### Native 桥接现状
 
-`libxray.so` 导出 13 个 CGo 函数，当前 `napi_init.cpp` 已接通 9 个：
+`libxray.so` 导出 13 个 CGo 函数，当前 `napi_init.cpp` 已接通 10 个：
 
 - 已接通：`CGoRunXrayFromJSON`、`CGoStopXray`、`CGoPing`、`CGoSetTunFd`、
   `CGoQueryStats`（真实流量统计）、`CGoTestXray`（配置预检）、`CGoXrayVersion`、
-  `CGoReadGeoFiles` / `CGoCountGeoData`（geo 校验/计数）
+  `CGoReadGeoFiles` / `CGoCountGeoData`（geo 校验/计数）、`CGoGetFreePorts`（动态空闲端口）
 - **闲置**：`CGoConvertShareLinksToXrayJson`、
-  `CGOConvertXrayJsonToShareLinks`、`CGoGetFreePorts`、`CGoRunXray`
+  `CGOConvertXrayJsonToShareLinks`、`CGoRunXray`
 
 > 当前预构建 `libxray.so` 仍需按更新后的 version-script 重建；重建前新增可选符号会优雅降级。
 
@@ -123,3 +123,4 @@
 | 2026-06-18 | 阶段 0 | ✅ 本地 DNS / FakeDNS 完成；开启后生成 TUN 53 → `dns-out` 路由、DNS outbound 与 FakeDNS 配置 |
 | 2026-06-18 | 阶段 4 | ✅ 本地 HTTP 代理共享监听完成；`proxySharingEnabled` 开启时 `http-in` 监听 `0.0.0.0:10808` |
 | 2026-06-18 | 阶段 1 | 🟡 Geo 文件校验/计数接线完成；`CGoReadGeoFiles`/`CGoCountGeoData` 已导出并在 Assets 页展示分类数/规则数，待重建 `.so` + 真机验证 |
+| 2026-06-18 | 阶段 1 | 🟡 Native 空闲端口接线完成；延迟测速优先用 `CGoGetFreePorts` 获取临时 SOCKS 端口，失败回退 `10825`，待重建 `.so` + 真机验证 |

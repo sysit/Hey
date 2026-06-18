@@ -28,3 +28,4 @@ export const testXrayConfig: (configJson: string, workDir: string) => NativeResu
 export const xrayVersion: () => NativeResult;
 export const countGeoData: (datDir: string, name: string, geoType: string) => NativeResult;
 export const readGeoFiles: (configJson: string) => NativeResult;
+export const getFreePorts: (count: number) => NativeResult;

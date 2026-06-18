@@ -30,6 +30,7 @@ cat > "${EXPORTS_FILE}" <<'MAP'
     CGoXrayVersion;
     CGoCountGeoData;
     CGoReadGeoFiles;
+    CGoGetFreePorts;
   local: *;
 };
 MAP

@@ -28,6 +28,7 @@ using CGoPingFunc = char* (*)(char*);
 using CGoStringFunc = char* (*)(char*);
 using CGoStopFunc = char* (*)();
 using CGoVersionFunc = char* (*)();
+using CGoFreePortsFunc = char* (*)(int64_t);
 using CGoSetTunFdFunc = void (*)(int);
 
 std::atomic_bool g_xrayRunning(false);
@@ -48,6 +49,7 @@ CGoStringFunc g_testXray = nullptr;
 CGoVersionFunc g_xrayVersion = nullptr;
 CGoStringFunc g_countGeoData = nullptr;
 CGoStringFunc g_readGeoFiles = nullptr;
+CGoFreePortsFunc g_getFreePorts = nullptr;
 
 const char* BASE64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -417,6 +419,14 @@ CGoStringFunc LoadReadGeoFiles()
     return g_readGeoFiles;
 }
 
+CGoFreePortsFunc LoadGetFreePorts()
+{
+    if (g_getFreePorts == nullptr) {
+        g_getFreePorts = reinterpret_cast<CGoFreePortsFunc>(LoadOptionalSymbol("CGoGetFreePorts"));
+    }
+    return g_getFreePorts;
+}
+
 bool ParsePingResponse(const std::string& json, int64_t& delay, std::string& message)
 {
     delay = -1;
@@ -697,6 +707,34 @@ napi_value ReadGeoFiles(napi_env env, napi_callback_info info)
     return BuildCallResult(env, raw, "CGoReadGeoFiles returned null.");
 }
 
+// Requests free localhost TCP ports from libXray/nodep. The result message is a
+// CallResponse whose data is {ports:[...]}.
+napi_value GetFreePorts(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResultQuiet(env, false, "Missing free-port count.");
+    }
+
+    int32_t count = GetIntArg(env, args[0]);
+    if (count <= 0) {
+        return CreateResultQuiet(env, false, "Free-port count must be positive.");
+    }
+    if (count > 16) {
+        count = 16;
+    }
+
+    CGoFreePortsFunc getFreePorts = LoadGetFreePorts();
+    if (getFreePorts == nullptr) {
+        return CreateResultQuiet(env, false, "Free ports unavailable: CGoGetFreePorts not exported by libXray.");
+    }
+
+    char* raw = getFreePorts(static_cast<int64_t>(count));
+    return BuildCallResult(env, raw, "CGoGetFreePorts returned null.");
+}
+
 napi_value ValidateConfig(napi_env env, napi_callback_info info)
 {
     size_t argc = 1;
@@ -869,6 +907,7 @@ static napi_value Init(napi_env env, napi_value exports)
         { "xrayVersion", nullptr, XrayVersion, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "countGeoData", nullptr, CountGeoData, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "readGeoFiles", nullptr, ReadGeoFiles, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFreePorts", nullptr, GetFreePorts, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

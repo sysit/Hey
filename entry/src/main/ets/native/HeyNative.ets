@@ -26,6 +26,12 @@ export interface NativeGeoFilesResult {
   message: string;
 }
 
+export interface NativeFreePortsResult {
+  ok: boolean;
+  ports: Array<number>;
+  message: string;
+}
+
 // libXray wraps every CGo return value in a CallResponse. The native bridge
 // decodes the base64 envelope and hands us the JSON below as the message.
 interface CallResponseString {
@@ -55,6 +61,10 @@ interface GeoFilesData {
   ip?: Array<string>;
 }
 
+interface FreePortsData {
+  ports?: Array<number>;
+}
+
 interface NativeBridge {
   validateConfig(configJson: string): NativeResult;
   setTunFd(tunFd: number): NativeResult;
@@ -67,6 +77,7 @@ interface NativeBridge {
   xrayVersion(): NativeResult;
   countGeoData(datDir: string, name: string, geoType: string): NativeResult;
   readGeoFiles(configJson: string): NativeResult;
+  getFreePorts(count: number): NativeResult;
 }
 
 const bridge = heyNative as NativeBridge;
@@ -146,6 +157,23 @@ export function readNativeGeoFiles(configJson: string): NativeGeoFilesResult {
   }
 }
 
+// Requests free localhost TCP ports from libXray. Older cores without
+// CGoGetFreePorts simply return ok=false and callers should fall back.
+export function getNativeFreePorts(count: number): NativeFreePortsResult {
+  const result = bridge.getFreePorts(count);
+  if (!result.ok) {
+    return { ok: false, ports: [], message: extractCallError(result.message) };
+  }
+
+  try {
+    const envelope = JSON.parse(result.message) as CallResponseAny;
+    const data = normalizeFreePortsData(envelope.data);
+    return { ok: true, ports: normalizePortArray(data.ports), message: '' };
+  } catch (error) {
+    return { ok: false, ports: [], message: `Free ports parse failed: ${JSON.stringify(error)}` };
+  }
+}
+
 // Queries the running Xray metrics endpoint and sums real per-tag outbound
 // traffic. `server` is the expvar URL, e.g. http://127.0.0.1:10845/debug/vars.
 export function queryNativeTraffic(server: string): NativeTrafficStats {
@@ -209,6 +237,22 @@ function normalizeGeoFilesData(value: Object | string | number | undefined): Geo
   return {};
 }
 
+function normalizeFreePortsData(value: Object | string | number | undefined): FreePortsData {
+  if (value === undefined) {
+    return {};
+  }
+  if (typeof value === 'string') {
+    if (value.length === 0) {
+      return {};
+    }
+    return JSON.parse(value) as FreePortsData;
+  }
+  if (typeof value === 'object') {
+    return value as FreePortsData;
+  }
+  return {};
+}
+
 function normalizeStringArray(value: Array<string> | undefined): Array<string> {
   if (value === undefined) {
     return [];
@@ -216,6 +260,19 @@ function normalizeStringArray(value: Array<string> | undefined): Array<string> {
   const result = new Array<string>();
   value.forEach(item => {
     if (typeof item === 'string' && item.length > 0) {
+      result.push(item);
+    }
+  });
+  return result;
+}
+
+function normalizePortArray(value: Array<number> | undefined): Array<number> {
+  if (value === undefined) {
+    return [];
+  }
+  const result = new Array<number>();
+  value.forEach(item => {
+    if (typeof item === 'number' && item >= 1 && item <= 65535 && Math.floor(item) === item) {
       result.push(item);
     }
   });

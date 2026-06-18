@@ -1,6 +1,6 @@
 import { http, socket } from '@kit.NetworkKit';
 import { DEFAULT_SOCKS_HOST, DELAY_TEST_SOCKS_PORT, buildDelayTestConfig } from '../core/XrayConfig';
-import { NativePingResult, pingNativeOutbound } from '../native/HeyNative';
+import { NativePingResult, getNativeFreePorts, pingNativeOutbound } from '../native/HeyNative';
 
 export interface DelayTestResult {
   ok: boolean;
@@ -55,8 +55,9 @@ export class DelayTester {
 
   static async measureNodeOutbound(outboundJson: string, datDir: string, url: string, timeoutMs: number = 8000): Promise<DelayTestResult> {
     let configJson = '';
+    const socksPort = DelayTester.resolveDelayTestSocksPort();
     try {
-      configJson = buildDelayTestConfig(outboundJson).configJson;
+      configJson = buildDelayTestConfig(outboundJson, socksPort).configJson;
     } catch (error) {
       return {
         ok: false,
@@ -65,7 +66,7 @@ export class DelayTester {
       };
     }
 
-    const proxy = `socks5://${DEFAULT_SOCKS_HOST}:${DELAY_TEST_SOCKS_PORT}`;
+    const proxy = `socks5://${DEFAULT_SOCKS_HOST}:${socksPort}`;
     const timeoutSeconds = Math.max(1, Math.floor(timeoutMs / 1000));
     try {
       const result: NativePingResult = pingNativeOutbound(configJson, datDir, url, timeoutSeconds, proxy);
@@ -98,6 +99,14 @@ export class DelayTester {
         status: JSON.stringify(error)
       };
     }
+  }
+
+  private static resolveDelayTestSocksPort(): number {
+    const result = getNativeFreePorts(1);
+    if (result.ok && result.ports.length > 0) {
+      return result.ports[0];
+    }
+    return DELAY_TEST_SOCKS_PORT;
   }
 
 

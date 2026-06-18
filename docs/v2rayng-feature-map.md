@@ -43,7 +43,7 @@ v2rayNG's features and design, see
 | VMess/VLESS/Trojan/Shadowsocks parsing | Present. |
 | SOCKS/HTTP/WireGuard/Hysteria2 parsing | Present for share-link import and subscription discovery; WireGuard `[Interface]/[Peer]` `.conf` text/file import is also supported. Runtime connection for WireGuard/Hysteria2 still needs core validation. |
 | TUIC parsing | Pending. |
-| Delay test / real ping / sort by delay | Present. Per-node real outbound delay via libXray `CGoPing` (own SOCKS test inbound on port 10825), persisted per node, with sort-by-delay. Falls back to direct URL test when the native core is unavailable (e.g. emulator). Needs real-device validation. |
+| Delay test / real ping / sort by delay | Present. Per-node real outbound delay via libXray `CGoPing` (own SOCKS test inbound, preferring `CGoGetFreePorts` dynamic ports with 10825 fallback), persisted per node, with sort-by-delay. Falls back to direct URL test when the native core is unavailable (e.g. emulator). Needs real-device validation. |
 | Delete all / duplicate / invalid configs | Present for the active subscription group. Delete-all, duplicate cleanup, and invalid-node cleanup are wired from the Nodes menu. |
 | Export/share configs and QR generation | Present for text-oriented flows. Plain-text share-link/exported JSON output is present, full custom configs export as JSON text, node detail can render QR codes for share-link nodes, Export can save the current group to a `.txt` file, and batch/single-node text can be sent through the Harmony system share sheet with clipboard fallback. |
 | Multi-subscription groups | Present with legacy single-subscription migration. Rename/edit, enable-disable, delete, reorder, batch update all, per-subscription insecure URL opt-in, auto-update opt-in, and update interval are wired. Foreground due refresh is wired, and subscription fetches can prefer the local HTTP proxy when the VPN runtime exposes it. Background refresh remains pending. |
@@ -54,20 +54,22 @@ v2rayNG's features and design, see
 
 ## Native Bridge Status
 
-`libxray.so` exports 13 CGo functions; `napi_init.cpp` wires 9 (M1, refreshed 2026-06-18).
+`libxray.so` exports 13 CGo functions; `napi_init.cpp` wires 10 (M1, refreshed 2026-06-18).
 
 - Wired (runtime): `CGoRunXrayFromJSON`, `CGoStopXray`, `CGoPing`, `CGoSetTunFd`.
 - Wired (M1): `CGoQueryStats` (real per-tag traffic via the Xray metrics
   `/debug/vars` endpoint), `CGoTestXray` (pre-connect config preflight),
   `CGoXrayVersion` (core version on the About page),
-  `CGoReadGeoFiles` / `CGoCountGeoData` (Geo file validation/count status on Assets).
+  `CGoReadGeoFiles` / `CGoCountGeoData` (Geo file validation/count status on Assets),
+  `CGoGetFreePorts` (dynamic ports for real outbound delay tests).
 - Idle: `CGoConvertShareLinksToXrayJson`, `CGOConvertXrayJsonToShareLinks`,
-  `CGoGetFreePorts`, `CGoRunXray`.
+  `CGoRunXray`.
 
 > M1 note: the prebuilt `libxray.so` version script previously exported only the
 > 4 runtime symbols (`local: *` hid the rest). `scripts/build_libxray_ohos.sh`
 > now also exports `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion` plus the Geo
-> count/read symbols, so the bridge code is complete but a **`libxray.so`
-> rebuild + device retest** is required before these optional paths take effect.
-> Until then the bridge degrades gracefully (stats fall back, preflight is
-> skipped, version shows the static label, Geo count reports unavailable).
+> count/read symbols and `CGoGetFreePorts`, so the bridge code is complete but a
+> **`libxray.so` rebuild + device retest** is required before these optional
+> paths take effect. Until then the bridge degrades gracefully (stats fall back,
+> preflight is skipped, version shows the static label, Geo count reports
+> unavailable, delay tests use the static fallback port).
