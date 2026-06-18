@@ -31,6 +31,7 @@ import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsContr
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
 import { buildTextShareWant } from '../main/ets/services/SystemShare';
+import { DEFAULT_APP_SETTINGS } from '../main/ets/storage/SettingsStore';
 import { formatBytes, formatDuration } from '../main/ets/utils/Formatters';
 import { formatOne, localizedProfileSavedText, localizeCoreMessage } from '../main/ets/utils/LocalizationPresenter';
 import { BUNDLE_NAME, createDefaultVpnConfig } from '../main/ets/vpn/VpnConstants';
@@ -780,6 +781,16 @@ export default function localUnitTest() {
       result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
       expect(result.socksHost).assertEqual(LOCAL_HTTP_PROXY_LAN_HOST);
       expect(result.configJson).assertContain(`"listen": "${LOCAL_HTTP_PROXY_LAN_HOST}"`);
+    });
+
+    it('enables local socks proxy by default like v2rayNG', 0, () => {
+      expect(DEFAULT_APP_SETTINGS.localSocksEnabled).assertTrue();
+      const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, DEFAULT_APP_SETTINGS);
+      expect(result.configJson).assertContain('"tag": "socks-in"');
+      expect(result.configJson).assertContain('"protocol": "socks"');
+      expect(result.configJson).assertContain('"auth": "noauth"');
+      expect(result.configJson).assertContain('"udp": true');
+      expect(result.socksPort).assertEqual(LOCAL_SOCKS_PROXY_PORT);
     });
 
     it('builds proxy only runtime without tun and with local socks inbound', 0, () => {

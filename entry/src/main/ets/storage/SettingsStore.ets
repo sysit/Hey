@@ -41,7 +41,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   localDnsEnabled: false,
   fakeDnsEnabled: false,
   appendHttpProxy: false,
-  localSocksEnabled: false,
+  localSocksEnabled: true,
   localSocksPort: 10809,
   localSocksDynamicPort: false,
   localSocksUdpEnabled: true,
