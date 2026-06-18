@@ -6,8 +6,7 @@ import {
   buildWebDavMkcolUrls,
   buildWebDavRemoteUrl,
   isWebDavSuccessStatus,
-  validateWebDavConfig,
-  WebDavConfigInput
+  WebDavConfig
 } from '../core/WebDav';
 
 export interface WebDavTransferResult {
@@ -20,19 +19,14 @@ export interface WebDavTransferResult {
 }
 
 export class WebDavManager {
-  async uploadText(config: WebDavConfigInput, content: string): Promise<WebDavTransferResult> {
-    const validation = validateWebDavConfig(config);
-    if (!validation.valid) {
-      return this.failure(validation.message, '', 0);
-    }
-
-    const remoteUrl = buildWebDavRemoteUrl(validation.config);
-    const mkcolUrls = buildWebDavMkcolUrls(validation.config);
+  async uploadText(config: WebDavConfig, content: string): Promise<WebDavTransferResult> {
+    const remoteUrl = buildWebDavRemoteUrl(config);
+    const mkcolUrls = buildWebDavMkcolUrls(config);
     for (let index = 0; index < mkcolUrls.length; index++) {
-      await this.requestText(mkcolUrls[index], 'MKCOL', validation.config, '', '');
+      await this.requestText(mkcolUrls[index], 'MKCOL', config, '', '');
     }
 
-    const result = await this.requestText(remoteUrl, 'PUT', validation.config, 'application/json; charset=utf-8', content);
+    const result = await this.requestText(remoteUrl, 'PUT', config, 'application/json; charset=utf-8', content);
     if (!isWebDavSuccessStatus(result.responseCode)) {
       return this.failure(`WebDAV 上传失败：HTTP ${result.responseCode}`, remoteUrl, result.responseCode);
     }
@@ -46,19 +40,14 @@ export class WebDavManager {
     };
   }
 
-  async uploadData(config: WebDavConfigInput, data: ArrayBuffer, contentType: string = 'application/zip'): Promise<WebDavTransferResult> {
-    const validation = validateWebDavConfig(config);
-    if (!validation.valid) {
-      return this.failure(validation.message, '', 0);
-    }
-
-    const remoteUrl = buildWebDavRemoteUrl(validation.config);
-    const mkcolUrls = buildWebDavMkcolUrls(validation.config);
+  async uploadData(config: WebDavConfig, data: ArrayBuffer, contentType: string = 'application/zip'): Promise<WebDavTransferResult> {
+    const remoteUrl = buildWebDavRemoteUrl(config);
+    const mkcolUrls = buildWebDavMkcolUrls(config);
     for (let index = 0; index < mkcolUrls.length; index++) {
-      await this.requestText(mkcolUrls[index], 'MKCOL', validation.config, '', '');
+      await this.requestText(mkcolUrls[index], 'MKCOL', config, '', '');
     }
 
-    const result = await this.requestData(remoteUrl, 'PUT', validation.config, contentType, data);
+    const result = await this.requestData(remoteUrl, 'PUT', config, contentType, data);
     if (!isWebDavSuccessStatus(result.responseCode)) {
       return this.failure(`WebDAV 上传失败：HTTP ${result.responseCode}`, remoteUrl, result.responseCode);
     }
@@ -72,14 +61,9 @@ export class WebDavManager {
     };
   }
 
-  async downloadText(config: WebDavConfigInput): Promise<WebDavTransferResult> {
-    const validation = validateWebDavConfig(config);
-    if (!validation.valid) {
-      return this.failure(validation.message, '', 0);
-    }
-
-    const remoteUrl = buildWebDavRemoteUrl(validation.config);
-    const result = await this.requestText(remoteUrl, 'GET', validation.config, '', '');
+  async downloadText(config: WebDavConfig): Promise<WebDavTransferResult> {
+    const remoteUrl = buildWebDavRemoteUrl(config);
+    const result = await this.requestText(remoteUrl, 'GET', config, '', '');
     if (!isWebDavSuccessStatus(result.responseCode)) {
       return this.failure(`WebDAV 下载失败：HTTP ${result.responseCode}`, remoteUrl, result.responseCode);
     }
@@ -93,14 +77,9 @@ export class WebDavManager {
     };
   }
 
-  async downloadData(config: WebDavConfigInput): Promise<WebDavTransferResult> {
-    const validation = validateWebDavConfig(config);
-    if (!validation.valid) {
-      return this.failure(validation.message, '', 0);
-    }
-
-    const remoteUrl = buildWebDavRemoteUrl(validation.config);
-    const result = await this.requestData(remoteUrl, 'GET', validation.config, '', new ArrayBuffer(0));
+  async downloadData(config: WebDavConfig): Promise<WebDavTransferResult> {
+    const remoteUrl = buildWebDavRemoteUrl(config);
+    const result = await this.requestData(remoteUrl, 'GET', config, '', new ArrayBuffer(0));
     if (!isWebDavSuccessStatus(result.responseCode)) {
       return this.failure(`WebDAV 下载失败：HTTP ${result.responseCode}`, remoteUrl, result.responseCode);
     }
@@ -114,7 +93,7 @@ export class WebDavManager {
     };
   }
 
-  private async requestText(url: string, method: string, config: WebDavConfigInput, contentType: string, body: string): Promise<WebDavTransferResult> {
+  private async requestText(url: string, method: string, config: WebDavConfig, contentType: string, body: string): Promise<WebDavTransferResult> {
     const request = http.createHttp();
     try {
       const options: http.HttpRequestOptions = {
@@ -146,7 +125,7 @@ export class WebDavManager {
     }
   }
 
-  private async requestData(url: string, method: string, config: WebDavConfigInput, contentType: string, body: ArrayBuffer): Promise<WebDavTransferResult> {
+  private async requestData(url: string, method: string, config: WebDavConfig, contentType: string, body: ArrayBuffer): Promise<WebDavTransferResult> {
     const request = http.createHttp();
     try {
       const options: http.HttpRequestOptions = {

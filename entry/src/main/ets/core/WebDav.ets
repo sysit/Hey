@@ -67,18 +67,17 @@ export function validateWebDavConfig(input: WebDavConfigInput): WebDavValidation
   };
 }
 
-export function buildWebDavRemoteUrl(config: WebDavConfigInput, remoteFileName?: string): string {
-  const normalized = normalizeWebDavConfig(config);
-  const base = trimTrailingSlashes(normalized.baseUrl);
-  const path = normalizeRemotePath(normalized.remoteBasePath);
-  const fileName = normalizeRemoteFileName(remoteFileName ?? normalized.remoteFileName);
+export function buildWebDavRemoteUrl(config: WebDavConfig, remoteFileName?: string): string {
+  const base = trimTrailingSlashes(config.baseUrl);
+  const path = normalizeRemotePath(config.remoteBasePath);
+  const fileName = normalizeRemoteFileName(remoteFileName ?? config.remoteFileName);
   if (path.length === 0) {
     return `${base}/${fileName}`;
   }
   return `${base}/${path}/${fileName}`;
 }
 
-export function buildWebDavMkcolUrls(config: WebDavConfigInput): Array<string> {
+export function buildWebDavMkcolUrls(config: WebDavConfig): Array<string> {
   const remoteUrl = buildWebDavRemoteUrl(config);
   const parts = splitAbsoluteUrl(remoteUrl);
   if (parts === null) {
@@ -96,8 +95,7 @@ export function buildWebDavMkcolUrls(config: WebDavConfigInput): Array<string> {
   return urls;
 }
 
-export function buildWebDavHeaders(config: WebDavConfigInput, contentType: string = ''): Record<string, string> {
-  const normalized = normalizeWebDavConfig(config);
+export function buildWebDavHeaders(config: WebDavConfig, contentType: string = ''): Record<string, string> {
   const headers: Record<string, string> = {
     'User-Agent': 'Hey/0.1',
     'Accept': '*/*'
@@ -105,7 +103,7 @@ export function buildWebDavHeaders(config: WebDavConfigInput, contentType: strin
   if (contentType.length > 0) {
     headers['Content-Type'] = contentType;
   }
-  const authHeader = buildWebDavAuthorizationHeader(normalized.username, normalized.password);
+  const authHeader = buildWebDavAuthorizationHeader(config.username, config.password);
   if (authHeader.length > 0) {
     headers['Authorization'] = authHeader;
   }

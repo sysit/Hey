@@ -4,7 +4,7 @@ import { preferences } from '@kit.ArkData';
 import { picker } from '@kit.CoreFileKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
-import { DEFAULT_WEBDAV_BACKUP_DIR, DEFAULT_WEBDAV_BACKUP_FILE_NAME, normalizeWebDavConfig, WebDavConfig, WebDavConfigInput } from '../core/WebDav';
+import { DEFAULT_WEBDAV_BACKUP_DIR, DEFAULT_WEBDAV_BACKUP_FILE_NAME, WebDavConfig, WebDavConfigInput } from '../core/WebDav';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
@@ -482,7 +482,8 @@ struct AssetsPage {
     const context = getContext(this) as common.Context;
     this.webDavBusy = true;
     try {
-      const config = await this.saveWebDavConfig(false);
+      const config = this.currentWebDavConfig();
+      await this.saveWebDavConfig(false);
       await ASSETS_CONTROLLER.backupConfigToWebDav(context, this.language, config);
     } finally {
       this.webDavBusy = false;
@@ -496,7 +497,8 @@ struct AssetsPage {
     const context = getContext(this) as common.Context;
     this.webDavBusy = true;
     try {
-      const config = await this.saveWebDavConfig(false);
+      const config = this.currentWebDavConfig();
+      await this.saveWebDavConfig(false);
       await ASSETS_CONTROLLER.restoreConfigFromWebDav(
         context,
         this.language,
@@ -523,7 +525,7 @@ struct AssetsPage {
     const found = GEO_SOURCES.find(s => s.url === this.currentSourceUrl);
     this.currentSourceName = found ? found.name : GEO_SOURCES[0].name;
 
-    this.applyWebDavConfig(normalizeWebDavConfig(await AssetStore.loadWebDavConfig(context)));
+    this.applyWebDavConfig(await AssetStore.loadWebDavConfig(context));
     this.updateFileStatus();
   }
 
