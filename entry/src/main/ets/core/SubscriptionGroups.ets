@@ -41,7 +41,8 @@ function copySubscriptionGroup(group: SubscriptionGroup): SubscriptionGroup {
     nodes: copyProxyNodes(group.nodes),
     updatedAt: group.updatedAt,
     userAgent: group.userAgent,
-    filter: group.filter
+    filter: group.filter,
+    allowInsecureUrl: group.allowInsecureUrl
   };
 }
 

@@ -209,16 +209,16 @@ export class SubscriptionStore {
     return SubscriptionStore.load(context);
   }
 
-  static async addGroup(context: common.Context, name: string, url: string, userAgent: string = '', filter: string = ''): Promise<SubscriptionProfile> {
+  static async addGroup(context: common.Context, name: string, url: string, userAgent: string = '', filter: string = '', allowInsecureUrl: boolean = false): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
-    const group = SubscriptionStore.createGroup(url, name, userAgent, filter);
+    const group = SubscriptionStore.createGroup(url, name, userAgent, filter, allowInsecureUrl);
     profile.groups.push(group);
     profile.selectedGroupId = group.id;
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
   }
 
-  static async updateGroup(context: common.Context, groupId: string, name: string, url: string, userAgent: string = '', filter: string = ''): Promise<SubscriptionProfile> {
+  static async updateGroup(context: common.Context, groupId: string, name: string, url: string, userAgent: string = '', filter: string = '', allowInsecureUrl: boolean = false): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
     const group = SubscriptionStore.findGroup(profile.groups, groupId);
     if (group !== null) {
@@ -226,6 +226,7 @@ export class SubscriptionStore {
       group.url = url;
       group.userAgent = userAgent;
       group.filter = filter;
+      group.allowInsecureUrl = allowInsecureUrl;
       group.updatedAt = Date.now();
       await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     }
@@ -246,7 +247,8 @@ export class SubscriptionStore {
         nodes: [],
         updatedAt: Date.now(),
         userAgent: '',
-        filter: ''
+        filter: '',
+        allowInsecureUrl: false
       };
       profile.groups.push(localGroup);
     }
@@ -311,7 +313,8 @@ export class SubscriptionStore {
         selectedNodeId: profile.selectedNodeId,
         nodes: SubscriptionStore.normalizeNodes(profile.nodes),
         updatedAt: profile.updatedAt,
-        userAgent: ''
+        userAgent: '',
+        allowInsecureUrl: false
       });
     }
 
@@ -347,7 +350,8 @@ export class SubscriptionStore {
       nodes,
       updatedAt: group.updatedAt ?? 0,
       userAgent: group.userAgent ?? '',
-      filter: group.filter ?? ''
+      filter: group.filter ?? '',
+      allowInsecureUrl: group.allowInsecureUrl ?? false
     };
   }
 
@@ -465,7 +469,7 @@ export class SubscriptionStore {
     return `json:${node.outboundJson.trim()}`;
   }
 
-  private static createGroup(url: string, name: string, userAgent: string = '', filter: string = ''): SubscriptionGroup {
+  private static createGroup(url: string, name: string, userAgent: string = '', filter: string = '', allowInsecureUrl: boolean = false): SubscriptionGroup {
     const seed = `${url}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     return {
       id: SubscriptionStore.makeGroupId(seed),
@@ -476,7 +480,8 @@ export class SubscriptionStore {
       nodes: [],
       updatedAt: 0,
       userAgent,
-      filter
+      filter,
+      allowInsecureUrl
     };
   }
 

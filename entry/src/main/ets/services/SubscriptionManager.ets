@@ -208,19 +208,20 @@ interface ClashHysteria2Settings {
 }
 
 export class SubscriptionManager {
-  static async fetchAndParse(url: string, userAgent: string = ''): Promise<SubscriptionUpdateResult> {
+  static async fetchAndParse(url: string, userAgent: string = '', allowInsecureUrl: boolean = false): Promise<SubscriptionUpdateResult> {
     const trimmedUrl = url.trim();
-    if (!SubscriptionManager.isHttpUrl(trimmedUrl)) {
+    const validationMessage = SubscriptionManager.validateSubscriptionUrl(trimmedUrl, allowInsecureUrl);
+    if (validationMessage.length > 0) {
       const result: SubscriptionUpdateResult = {
         ok: false,
-        message: '订阅链接必须是 http:// 或 https://。',
+        message: validationMessage,
         nodes: [],
         rawLength: 0
       };
       return result;
     }
 
-    const content = await SubscriptionManager.fetchText(trimmedUrl, 0, userAgent);
+    const content = await SubscriptionManager.fetchText(trimmedUrl, 0, userAgent, allowInsecureUrl);
     const nodes = SubscriptionManager.parseSubscriptionContent(content, trimmedUrl);
     const result: SubscriptionUpdateResult = {
       ok: nodes.length > 0,
@@ -229,6 +230,17 @@ export class SubscriptionManager {
       rawLength: content.length
     };
     return result;
+  }
+
+  static validateSubscriptionUrl(url: string, allowInsecureUrl: boolean): string {
+    const trimmedUrl = url.trim();
+    if (!SubscriptionManager.isHttpUrl(trimmedUrl)) {
+      return '订阅链接必须是 http:// 或 https://。';
+    }
+    if (!allowInsecureUrl && SubscriptionManager.isInsecureHttpUrl(trimmedUrl)) {
+      return 'HTTP 订阅链接不安全，请开启允许不安全订阅链接后重试。';
+    }
+    return '';
   }
 
   static parseSubscriptionContent(content: string, sourceUrl: string): Array<ProxyNode> {
@@ -246,7 +258,7 @@ export class SubscriptionManager {
     }
   }
 
-  private static async fetchText(url: string, redirectCount: number, userAgent: string): Promise<string> {
+  private static async fetchText(url: string, redirectCount: number, userAgent: string, allowInsecureUrl: boolean): Promise<string> {
     if (redirectCount > 5) {
       throw new Error('HTTP redirect limit reached');
     }
@@ -273,7 +285,11 @@ export class SubscriptionManager {
       if (SubscriptionManager.isRedirectCode(responseCode)) {
         const redirectUrl = SubscriptionManager.redirectUrl(url, JSON.stringify(response.header));
         if (redirectUrl.length > 0) {
-          return SubscriptionManager.fetchText(redirectUrl, redirectCount + 1, userAgent);
+          const validationMessage = SubscriptionManager.validateSubscriptionUrl(redirectUrl, allowInsecureUrl);
+          if (validationMessage.length > 0) {
+            throw new Error(validationMessage);
+          }
+          return SubscriptionManager.fetchText(redirectUrl, redirectCount + 1, userAgent, allowInsecureUrl);
         }
       }
       if (responseCode < 200 || responseCode >= 300) {
@@ -1327,5 +1343,9 @@ export class SubscriptionManager {
   private static isHttpUrl(value: string): boolean {
     const lower = value.toLowerCase();
     return lower.startsWith('https://') || lower.startsWith('http://');
+  }
+
+  private static isInsecureHttpUrl(value: string): boolean {
+    return value.toLowerCase().startsWith('http://');
   }
 }

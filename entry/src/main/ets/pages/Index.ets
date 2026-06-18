@@ -6,6 +6,7 @@ import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, AppSettings, ConnectionStatus, ProxyNode, RuntimeStats, SubscriptionGroup } from '../core/Profile';
 import { DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
+import { SubscriptionManager } from '../services/SubscriptionManager';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
 import { filterNodes, findInvalidNodes, exportNodesText, sortNodes, removeTestFailedNodesFromList } from '../features/nodes/NodeOperations';
@@ -15,7 +16,7 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { RuntimeViewState, SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { SUBSCRIPTIONS_CONTROLLER, SubscriptionsControllerState } from '../features/subscriptions/SubscriptionsController';
 import { AppRoute } from '../shell/AppRoute';
-import { formatOne, formatTwo } from '../utils/LocalizationPresenter';
+import { formatOne, formatTwo, localizeCoreMessage } from '../utils/LocalizationPresenter';
 import { AppColor, Elevation, FontSz, Radius, Space } from '../theme/Theme';
 
 const EMPTY_STATS: RuntimeStats = {
@@ -100,7 +101,13 @@ struct Index {
     try {
       if (intent.kind === 'sub') {
         const name = subscriptionNameFromDeepLink(intent.payload);
-        const added = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, intent.payload, '', '', this.language);
+        const validationMessage = SubscriptionManager.validateSubscriptionUrl(intent.payload, false);
+        if (validationMessage.length > 0) {
+          this.lastError = localizeCoreMessage(this.language, validationMessage);
+          SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+          return;
+        }
+        const added = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, intent.payload, '', '', false, this.language);
         const state = await SUBSCRIPTIONS_CONTROLLER.update(context, added.selectedGroupId, intent.payload, '', this.language);
         this.applySubscriptionsState(state);
         this.applyNodesState(await NODES_CONTROLLER.load(context, this.language));

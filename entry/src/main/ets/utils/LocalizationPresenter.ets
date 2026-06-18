@@ -105,6 +105,9 @@ export function localizeCoreMessage(language: AppLanguage, message: string): str
   if (message === '订阅链接必须是 http:// 或 https://。') {
     return translate(language, 'subscription.urlMustHttp');
   }
+  if (message === 'HTTP 订阅链接不安全，请开启允许不安全订阅链接后重试。') {
+    return translate(language, 'subscription.insecureUrlBlocked');
+  }
   if (message === '订阅内容里没有识别到支持的节点。') {
     return translate(language, 'subscription.noSupportedNodes');
   }

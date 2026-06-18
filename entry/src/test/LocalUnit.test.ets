@@ -341,6 +341,13 @@ export default function localUnitTest() {
       expect(nodes[0].outboundJson).assertContain('"address": "example.com"');
     });
 
+    it('validates insecure subscription urls like v2rayNG subscription settings', 0, () => {
+      expect(SubscriptionManager.validateSubscriptionUrl('https://sub.example/list', false)).assertEqual('');
+      expect(SubscriptionManager.validateSubscriptionUrl('http://sub.example/list', true)).assertEqual('');
+      expect(SubscriptionManager.validateSubscriptionUrl('http://sub.example/list', false)).assertContain('不安全');
+      expect(SubscriptionManager.validateSubscriptionUrl('ftp://sub.example/list', true)).assertContain('http:// 或 https://');
+    });
+
     it('moves subscription groups without mutating the source list', 0, () => {
       const groups = [
         buildSubscriptionGroupFixture('sub-a', 'A'),
@@ -434,7 +441,8 @@ function buildSubscriptionGroupFixture(id: string, name: string): SubscriptionGr
     nodes: [],
     updatedAt: 0,
     userAgent: '',
-    filter: ''
+    filter: '',
+    allowInsecureUrl: false
   };
 }
 

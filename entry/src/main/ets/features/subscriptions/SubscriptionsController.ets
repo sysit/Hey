@@ -26,6 +26,10 @@ export class SubscriptionsController {
     if (url.length === 0) {
       return this.buildState(await SubscriptionStore.load(context), language, translate(language, 'error.emptySubscriptionUrl'));
     }
+    const validationMessage = SubscriptionManager.validateSubscriptionUrl(url, false);
+    if (validationMessage.length > 0) {
+      return this.buildState(await SubscriptionStore.load(context), language, localizeCoreMessage(language, validationMessage));
+    }
     try {
       const subscription = await SubscriptionStore.saveUrl(context, url);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
@@ -44,18 +48,25 @@ export class SubscriptionsController {
     }
 
     try {
+      const profileBeforeUpdate = await SubscriptionStore.load(context);
       let targetGroupId = groupId.trim();
       if (targetGroupId.length === 0) {
-        const profile = await SubscriptionStore.load(context);
-        const active = SubscriptionStore.activeGroup(profile);
+        const active = SubscriptionStore.activeGroup(profileBeforeUpdate);
         if (active !== null && active.url === url) {
           targetGroupId = active.id;
         } else {
-          const matched = SubscriptionStore.findGroupByUrl(profile.groups, url);
+          const matched = SubscriptionStore.findGroupByUrl(profileBeforeUpdate.groups, url);
           if (matched !== null) {
             targetGroupId = matched.id;
+          } else if (active !== null) {
+            targetGroupId = active.id;
           }
         }
+      }
+      const allowInsecureUrl = this.findGroupAllowInsecureUrl(profileBeforeUpdate.groups, targetGroupId);
+      const validationMessage = SubscriptionManager.validateSubscriptionUrl(url, allowInsecureUrl);
+      if (validationMessage.length > 0) {
+        return this.buildState(profileBeforeUpdate, language, localizeCoreMessage(language, validationMessage));
       }
 
       const subscriptionBeforeUpdate = await SubscriptionStore.saveUrl(context, url, targetGroupId);
@@ -64,7 +75,7 @@ export class SubscriptionsController {
       }
 
       const userAgent = this.findGroupUserAgent(subscriptionBeforeUpdate.groups, targetGroupId);
-      const result: SubscriptionUpdateResult = await SubscriptionManager.fetchAndParse(url, userAgent);
+      const result: SubscriptionUpdateResult = await SubscriptionManager.fetchAndParse(url, userAgent, allowInsecureUrl);
       if (!result.ok) {
         return this.buildState(await SubscriptionStore.load(context), language, localizeCoreMessage(language, result.message));
       }
@@ -87,28 +98,36 @@ export class SubscriptionsController {
     }
   }
 
-  async addGroup(context: common.Context, name: string, url: string, userAgent: string, filter: string, language: AppLanguage): Promise<SubscriptionsControllerState> {
+  async addGroup(context: common.Context, name: string, url: string, userAgent: string, filter: string, allowInsecureUrl: boolean, language: AppLanguage): Promise<SubscriptionsControllerState> {
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (trimmedName.length === 0) {
       return this.buildState(await SubscriptionStore.load(context), language, '订阅名称不能为空');
     }
+    const validationMessage = this.validateEditableSubscriptionUrl(trimmedUrl, allowInsecureUrl, language);
+    if (validationMessage.length > 0) {
+      return this.buildState(await SubscriptionStore.load(context), language, validationMessage);
+    }
     try {
-      const subscription = await SubscriptionStore.addGroup(context, trimmedName, trimmedUrl, userAgent.trim(), filter.trim());
+      const subscription = await SubscriptionStore.addGroup(context, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.saveSubscriptionGroup', 'error', this.stringifyError(error)));
     }
   }
 
-  async updateGroup(context: common.Context, groupId: string, name: string, url: string, userAgent: string, filter: string, language: AppLanguage): Promise<SubscriptionsControllerState> {
+  async updateGroup(context: common.Context, groupId: string, name: string, url: string, userAgent: string, filter: string, allowInsecureUrl: boolean, language: AppLanguage): Promise<SubscriptionsControllerState> {
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (trimmedName.length === 0) {
       return this.buildState(await SubscriptionStore.load(context), language, '订阅名称不能为空');
     }
+    const validationMessage = this.validateEditableSubscriptionUrl(trimmedUrl, allowInsecureUrl, language);
+    if (validationMessage.length > 0) {
+      return this.buildState(await SubscriptionStore.load(context), language, validationMessage);
+    }
     try {
-      const subscription = await SubscriptionStore.updateGroup(context, groupId, trimmedName, trimmedUrl, userAgent.trim(), filter.trim());
+      const subscription = await SubscriptionStore.updateGroup(context, groupId, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.saveSubscriptionGroup', 'error', this.stringifyError(error)));
@@ -125,7 +144,7 @@ export class SubscriptionsController {
       const url = group.url.trim();
       if (url.length > 0 && group.enabled) {
         try {
-          const result = await SubscriptionManager.fetchAndParse(url, group.userAgent ?? '');
+          const result = await SubscriptionManager.fetchAndParse(url, group.userAgent ?? '', group.allowInsecureUrl ?? false);
           if (result.ok) {
             const nodes = this.applyNodeFilter(result.nodes, group.filter ?? '');
             subscription = await SubscriptionStore.saveNodes(context, group.id, url, nodes, group.selectedNodeId);
@@ -225,6 +244,23 @@ export class SubscriptionsController {
       }
     }
     return '';
+  }
+
+  private findGroupAllowInsecureUrl(groups: Array<SubscriptionGroup>, groupId: string): boolean {
+    for (let index = 0; index < groups.length; index++) {
+      if (groups[index].id === groupId) {
+        return groups[index].allowInsecureUrl ?? false;
+      }
+    }
+    return false;
+  }
+
+  private validateEditableSubscriptionUrl(url: string, allowInsecureUrl: boolean, language: AppLanguage): string {
+    if (url.length === 0) {
+      return '';
+    }
+    const validationMessage = SubscriptionManager.validateSubscriptionUrl(url, allowInsecureUrl);
+    return validationMessage.length > 0 ? localizeCoreMessage(language, validationMessage) : '';
   }
 
   // Keeps only nodes whose name matches the group's filter regex. An empty

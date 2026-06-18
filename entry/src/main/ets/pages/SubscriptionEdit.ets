@@ -21,6 +21,7 @@ struct SubscriptionEditPage {
   @State private subscriptionUrl: string = '';
   @State private userAgent: string = '';
   @State private filter: string = '';
+  @State private allowInsecureUrl: boolean = false;
   @State private isBusy: boolean = false;
 
   aboutToAppear(): void {
@@ -163,6 +164,37 @@ struct SubscriptionEditPage {
               .lineHeight(16)
               .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
 
+            Column() {
+              Row() {
+                Column({ space: 4 }) {
+                  Text('允许不安全订阅链接')
+                    .fontSize(FontSz.body)
+                    .fontColor(AppColor.textPrimary)
+                  Text('开启后允许使用 http:// 订阅地址；默认仅允许 https://。')
+                    .fontSize(FontSz.footnote)
+                    .fontColor(AppColor.textTertiary)
+                    .maxLines(2)
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+
+                Toggle({ type: ToggleType.Switch, isOn: this.allowInsecureUrl })
+                  .selectedColor(AppColor.brand)
+                  .switchPointColor(AppColor.onBrand)
+                  .onChange((isOn: boolean) => {
+                    this.allowInsecureUrl = isOn;
+                  })
+              }
+              .width('100%')
+              .padding(Space.lg)
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+            .backgroundColor(AppColor.surface)
+            .borderRadius(Radius.lg)
+            .clip(true)
+            .margin({ left: Space.lg, right: Space.lg })
+
             // 卡片三：自定义 User-Agent
             SectionHeader({ title: '自定义 User-Agent' })
             Column() {
@@ -286,6 +318,7 @@ struct SubscriptionEditPage {
           this.subscriptionUrl = group.url;
           this.userAgent = group.userAgent ?? '';
           this.filter = group.filter ?? '';
+          this.allowInsecureUrl = group.allowInsecureUrl ?? false;
           break;
         }
       }
@@ -309,9 +342,9 @@ struct SubscriptionEditPage {
       const context = getContext(this) as common.Context;
       let state: SubscriptionsControllerState;
       if (this.groupId.length === 0) {
-        state = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, url, userAgent, filter, this.language);
+        state = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, url, userAgent, filter, this.allowInsecureUrl, this.language);
       } else {
-        state = await SUBSCRIPTIONS_CONTROLLER.updateGroup(context, this.groupId, name, url, userAgent, filter, this.language);
+        state = await SUBSCRIPTIONS_CONTROLLER.updateGroup(context, this.groupId, name, url, userAgent, filter, this.allowInsecureUrl, this.language);
       }
       promptAction.showToast({ message: state.subscriptionMessage });
       router.back();

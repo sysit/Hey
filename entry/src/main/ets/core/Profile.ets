@@ -30,6 +30,7 @@ export interface SubscriptionGroup {
   updatedAt: number;
   userAgent?: string;
   filter?: string;
+  allowInsecureUrl?: boolean;
 }
 
 export interface SubscriptionProfile {
