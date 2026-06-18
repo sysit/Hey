@@ -1,9 +1,10 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate } from '../main/ets/core/I18n';
-import { AppSettings, ProxyNode, RoutingRule } from '../main/ets/core/Profile';
+import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
 import { buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateOutboundJson } from '../main/ets/core/XrayConfig';
 import { parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
 import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
+import { moveSubscriptionGroup } from '../main/ets/core/SubscriptionGroups';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
 import { formatBytes, formatDuration } from '../main/ets/utils/Formatters';
@@ -339,6 +340,32 @@ export default function localUnitTest() {
       expect(nodes[0].outboundJson).assertContain('"protocol": "vless"');
       expect(nodes[0].outboundJson).assertContain('"address": "example.com"');
     });
+
+    it('moves subscription groups without mutating the source list', 0, () => {
+      const groups = [
+        buildSubscriptionGroupFixture('sub-a', 'A'),
+        buildSubscriptionGroupFixture('sub-b', 'B'),
+        buildSubscriptionGroupFixture('sub-c', 'C')
+      ];
+
+      const movedUp = moveSubscriptionGroup(groups, 'sub-b', -1);
+      expect(movedUp[0].id).assertEqual('sub-b');
+      expect(movedUp[1].id).assertEqual('sub-a');
+      expect(movedUp[2].id).assertEqual('sub-c');
+      expect(groups[0].id).assertEqual('sub-a');
+      expect(groups[1].id).assertEqual('sub-b');
+
+      const movedDown = moveSubscriptionGroup(groups, 'sub-b', 1);
+      expect(movedDown[0].id).assertEqual('sub-a');
+      expect(movedDown[1].id).assertEqual('sub-c');
+      expect(movedDown[2].id).assertEqual('sub-b');
+
+      const outOfRange = moveSubscriptionGroup(groups, 'sub-a', -1);
+      expect(outOfRange[0].id).assertEqual('sub-a');
+      expect(outOfRange[1].id).assertEqual('sub-b');
+      expect(outOfRange[2].id).assertEqual('sub-c');
+      expect(outOfRange[0] === groups[0]).assertFalse();
+    });
   });
 }
 
@@ -394,6 +421,20 @@ function buildRoutingRuleFixture(id: string, remarks: string, outboundTag: strin
     protocol: [],
     enabled: true,
     locked: false
+  };
+}
+
+function buildSubscriptionGroupFixture(id: string, name: string): SubscriptionGroup {
+  return {
+    id,
+    name,
+    url: `https://example.com/${id}`,
+    enabled: true,
+    selectedNodeId: '',
+    nodes: [],
+    updatedAt: 0,
+    userAgent: '',
+    filter: ''
   };
 }
 

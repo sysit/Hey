@@ -172,29 +172,36 @@ struct SubscriptionsPage {
   private GroupSwipeActions(group: SubscriptionGroup) {
     Row() {
       if (group.id !== 'sub-local') {
+        this.SwipeButton($r('app.media.ic_arrow_downward'), this.t('action.moveUp'), AppColor.textSecondary, () => {
+          this.moveSubscriptionGroup(group, -1);
+        }, this.canMoveGroup(group.id, -1), true)
+        this.SwipeButton($r('app.media.ic_arrow_downward'), this.t('action.moveDown'), AppColor.textSecondary, () => {
+          this.moveSubscriptionGroup(group, 1);
+        }, this.canMoveGroup(group.id, 1), false)
         if (group.url.trim().length > 0) {
           this.SwipeButton($r('app.media.ic_share'), this.t('action.share'), AppColor.brand, () => {
             this.copyUrlToClipboard(group.url);
-          })
+          }, true, false)
         }
         this.SwipeButton($r('app.media.ic_edit'), this.t('action.edit'), AppColor.textSecondary, () => {
           this.openEditPage(group);
-        })
+        }, true, false)
         this.SwipeButton($r('app.media.ic_delete'), this.t('action.delete'), AppColor.danger, () => {
           this.removeSubscriptionGroup(group);
-        })
+        }, true, false)
       }
     }
     .height('100%')
   }
 
   @Builder
-  private SwipeButton(icon: Resource, label: string, bg: ResourceColor, action: () => void) {
+  private SwipeButton(icon: Resource, label: string, bg: ResourceColor, action: () => void, enabled: boolean, rotateUp: boolean) {
     Column({ space: 3 }) {
       Image(icon)
         .width(20)
         .height(20)
         .fillColor(Color.White)
+        .rotate({ angle: rotateUp ? 180 : 0 })
       Text(label)
         .fontSize(FontSz.caption)
         .fontColor(Color.White)
@@ -202,6 +209,8 @@ struct SubscriptionsPage {
     .width(72)
     .height('100%')
     .backgroundColor(bg)
+    .enabled(enabled)
+    .opacity(enabled ? 1 : 0.35)
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .onClick(() => {
@@ -272,6 +281,13 @@ struct SubscriptionsPage {
     promptAction.showToast({ message: state.subscriptionMessage });
   }
 
+  private async moveSubscriptionGroup(group: SubscriptionGroup, delta: number): Promise<void> {
+    const context = getContext(this) as common.Context;
+    const state = await SUBSCRIPTIONS_CONTROLLER.moveGroup(context, group, delta, this.language);
+    this.applySubscriptionsState(state);
+    promptAction.showToast({ message: state.subscriptionMessage });
+  }
+
   private async updateAllSubscriptions(): Promise<void> {
     if (this.isUpdatingAll) {
       return;
@@ -298,6 +314,21 @@ struct SubscriptionsPage {
       url: AppRoute.SUBSCRIPTION_EDIT,
       params: { groupId: group.id }
     });
+  }
+
+  private groupIndex(groupId: string): number {
+    for (let index = 0; index < this.subscriptionGroups.length; index++) {
+      if (this.subscriptionGroups[index].id === groupId) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  private canMoveGroup(groupId: string, delta: number): boolean {
+    const index = this.groupIndex(groupId);
+    const target = index + delta;
+    return index >= 0 && target >= 0 && target < this.subscriptionGroups.length;
   }
 
   private copyUrlToClipboard(url: string) {

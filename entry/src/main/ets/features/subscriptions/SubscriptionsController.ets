@@ -178,6 +178,15 @@ export class SubscriptionsController {
     }
   }
 
+  async moveGroup(context: common.Context, group: SubscriptionGroup, delta: number, language: AppLanguage): Promise<SubscriptionsControllerState> {
+    try {
+      const subscription = await SubscriptionStore.moveGroup(context, group.id, delta);
+      return this.buildState(subscription, language, formatOne(language, 'log.subscriptionGroupReordered', 'name', group.name));
+    } catch (error) {
+      return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.moveSubscriptionGroup', 'error', this.stringifyError(error)));
+    }
+  }
+
   private buildState(subscription: SubscriptionProfile, language: AppLanguage, message: string): SubscriptionsControllerState {
     const state: SubscriptionsControllerState = {
       subscriptionUrl: subscription.url,

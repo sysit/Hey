@@ -4,8 +4,8 @@ This project targets feature parity with the Android reference v2rayNG
 (<https://github.com/2dust/v2rayNG>) without copying Android/Kotlin source,
 XML layouts, drawable assets, launcher artwork, strings, or package branding.
 
-Status below is maintained against the actual code; routing status was refreshed
-on 2026-06-18. For the phased delivery plan, see
+Status below is maintained against the actual code; routing and subscription
+status were refreshed on 2026-06-18. For the phased delivery plan, see
 [`development-plan.md`](development-plan.md). For an in-depth analysis of
 v2rayNG's features and design, see
 [`v2rayng-analysis/`](v2rayng-analysis/README.md).
@@ -17,7 +17,7 @@ v2rayNG's features and design, see
 | MainActivity / MainRecyclerAdapter | Nodes | Present. Lists subscription nodes, search, select current node, start/stop/restart VPN. |
 | Add config menu | Add | Present. Imports share links, outbound JSON, or subscription URL; protocol tabs are scaffolded. |
 | ScannerActivity / ScScannerActivity | Scan | Present. Paste/import path and camera QR capture via ScanKit are wired. |
-| SubSettingActivity / SubEditActivity | Subs | Multi-group model present. Save/update/select/enable-disable/delete are wired; dedicated edit form and reorder pending. |
+| SubSettingActivity / SubEditActivity | Subs | Multi-group model present. Save/update/update-all/select/enable-disable/delete/reorder are wired; dedicated edit form supports name, URL, User-Agent, and node-name filter. Auto/background update and subscription-level insecure URL handling remain pending. |
 | ServerActivity protocol editors | Add | Partial. Field-level editor is present for VLESS/VMess/Trojan/Shadowsocks/SOCKS/HTTP (generates outbound JSON into import buffer). WireGuard/Hysteria2/TUIC editors still pending. |
 | ServerCustomConfigActivity | Add | Raw outbound JSON import works. Full custom config import pending. |
 | RoutingSettingActivity / RoutingEditActivity | Route | Present for core ruleset management. Traffic mode (global/rules/direct), domain strategy, bypass-LAN/CN, ad-block, custom routing rules, locked rules, predefined ruleset import, clipboard import, and clipboard export persist and feed generated Xray routing. Advanced custom outbound targets remain future work. |
@@ -45,7 +45,7 @@ v2rayNG's features and design, see
 | Delay test / real ping / sort by delay | Present. Per-node real outbound delay via libXray `CGoPing` (own SOCKS test inbound on port 10825), persisted per node, with sort-by-delay. Falls back to direct URL test when the native core is unavailable (e.g. emulator). Needs real-device validation. |
 | Delete all / duplicate / invalid configs | Partial. Duplicate and invalid-node cleanup are wired; full delete-all parity still needs review. |
 | Export/share configs and QR generation | Partial. Plain-text share-link export is present, and node detail can render QR codes; system share/file export remains pending. |
-| Multi-subscription groups | Present with legacy single-subscription migration. Rename/reorder and batch update all pending. |
+| Multi-subscription groups | Present with legacy single-subscription migration. Rename/edit, enable-disable, delete, reorder, and batch update all are wired. Auto/background refresh and subscription-level insecure URL handling remain pending. |
 | Routing rulesets and geo assets | Partial. Geo asset download/management present (Assets page). Routing config emits metrics, ad-block, custom enabled rules, and bypass-LAN/CN rules in order. Predefined ruleset import/export is wired; advanced outbound targets are still pending. |
 | Per-app proxy | Partial. VPN app allow/block mapping is wired from saved package names; unrestricted installed-app enumeration remains platform-limited. |
 | Auto subscription update | Pending. No interval/background refresh. |

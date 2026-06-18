@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
 import { ProxyNode, SubscriptionGroup, SubscriptionProfile } from '../core/Profile';
+import { moveSubscriptionGroup } from '../core/SubscriptionGroups';
 import { normalizeOutboundInput } from '../core/XrayConfig';
 
 const PREFERENCES_NAME: string = 'hey_vpn_subscription';
@@ -197,6 +198,13 @@ export class SubscriptionStore {
     if (SubscriptionStore.findGroup(profile.groups, profile.selectedGroupId) === null) {
       profile.selectedGroupId = profile.groups.length > 0 ? profile.groups[0].id : '';
     }
+    await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
+    return SubscriptionStore.load(context);
+  }
+
+  static async moveGroup(context: common.Context, groupId: string, delta: number): Promise<SubscriptionProfile> {
+    const profile = await SubscriptionStore.load(context);
+    profile.groups = moveSubscriptionGroup(profile.groups, groupId, delta);
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
   }

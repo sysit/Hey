@@ -121,14 +121,21 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 
 **目标**：补齐订阅自动化与节点批量管理，达到日常可用。
 
+**进展（2026-06-18 续）**：订阅分组重排已落地：
+- 数据：新增纯函数 `moveSubscriptionGroup`，store 持久化分组顺序且保留当前选中分组 ID
+- UI：订阅分组列表滑动操作补「上移/下移」，首尾项禁用越界动作
+- 测试：新增单测覆盖上移、下移、越界不变和源列表不被原地修改
+
 **任务**
 - **订阅自动更新**：用鸿蒙后台任务/定时（`backgroundTaskManager` 或 `reminderAgent`）
   按 `updateInterval` 周期刷新；最小间隔保护（如 15 分钟）
-- **正则过滤** `filter`：按节点名筛选导入
-- **自定义 User-Agent** 与 `allowInsecureUrl`
+- **正则过滤** `filter`：按节点名筛选导入（2026-06-15 已完成）
+- **自定义 User-Agent** 已完成；订阅级 `allowInsecureUrl` 待补
+- **订阅分组重排**：上移/下移并持久化顺序（2026-06-18 已完成）
+- **批量更新全部**：订阅页顶部刷新按钮更新全部启用订阅分组（已完成）
 - **代理经由更新**：运行中时通过本地 http 端口拉取订阅（GFW 内更新）
-- **节点批量操作**：删除重复（去重键 = server+port+password）、批量测速后自动排序、
-  测速后自动删除超时节点（`removeInvalidNodes` 已有，补"测速后自动"触发）
+- **节点批量操作**：删除重复、批量测速后自动排序、测速后自动删除超时节点已完成；
+  全量删除等剩余批处理能力继续对照 v2rayNG 点检
 
 **v2rayNG 对照**：`SubscriptionUpdater`（WorkManager）、`AngConfigManager.updateConfigViaSub`、
 `MainViewModel` 的批量操作。
@@ -252,5 +259,6 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 | 2026-06-15 | 自查 | ✅ ArkTS 严格性扫描：无 `any`、新增导入全部被用；清理 SubscriptionEdit 既有未用导入 `translate` |
 | 2026-06-18 | M2 | ✅ 自定义路由规则编辑/生效（规则模型 + Route 页增删改/启停/排序 + `routing.rules` 生成 + 单测） |
 | 2026-06-18 | M2 | ✅ 预设规则集导入/导出（5 组内置预设 + 剪贴板 JSON 导入/导出 + locked 规则保留 + 单测）；M2 路由规则主功能闭环，仍待真机验证规则实效 |
+| 2026-06-18 | M3 | ✅ 订阅分组重排（纯排序函数 + Store 持久化 + Subs 页滑动上移/下移 + 单测）；批量更新全部确认已落地 |
 | 2026-06-15 | 自查 | ✅ 字段一致性总扫：AppSettings/SettingsDraft 5 个构造点字段完整一致，SubscriptionGroup.filter 贯通，无需修改 |
 | 2026-06-15 | 自查 | ✅ 深链/metrics 配置形状核对 Xray 官方一致；自查清单收尾（净修复：预检非阻断 + 清理未用导入） |
