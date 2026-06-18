@@ -1998,7 +1998,7 @@ function isIpLiteral(host: string): boolean {
 function buildTunSniffing(settings: AppSettings | undefined): XraySniffingConfig | undefined {
   const destOverride = new Array<string>();
   const sniffAllTlsAndHttp = settings === undefined || settings.sniffingEnabled;
-  const fakeDns = settings !== undefined && settings.localDnsEnabled && settings.fakeDnsEnabled;
+  const fakeDns = settings !== undefined && settings.fakeDnsEnabled;
   const routeOnly = settings !== undefined && settings.routeOnlyEnabled;
   if (sniffAllTlsAndHttp) {
     destOverride.push('http');

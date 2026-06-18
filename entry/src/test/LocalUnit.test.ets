@@ -574,6 +574,17 @@ export default function localUnitTest() {
       settings.dnsHosts = '{"example.com":"127.0.0.1"}';
       result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
       expect(result.configJson).assertContain('"example.com": "127.0.0.1"');
+
+      settings.localDnsEnabled = false;
+      settings.fakeDnsEnabled = true;
+      settings.sniffingEnabled = false;
+      settings.dnsHosts = '';
+      settings.routingRules = [];
+      result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson).assertContain('"sniffing": {\n        "enabled": true,\n        "destOverride": [\n          "fakedns"\n        ]\n      }');
+      expect(result.configJson.indexOf('"tag": "dns-out"')).assertEqual(-1);
+      expect(result.configJson.indexOf('"fakedns": [')).assertEqual(-1);
+      expect(result.configJson.indexOf('"address": "fakedns"')).assertEqual(-1);
     });
 
     it('adds v2rayng style dns domain servers and dns routing rules', 0, () => {
