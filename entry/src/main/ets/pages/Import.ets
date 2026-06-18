@@ -125,7 +125,7 @@ struct ImportPage {
     .clip(true)
     .margin({ left: Space.lg, right: Space.lg })
 
-    Text('粘贴分享链接（如 vless://, vmess://, ss://, trojan:// 等）或点击扫码解析。')
+    Text('粘贴分享链接（如 vless://、vmess://、ss://、socks5://、wireguard://、hy2:// 等）或点击扫码解析。')
       .fontSize(FontSz.footnote)
       .fontColor(AppColor.textTertiary)
       .width('100%')

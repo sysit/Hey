@@ -148,7 +148,7 @@ struct ScannerPage {
                 this.importBuffer = value;
               })
 
-            Text('支持粘贴 vmess://、vless://、ss://、trojan://、hysteria2:// 等协议链接，或 http://、https:// 订阅地址。')
+            Text('支持粘贴 vmess://、vless://、ss://、socks5://、wireguard://、hysteria2://、hy2:// 等协议链接，或 http://、https:// 订阅地址。')
               .fontSize(11)
               .fontColor(AppColor.textTertiary)
               .width('100%')

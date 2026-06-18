@@ -1,5 +1,6 @@
 import { AppLanguage, ConnectionStatus } from '../core/Profile';
 import { formatTranslation, translate } from '../core/I18n';
+import { buildUnsupportedShareLinkMessage } from '../core/ShareLinkParser';
 import { formatClockTime } from './Formatters';
 
 export function formatOne(language: AppLanguage, key: string, name: string, value: string): string {
@@ -114,7 +115,7 @@ export function localizeCoreMessage(language: AppLanguage, message: string): str
   if (message === '策略组配置校验通过。') {
     return translate(language, 'core.validPolicyGroupConfig');
   }
-  if (message === '暂只支持 vless://、vmess://、trojan://、ss://、socks://、http://、wireguard:// 和 hysteria2:// 分享链接。') {
+  if (message === buildUnsupportedShareLinkMessage()) {
     return translate(language, 'core.unsupportedShareLink');
   }
   if (message === 'VLESS 链接缺少用户 ID。') {

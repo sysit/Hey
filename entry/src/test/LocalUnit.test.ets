@@ -12,7 +12,7 @@ import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, p
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
 import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
-import { formatOutboundJsonToShareLink, parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
+import { SUPPORTED_SHARE_LINK_SCHEMES, buildUnsupportedShareLinkMessage, formatOutboundJsonToShareLink, isSupportedShareLink, parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
 import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
 import {
   DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
@@ -955,6 +955,17 @@ export default function localUnitTest() {
       expect(formatOne('zh', 'subscription.updateComplete', 'count', '3')).assertContain('3');
       expect(localizedProfileSavedText('en', 0)).assertEqual('Not saved');
       expect(localizeCoreMessage('en', '请先粘贴 Xray outbound JSON。')).assertEqual('Paste Xray outbound JSON first.');
+      const unsupportedShare = parseShareLinkToOutboundJson('ftp://example.com/node');
+      expect(unsupportedShare.success).assertFalse();
+      expect(unsupportedShare.message).assertEqual(buildUnsupportedShareLinkMessage());
+      expect(unsupportedShare.message).assertContain('socks4://');
+      expect(unsupportedShare.message).assertContain('https://');
+      expect(unsupportedShare.message).assertContain('hy2://');
+      expect(localizeCoreMessage('en', unsupportedShare.message)).assertContain('socks5://');
+      expect(localizeCoreMessage('en', unsupportedShare.message)).assertContain('hy2://');
+      for (let index = 0; index < SUPPORTED_SHARE_LINK_SCHEMES.length; index++) {
+        expect(isSupportedShareLink(`${SUPPORTED_SHARE_LINK_SCHEMES[index]}example`)).assertTrue();
+      }
       expect(normalizeLanguage('auto')).assertEqual('auto');
       expect(normalizeLanguage('en')).assertEqual('en');
       expect(normalizeLanguage('en-US')).assertEqual('en');

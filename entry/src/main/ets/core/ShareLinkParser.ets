@@ -262,20 +262,33 @@ function defaultShareName(name: string): string {
   return name.length > 0 ? name : 'none';
 }
 
+export const SUPPORTED_SHARE_LINK_SCHEMES: Array<string> = [
+  'vless://',
+  'vmess://',
+  'trojan://',
+  'ss://',
+  'socks://',
+  'socks4://',
+  'socks5://',
+  'http://',
+  'https://',
+  'wireguard://',
+  'hysteria2://',
+  'hy2://'
+];
+
+export function buildUnsupportedShareLinkMessage(): string {
+  return `暂只支持 ${SUPPORTED_SHARE_LINK_SCHEMES.join('、')} 分享链接。`;
+}
+
 export function isSupportedShareLink(input: string): boolean {
   const lower = input.trim().toLowerCase();
-  return lower.startsWith('vless://') ||
-    lower.startsWith('vmess://') ||
-    lower.startsWith('trojan://') ||
-    lower.startsWith('ss://') ||
-    lower.startsWith('socks://') ||
-    lower.startsWith('socks4://') ||
-    lower.startsWith('socks5://') ||
-    lower.startsWith('http://') ||
-    lower.startsWith('https://') ||
-    lower.startsWith('wireguard://') ||
-    lower.startsWith('hysteria2://') ||
-    lower.startsWith('hy2://');
+  for (let index = 0; index < SUPPORTED_SHARE_LINK_SCHEMES.length; index++) {
+    if (lower.startsWith(SUPPORTED_SHARE_LINK_SCHEMES[index])) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function isWireguardConfigFile(input: string): boolean {
@@ -321,7 +334,7 @@ export function parseShareLinkToOutboundJson(input: string): ShareLinkParseResul
     if (lower.startsWith('hysteria2://') || lower.startsWith('hy2://')) {
       return parseHysteria2Link(trimmed);
     }
-    return makeFailure('暂只支持 vless://、vmess://、trojan://、ss://、socks://、socks4://、socks5://、http://、wireguard:// 和 hysteria2:// 分享链接。');
+    return makeFailure(buildUnsupportedShareLinkMessage());
   } catch (error) {
     return makeFailure(`分享链接解析失败：${stringifyError(error)}`);
   }

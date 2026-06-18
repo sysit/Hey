@@ -176,6 +176,7 @@
 | 2026-06-19 | 协议点检 | ✅ URL-style TLS allowInsecure 导出完成；VLESS/Trojan 等 TLS 分享导出同时写 `insecure` 与 `allowInsecure`，true/false 均按 v2rayNG `1/0` 输出 |
 | 2026-06-19 | 协议点检 | ✅ URL-style userInfo 编码完成；Trojan/WireGuard/Hysteria2/HTTP 分享导出对密码、私钥和用户密码做 URI 编码，特殊字符 round-trip 保留 |
 | 2026-06-19 | 协议点检 | ✅ URL-style 空备注默认值完成；分享链接缺少 fragment 时按 v2rayNG 将导入节点名设为 `none`，订阅导入同样保留 |
+| 2026-06-19 | 协议点检 | ✅ 分享链接支持列表文案完成；解析器支持列表、失败提示、本地化与导入/扫码说明统一覆盖 `https://`、`socks4://`、`socks5://`、`hy2://` |
 | 2026-06-19 | 协议点检 | ✅ finalMask `fm` 完成；分享链接导入导出保留 `streamSettings.finalmask`，NodeEdit 可填写 FinalMask raw JSON |
 | 2026-06-19 | 协议点检 | ✅ TCP HTTP 头伪装完成；NodeEdit 可选择 v2rayNG `none/http`，保存 `tcpSettings.header.request`，分享链接 `headerType=http` round-trip 保留 |
 | 2026-06-19 | 协议点检 | ✅ HTTPUpgrade/XHTTP 传输参数完成；`type=httpupgrade` host/path 导出保留，NodeEdit 可选择 httpupgrade，XHTTP `mode/extra` 可手动填写并 round-trip 保留 |
