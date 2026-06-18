@@ -1,8 +1,9 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate } from '../main/ets/core/I18n';
-import { AppSettings, ProxyNode } from '../main/ets/core/Profile';
+import { AppSettings, ProxyNode, RoutingRule } from '../main/ets/core/Profile';
 import { buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateOutboundJson } from '../main/ets/core/XrayConfig';
 import { parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
+import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
 import { formatBytes, formatDuration } from '../main/ets/utils/Formatters';
@@ -130,6 +131,36 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('domain:disabled.example')).assertEqual(-1);
       expect(result.configJson.indexOf('geosite:category-ads-all') < result.configJson.indexOf('domain:example.com')).assertTrue();
       expect(result.configJson.indexOf('domain:example.com') < result.configJson.indexOf('geosite:cn')).assertTrue();
+    });
+
+    it('imports routing presets while preserving locked rules', 0, () => {
+      const lockedRule = buildRoutingRuleFixture('locked-rule', 'Locked keep', 'direct');
+      lockedRule.locked = true;
+      lockedRule.domain = ['domain:locked.example'];
+      const unlockedRule = buildRoutingRuleFixture('unlocked-rule', 'Replace me', 'block');
+      unlockedRule.domain = ['domain:replace.example'];
+
+      const result = resetRoutingRulesFromPreset([unlockedRule, lockedRule], 'global');
+      expect(result[0].id).assertEqual('locked-rule');
+      expect(result[0].domain[0]).assertEqual('domain:locked.example');
+      expect(result.length > 1).assertTrue();
+      expect(result[1].id).assertContain('preset-global');
+      expect(exportRoutingRulesJson(result)).assertContain('"locked": true');
+    });
+
+    it('imports routing rules json from clipboard format', 0, () => {
+      const lockedRule = buildRoutingRuleFixture('locked-rule', 'Locked keep', 'direct');
+      lockedRule.locked = true;
+      const content = '[{"remarks":"Imported proxy","domain":["domain:import.example"],"outboundTag":"proxy"},{"remarks":"Ignored empty","outboundTag":"block"}]';
+      const result = importRoutingRulesJson([lockedRule], content);
+
+      expect(result.success).assertTrue();
+      expect(result.count).assertEqual(1);
+      expect(result.rules.length).assertEqual(2);
+      expect(result.rules[0].id).assertEqual('locked-rule');
+      expect(result.rules[1].remarks).assertEqual('Imported proxy');
+      expect(result.rules[1].domain[0]).assertEqual('domain:import.example');
+      expect(importRoutingRulesJson([], '{"bad":true}').success).assertFalse();
     });
 
     it('has complete zh and en translations with fallback helpers', 0, () => {
@@ -347,6 +378,22 @@ function buildSettingsFixture(): AppSettings {
     routingRules: [],
     autoSortAfterTest: false,
     autoRemoveInvalidAfterTest: false
+  };
+}
+
+function buildRoutingRuleFixture(id: string, remarks: string, outboundTag: string): RoutingRule {
+  return {
+    id,
+    remarks,
+    domain: [],
+    ip: [],
+    process: [],
+    outboundTag,
+    port: '443',
+    network: 'tcp',
+    protocol: [],
+    enabled: true,
+    locked: false
   };
 }
 

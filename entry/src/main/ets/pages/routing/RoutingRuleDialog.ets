@@ -18,6 +18,7 @@ export struct RoutingRuleDialog {
   @State private network: string = '';
   @State private outboundTag: string = 'proxy';
   @State private enabled: boolean = true;
+  @State private locked: boolean = false;
 
   onCancel: () => void = () => {};
   onConfirm: (rule: RoutingRule) => void = (_rule: RoutingRule) => {};
@@ -32,6 +33,7 @@ export struct RoutingRuleDialog {
     this.network = this.initialRule.network;
     this.outboundTag = this.initialRule.outboundTag.length > 0 ? this.initialRule.outboundTag : 'proxy';
     this.enabled = this.initialRule.enabled;
+    this.locked = this.initialRule.locked;
   }
 
   build() {
@@ -104,6 +106,32 @@ export struct RoutingRuleDialog {
               .fontColor(AppColor.textTertiary)
               .lineHeight(16)
               .width('100%')
+
+            Row({ space: Space.md }) {
+              Column({ space: 3 }) {
+                Text(this.t('routing.rule.locked'))
+                  .fontSize(FontSz.callout)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(AppColor.textPrimary)
+                Text(this.t('routing.rule.locked.detail'))
+                  .fontSize(FontSz.footnote)
+                  .fontColor(AppColor.textTertiary)
+                  .lineHeight(16)
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
+
+              Toggle({ type: ToggleType.Switch, isOn: this.locked })
+                .selectedColor(AppColor.brand)
+                .switchPointColor(AppColor.onBrand)
+                .onChange((isOn: boolean) => {
+                  this.locked = isOn;
+                })
+            }
+            .width('100%')
+            .padding(Space.md)
+            .backgroundColor(AppColor.surfaceAlt)
+            .borderRadius(Radius.md)
           }
           .width('100%')
         }
@@ -206,7 +234,7 @@ export struct RoutingRuleDialog {
       network: this.network,
       protocol: this.splitCsv(this.protocol),
       enabled: this.enabled,
-      locked: this.initialRule.locked
+      locked: this.locked
     };
 
     if (rule.remarks.length === 0) {

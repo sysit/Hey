@@ -1,6 +1,16 @@
 import { common } from '@kit.AbilityKit';
+import { pasteboard } from '@kit.BasicServicesKit';
+import { promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, RoutingRule } from '../core/Profile';
+import {
+  exportRoutingRulesJson,
+  importRoutingRulesJson,
+  resetRoutingRulesFromPreset,
+  ROUTING_RULE_PRESETS,
+  RoutingPresetId,
+  RoutingPresetInfo
+} from '../core/RoutingRules';
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { SectionHeader } from '../components/SectionHeader';
@@ -395,22 +405,32 @@ struct RoutingPage {
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
-      Button() {
-        Image($r('app.media.ic_add'))
-          .width(18)
-          .height(18)
-          .fillColor(AppColor.onBrand)
+      Row({ space: Space.xs }) {
+        this.RuleHeaderActionButton($r('app.media.ic_cloud_download'), 'preset')
+        this.RuleHeaderActionButton($r('app.media.ic_article'), 'import')
+        this.RuleHeaderActionButton($r('app.media.ic_share'), 'export')
+        this.RuleHeaderActionButton($r('app.media.ic_add'), 'add')
       }
-      .width(36)
-      .height(36)
-      .backgroundColor(AppColor.brand)
-      .borderRadius(18)
-      .onClick(() => {
-        this.openAddRule();
-      })
     }
     .width('100%')
     .padding(Space.lg)
+  }
+
+  @Builder
+  private RuleHeaderActionButton(icon: Resource, action: string) {
+    Button() {
+      Image(icon)
+        .width(17)
+        .height(17)
+        .fillColor(action === 'add' ? AppColor.onBrand : AppColor.textSecondary)
+    }
+    .width(34)
+    .height(34)
+    .backgroundColor(action === 'add' ? AppColor.brand : AppColor.surfaceAlt)
+    .borderRadius(17)
+    .onClick(() => {
+      this.handleRuleHeaderAction(action);
+    })
   }
 
   @Builder
@@ -466,6 +486,14 @@ struct RoutingPage {
             .padding({ left: Space.sm, right: Space.sm, top: 2, bottom: 2 })
             .backgroundColor(this.ruleAccentTint(rule))
             .borderRadius(Radius.sm)
+          if (rule.locked) {
+            Text(this.t('routing.rule.locked.short'))
+              .fontSize(FontSz.caption)
+              .fontColor(AppColor.warning)
+              .padding({ left: Space.sm, right: Space.sm, top: 2, bottom: 2 })
+              .backgroundColor(AppColor.surfaceAlt)
+              .borderRadius(Radius.sm)
+          }
         }
         .width('100%')
 
@@ -598,6 +626,147 @@ struct RoutingPage {
     this.initialRule = this.copyRule(rule);
     this.ruleDialogTitle = this.t('routing.rule.edit');
     this.showRuleDialog = true;
+  }
+
+  private handleRuleHeaderAction(action: string): void {
+    if (action === 'preset') {
+      this.openPresetPicker();
+    } else if (action === 'import') {
+      this.confirmClipboardImport();
+    } else if (action === 'export') {
+      this.exportRulesToClipboard();
+    } else if (action === 'add') {
+      this.openAddRule();
+    }
+  }
+
+  private openPresetPicker(): void {
+    const labels = new Array<string>();
+    for (let index = 0; index < ROUTING_RULE_PRESETS.length; index++) {
+      labels.push(this.t(ROUTING_RULE_PRESETS[index].titleKey));
+    }
+    TextPickerDialog.show({
+      range: labels,
+      selected: 0,
+      onAccept: (value: TextPickerResult) => {
+        const index = this.pickerIndex(value);
+        if (index >= 0 && index < ROUTING_RULE_PRESETS.length) {
+          this.confirmPresetImport(ROUTING_RULE_PRESETS[index]);
+        }
+      }
+    })
+  }
+
+  private confirmClipboardImport(): void {
+    AlertDialog.show({
+      title: this.t('action.import'),
+      message: this.t('routing.preset.importConfirm'),
+      autoCancel: true,
+      alignment: DialogAlignment.Bottom,
+      offset: { dx: 0, dy: -20 },
+      primaryButton: {
+        value: this.t('action.import'),
+        fontColor: AppColor.onBrand,
+        backgroundColor: AppColor.brand,
+        action: () => {
+          this.importRulesFromClipboard();
+        }
+      },
+      secondaryButton: {
+        value: this.t('action.cancel'),
+        fontColor: AppColor.textSecondary,
+        backgroundColor: AppColor.bg,
+        action: () => {}
+      }
+    })
+  }
+
+  private confirmPresetImport(preset: RoutingPresetInfo): void {
+    AlertDialog.show({
+      title: this.t(preset.titleKey),
+      message: this.t('routing.preset.importConfirm') + '\n\n' + this.t(preset.detailKey),
+      autoCancel: true,
+      alignment: DialogAlignment.Bottom,
+      offset: { dx: 0, dy: -20 },
+      primaryButton: {
+        value: this.t('action.import'),
+        fontColor: AppColor.onBrand,
+        backgroundColor: AppColor.brand,
+        action: () => {
+          this.applyPresetImport(preset.id, this.t(preset.titleKey));
+        }
+      },
+      secondaryButton: {
+        value: this.t('action.cancel'),
+        fontColor: AppColor.textSecondary,
+        backgroundColor: AppColor.bg,
+        action: () => {}
+      }
+    })
+  }
+
+  private async applyPresetImport(presetId: RoutingPresetId, presetName: string): Promise<void> {
+    this.routingRules = resetRoutingRulesFromPreset(this.routingRules, presetId);
+    await this.persistSettings(this.f1('log.routingPresetImported', 'name', presetName));
+    promptAction.showToast({ message: this.f1('log.routingPresetImported', 'name', presetName) });
+  }
+
+  private async importRulesFromClipboard(): Promise<void> {
+    try {
+      const systemPasteboard = pasteboard.getSystemPasteboard();
+      if (!systemPasteboard.hasDataSync()) {
+        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        return;
+      }
+      const pasteData = await systemPasteboard.getData();
+      const text = pasteData.getPrimaryText();
+      if (!text || text.trim().length === 0) {
+        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        return;
+      }
+
+      const result = importRoutingRulesJson(this.routingRules, text);
+      if (!result.success) {
+        promptAction.showToast({ message: this.t('routing.rule.importFailed') });
+        return;
+      }
+
+      this.routingRules = result.rules;
+      const message = this.f1('log.routingRulesImported', 'count', result.count.toString());
+      await this.persistSettings(message);
+      promptAction.showToast({ message });
+    } catch (error) {
+      promptAction.showToast({ message: this.t('routing.rule.importFailed') });
+      SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
+    }
+  }
+
+  private async exportRulesToClipboard(): Promise<void> {
+    if (this.routingRules.length === 0) {
+      promptAction.showToast({ message: this.t('routing.rule.exportEmpty') });
+      return;
+    }
+    const systemPasteboard = pasteboard.getSystemPasteboard();
+    const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, exportRoutingRulesJson(this.routingRules));
+    await systemPasteboard.setData(pasteData);
+    const message = this.f1('log.routingRulesExported', 'count', this.routingRules.length.toString());
+    SHARED_RUNTIME_CONTROLLER.appendLog(message);
+    promptAction.showToast({ message });
+  }
+
+  private pickerIndex(value: TextPickerResult): number {
+    if (value.index !== undefined) {
+      if (typeof value.index === 'number') {
+        return value.index;
+      }
+      if (typeof value.index === 'string') {
+        return Number(value.index);
+      }
+      if (Array.isArray(value.index)) {
+        return Number(value.index[0]);
+      }
+    }
+    return 0;
   }
 
   private handleRuleIconAction(action: string, index: number, ruleId: string): void {

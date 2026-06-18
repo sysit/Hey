@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | 真机 VPN 闭环 | ✅ **已真机验证通过（2026-06-15）**：`TUN fd → CGoSetTunFd → Xray native TUN → 出站` 端到端可上网 | 阻塞项解除，主线推进至 M1 |
 | Native 桥接 | M1 已接通 7 个（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`），代码完成 | **待 `libxray.so` 重建（导出符号已加）+ 真机复测**；`CGoReadGeoFiles`/`CGoConvertShareLinks` 仍未接线 |
-| 路由规则 | `buildRoutingRules` 仅 `geosite:cn` 旁路一条 | 广告拦截、自定义规则集、规则编辑器均未生效 |
+| 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules` | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动更新 | **无自动更新、无去重、无正则过滤、无自定义 UA** |
 | 分享导出 | 仅文本 | **无二维码生成** |
 | 深链导入 | 无 | **URL Scheme / Want 导入未实现** |
@@ -97,13 +97,19 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 - 配置：启用规则按列表顺序写入 `routing.rules`，位置在广告拦截之后、`routeOnly` 绕过规则之前；未知 outboundTag 回退 `proxy`
 - 测试：新增单测覆盖启用/禁用规则、端口/协议/网络字段和规则顺序
 
+**进展（2026-06-18 续）**：预设规则集导入/导出已落地：
+- 预设：内置大陆白名单/大陆黑名单/全局/伊朗白名单/俄罗斯白名单
+- 导入：导入预设或剪贴板规则数组 JSON 时保留 `locked` 规则并替换未锁定规则
+- 导出：当前规则可导出为 v2rayNG 风格规则数组 JSON 到剪贴板
+- UI：规则编辑器补 `locked` 开关，规则列表显示锁定标记
+
 **任务**
 - ✅ 扩展 `core/XrayConfig.ets` 的 `buildRoutingRules`：支持多规则、广告拦截
   （`geosite:category-ads-all` → `block`）、用户自定义 域名/IP/端口/协议 规则
 - ✅ 自定义规则集的持久化模型（参考 v2rayNG `RulesetItem`：
   `domain/ip/port/process/protocol/network/outboundTag/enabled`）
 - ✅ 新建规则编辑器（增删改 + 上移/下移排序 + 启用开关）
-- 预设规则集导入（白名单/黑名单/全局，对应 v2rayNG assets 内置规则）
+- ✅ 预设规则集导入/导出（白名单/黑名单/全局等；剪贴板 JSON 导入/导出；保留 locked 规则）
 
 **v2rayNG 对照**：`RoutingSettingActivity` / `RoutingEditActivity` / `RulesetItem`。
 **验收标准**：开启广告拦截后广告域名走 block；自定义规则在连接后实际生效。
@@ -208,7 +214,7 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 - [x] URL Scheme / Want 深链导入：`hey://install-sub` / `hey://install-config?url=` 注册 scheme + `EntryAbility.onCreate/onNewWant` 暂存 + Index `onPageShow` 解析导入（2026-06-15）
 
 > ✅ 2026-06-15 批 backlog 全部完成。后续可补充项：负载均衡/策略组/代理链（M5）、
-> WebDAV 云备份、路由预设规则集导入/导出、VPN MTU/接口地址可配、常驻速度通知（依赖 M1 重建后的真实流量）。
+> WebDAV 云备份、VPN MTU/接口地址可配、常驻速度通知（依赖 M1 重建后的真实流量）。
 
 ### 本会话代码自查清单（/loop 继续后续修复）
 
@@ -244,6 +250,7 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 | 2026-06-15 | 修复 | ✅ 预检改为非阻断（避免重建后 `CGoTestXray` 对 tun inbound 误报阻断已验证连接）；核对 ScanKit QR API 字段无误 |
 | 2026-06-15 | 自查 | ✅ i18n 总扫通过：registry≡zh≡en（327 键），246 处代码引用全部有定义，无需修改 |
 | 2026-06-15 | 自查 | ✅ ArkTS 严格性扫描：无 `any`、新增导入全部被用；清理 SubscriptionEdit 既有未用导入 `translate` |
-| 2026-06-18 | M2 | ✅ 自定义路由规则编辑/生效（规则模型 + Route 页增删改/启停/排序 + `routing.rules` 生成 + 单测）；仍待预设规则集导入/导出 |
+| 2026-06-18 | M2 | ✅ 自定义路由规则编辑/生效（规则模型 + Route 页增删改/启停/排序 + `routing.rules` 生成 + 单测） |
+| 2026-06-18 | M2 | ✅ 预设规则集导入/导出（5 组内置预设 + 剪贴板 JSON 导入/导出 + locked 规则保留 + 单测）；M2 路由规则主功能闭环，仍待真机验证规则实效 |
 | 2026-06-15 | 自查 | ✅ 字段一致性总扫：AppSettings/SettingsDraft 5 个构造点字段完整一致，SubscriptionGroup.filter 贯通，无需修改 |
 | 2026-06-15 | 自查 | ✅ 深链/metrics 配置形状核对 Xray 官方一致；自查清单收尾（净修复：预检非阻断 + 清理未用导入） |

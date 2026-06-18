@@ -20,7 +20,7 @@ v2rayNG's features and design, see
 | SubSettingActivity / SubEditActivity | Subs | Multi-group model present. Save/update/select/enable-disable/delete are wired; dedicated edit form and reorder pending. |
 | ServerActivity protocol editors | Add | Partial. Field-level editor is present for VLESS/VMess/Trojan/Shadowsocks/SOCKS/HTTP (generates outbound JSON into import buffer). WireGuard/Hysteria2/TUIC editors still pending. |
 | ServerCustomConfigActivity | Add | Raw outbound JSON import works. Full custom config import pending. |
-| RoutingSettingActivity / RoutingEditActivity | Route | Partial. Traffic mode (global/rules/direct), domain strategy, bypass-LAN/CN, ad-block, and custom routing rules persist and feed generated Xray routing. Custom rules support add/edit/delete, enable/disable, and order changes. Preset ruleset import/export is still pending. |
+| RoutingSettingActivity / RoutingEditActivity | Route | Present for core ruleset management. Traffic mode (global/rules/direct), domain strategy, bypass-LAN/CN, ad-block, custom routing rules, locked rules, predefined ruleset import, clipboard import, and clipboard export persist and feed generated Xray routing. Advanced custom outbound targets remain future work. |
 | SettingsActivity | Config | Core, VPN DNS, SOCKS port, mux, sniffing, log level and routing strategy persist and feed generated Xray config. Dedicated pickers and full advanced options pending. |
 | PerAppProxyActivity | Apps | Partial. Toggle, allowlist/blocklist mode, preset/manual package list, and VPN `blockedApplications`/`trustedApplications` mapping are wired; unrestricted installed-app enumeration is platform-limited. |
 | UserAssetActivity / UserAssetUrlActivity | Assets | Present. geoip/geosite download (Loyalsoldier rules), custom asset URL CRUD, and clipboard backup/restore are implemented. |
@@ -46,7 +46,7 @@ v2rayNG's features and design, see
 | Delete all / duplicate / invalid configs | Partial. Duplicate and invalid-node cleanup are wired; full delete-all parity still needs review. |
 | Export/share configs and QR generation | Partial. Plain-text share-link export is present, and node detail can render QR codes; system share/file export remains pending. |
 | Multi-subscription groups | Present with legacy single-subscription migration. Rename/reorder and batch update all pending. |
-| Routing rulesets and geo assets | Partial. Geo asset download/management present (Assets page). Routing config emits metrics, ad-block, custom enabled rules, and bypass-LAN/CN rules in order. Predefined ruleset import/export and advanced outbound targets are still pending. |
+| Routing rulesets and geo assets | Partial. Geo asset download/management present (Assets page). Routing config emits metrics, ad-block, custom enabled rules, and bypass-LAN/CN rules in order. Predefined ruleset import/export is wired; advanced outbound targets are still pending. |
 | Per-app proxy | Partial. VPN app allow/block mapping is wired from saved package names; unrestricted installed-app enumeration remains platform-limited. |
 | Auto subscription update | Pending. No interval/background refresh. |
 | Boot/startup automation | Pending and platform-dependent. |
