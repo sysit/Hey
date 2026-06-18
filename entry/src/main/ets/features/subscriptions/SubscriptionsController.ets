@@ -1,6 +1,11 @@
 import { common } from '@kit.AbilityKit';
 import { translate } from '../../core/I18n';
 import { AppLanguage, ProxyNode, SubscriptionGroup, SubscriptionProfile } from '../../core/Profile';
+import {
+  DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
+  isSubscriptionAutoUpdateDue,
+  normalizeSubscriptionUpdateInterval
+} from '../../core/SubscriptionGroups';
 import { ProfileStore } from '../../storage/ProfileStore';
 import { SubscriptionStore } from '../../storage/SubscriptionStore';
 import { SubscriptionManager, SubscriptionUpdateResult } from '../../services/SubscriptionManager';
@@ -14,6 +19,17 @@ export interface SubscriptionsControllerState {
   subscriptionUpdatedAt: number;
   subscriptionGroups: Array<SubscriptionGroup>;
   selectedGroupId: string;
+}
+
+export interface SubscriptionAutoUpdateResult {
+  state: SubscriptionsControllerState;
+  updatedCount: number;
+  failedCount: number;
+}
+
+interface SubscriptionGroupUpdateResult {
+  subscription: SubscriptionProfile;
+  ok: boolean;
 }
 
 export class SubscriptionsController {
@@ -69,7 +85,7 @@ export class SubscriptionsController {
         return this.buildState(profileBeforeUpdate, language, localizeCoreMessage(language, validationMessage));
       }
 
-      const subscriptionBeforeUpdate = await SubscriptionStore.saveUrl(context, url, targetGroupId);
+      const subscriptionBeforeUpdate = await SubscriptionStore.saveUrl(context, url, targetGroupId, false);
       if (targetGroupId.length === 0) {
         targetGroupId = subscriptionBeforeUpdate.selectedGroupId;
       }
@@ -98,7 +114,17 @@ export class SubscriptionsController {
     }
   }
 
-  async addGroup(context: common.Context, name: string, url: string, userAgent: string, filter: string, allowInsecureUrl: boolean, language: AppLanguage): Promise<SubscriptionsControllerState> {
+  async addGroup(
+    context: common.Context,
+    name: string,
+    url: string,
+    userAgent: string,
+    filter: string,
+    allowInsecureUrl: boolean,
+    language: AppLanguage,
+    autoUpdate: boolean = false,
+    updateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+  ): Promise<SubscriptionsControllerState> {
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (trimmedName.length === 0) {
@@ -109,14 +135,26 @@ export class SubscriptionsController {
       return this.buildState(await SubscriptionStore.load(context), language, validationMessage);
     }
     try {
-      const subscription = await SubscriptionStore.addGroup(context, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl);
+      const normalizedInterval = normalizeSubscriptionUpdateInterval(updateIntervalMinutes);
+      const subscription = await SubscriptionStore.addGroup(context, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl, autoUpdate, normalizedInterval);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.saveSubscriptionGroup', 'error', this.stringifyError(error)));
     }
   }
 
-  async updateGroup(context: common.Context, groupId: string, name: string, url: string, userAgent: string, filter: string, allowInsecureUrl: boolean, language: AppLanguage): Promise<SubscriptionsControllerState> {
+  async updateGroup(
+    context: common.Context,
+    groupId: string,
+    name: string,
+    url: string,
+    userAgent: string,
+    filter: string,
+    allowInsecureUrl: boolean,
+    language: AppLanguage,
+    autoUpdate: boolean = false,
+    updateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+  ): Promise<SubscriptionsControllerState> {
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (trimmedName.length === 0) {
@@ -127,7 +165,8 @@ export class SubscriptionsController {
       return this.buildState(await SubscriptionStore.load(context), language, validationMessage);
     }
     try {
-      const subscription = await SubscriptionStore.updateGroup(context, groupId, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl);
+      const normalizedInterval = normalizeSubscriptionUpdateInterval(updateIntervalMinutes);
+      const subscription = await SubscriptionStore.updateGroup(context, groupId, trimmedName, trimmedUrl, userAgent.trim(), filter.trim(), allowInsecureUrl, autoUpdate, normalizedInterval);
       return this.buildState(subscription, language, translate(language, 'log.subscriptionGroupSaved'));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.saveSubscriptionGroup', 'error', this.stringifyError(error)));
@@ -144,10 +183,9 @@ export class SubscriptionsController {
       const url = group.url.trim();
       if (url.length > 0 && group.enabled) {
         try {
-          const result = await SubscriptionManager.fetchAndParse(url, group.userAgent ?? '', group.allowInsecureUrl ?? false);
+          const result = await this.updateGroupNodes(context, group, false);
+          subscription = result.subscription;
           if (result.ok) {
-            const nodes = this.applyNodeFilter(result.nodes, group.filter ?? '');
-            subscription = await SubscriptionStore.saveNodes(context, group.id, url, nodes, group.selectedNodeId);
             successCount++;
           } else {
             failedCount++;
@@ -163,6 +201,43 @@ export class SubscriptionsController {
       : `更新完成: ${successCount} 个成功, ${failedCount} 个失败`;
     
     return this.buildState(subscription, language, msg);
+  }
+
+  async updateDue(context: common.Context, language: AppLanguage, now: number = Date.now()): Promise<SubscriptionAutoUpdateResult> {
+    let subscription = await SubscriptionStore.load(context);
+    let updatedCount = 0;
+    let failedCount = 0;
+
+    for (let index = 0; index < subscription.groups.length; index++) {
+      const group = subscription.groups[index];
+      if (!isSubscriptionAutoUpdateDue(group, now)) {
+        continue;
+      }
+      try {
+        const result = await this.updateGroupNodes(context, group, false);
+        subscription = result.subscription;
+        if (result.ok) {
+          updatedCount++;
+        } else {
+          failedCount++;
+        }
+      } catch (error) {
+        failedCount++;
+      }
+    }
+
+    let message = '';
+    if (updatedCount > 0 || failedCount > 0) {
+      message = failedCount === 0
+        ? `已自动更新 ${updatedCount} 个订阅分组`
+        : `自动更新完成: ${updatedCount} 个成功, ${failedCount} 个失败`;
+    }
+
+    return {
+      state: this.buildState(subscription, language, message),
+      updatedCount,
+      failedCount
+    };
   }
 
   async selectGroup(context: common.Context, group: SubscriptionGroup, language: AppLanguage): Promise<SubscriptionsControllerState> {
@@ -253,6 +328,28 @@ export class SubscriptionsController {
       }
     }
     return false;
+  }
+
+  private async updateGroupNodes(context: common.Context, group: SubscriptionGroup, makeActive: boolean): Promise<SubscriptionGroupUpdateResult> {
+    const url = group.url.trim();
+    const result = await SubscriptionManager.fetchAndParse(url, group.userAgent ?? '', group.allowInsecureUrl ?? false);
+    if (!result.ok) {
+      return {
+        subscription: await SubscriptionStore.load(context),
+        ok: false
+      };
+    }
+
+    const nodes = this.applyNodeFilter(result.nodes, group.filter ?? '');
+    let nextSelectedId = group.selectedNodeId;
+    if (this.findNode(nodes, nextSelectedId) === null) {
+      nextSelectedId = nodes.length > 0 ? nodes[0].id : '';
+    }
+
+    return {
+      subscription: await SubscriptionStore.saveNodes(context, group.id, url, nodes, nextSelectedId, makeActive),
+      ok: true
+    };
   }
 
   private validateEditableSubscriptionUrl(url: string, allowInsecureUrl: boolean, language: AppLanguage): string {

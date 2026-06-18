@@ -1,7 +1,11 @@
 import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
 import { ProxyNode, SubscriptionGroup, SubscriptionProfile } from '../core/Profile';
-import { moveSubscriptionGroup } from '../core/SubscriptionGroups';
+import {
+  DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
+  moveSubscriptionGroup,
+  normalizeSubscriptionUpdateInterval
+} from '../core/SubscriptionGroups';
 import { normalizeOutboundInput } from '../core/XrayConfig';
 
 const PREFERENCES_NAME: string = 'hey_vpn_subscription';
@@ -23,7 +27,7 @@ export class SubscriptionStore {
     }
   }
 
-  static async saveUrl(context: common.Context, url: string, groupId?: string): Promise<SubscriptionProfile> {
+  static async saveUrl(context: common.Context, url: string, groupId?: string, touchUpdatedAt: boolean = true): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
     let group: SubscriptionGroup | null = null;
     if (groupId && groupId.length > 0) {
@@ -41,12 +45,14 @@ export class SubscriptionStore {
     if (group.name.length === 0 || group.name.startsWith('Subscription ')) {
       group.name = SubscriptionStore.nameFromUrl(url);
     }
-    group.updatedAt = Date.now();
+    if (touchUpdatedAt) {
+      group.updatedAt = Date.now();
+    }
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
   }
 
-  static async saveNodes(context: common.Context, groupId: string, url: string, nodes: Array<ProxyNode>, selectedNodeId: string): Promise<SubscriptionProfile> {
+  static async saveNodes(context: common.Context, groupId: string, url: string, nodes: Array<ProxyNode>, selectedNodeId: string, makeActive: boolean = true): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
     let group: SubscriptionGroup | null = null;
     if (groupId.length > 0) {
@@ -67,7 +73,9 @@ export class SubscriptionStore {
     group.nodes = SubscriptionStore.mergeNodeRuntime(group.nodes, nodes);
     group.selectedNodeId = selectedNodeId;
     group.updatedAt = Date.now();
-    profile.selectedGroupId = group.id;
+    if (makeActive) {
+      profile.selectedGroupId = group.id;
+    }
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
   }
@@ -192,7 +200,6 @@ export class SubscriptionStore {
     const group = SubscriptionStore.findGroup(profile.groups, groupId);
     if (group !== null) {
       group.enabled = !group.enabled;
-      group.updatedAt = Date.now();
       await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     }
     return SubscriptionStore.load(context);
@@ -221,16 +228,35 @@ export class SubscriptionStore {
     return SubscriptionStore.load(context);
   }
 
-  static async addGroup(context: common.Context, name: string, url: string, userAgent: string = '', filter: string = '', allowInsecureUrl: boolean = false): Promise<SubscriptionProfile> {
+  static async addGroup(
+    context: common.Context,
+    name: string,
+    url: string,
+    userAgent: string = '',
+    filter: string = '',
+    allowInsecureUrl: boolean = false,
+    autoUpdate: boolean = false,
+    updateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+  ): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
-    const group = SubscriptionStore.createGroup(url, name, userAgent, filter, allowInsecureUrl);
+    const group = SubscriptionStore.createGroup(url, name, userAgent, filter, allowInsecureUrl, autoUpdate, updateIntervalMinutes);
     profile.groups.push(group);
     profile.selectedGroupId = group.id;
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
   }
 
-  static async updateGroup(context: common.Context, groupId: string, name: string, url: string, userAgent: string = '', filter: string = '', allowInsecureUrl: boolean = false): Promise<SubscriptionProfile> {
+  static async updateGroup(
+    context: common.Context,
+    groupId: string,
+    name: string,
+    url: string,
+    userAgent: string = '',
+    filter: string = '',
+    allowInsecureUrl: boolean = false,
+    autoUpdate: boolean = false,
+    updateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+  ): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
     const group = SubscriptionStore.findGroup(profile.groups, groupId);
     if (group !== null) {
@@ -239,7 +265,8 @@ export class SubscriptionStore {
       group.userAgent = userAgent;
       group.filter = filter;
       group.allowInsecureUrl = allowInsecureUrl;
-      group.updatedAt = Date.now();
+      group.autoUpdate = autoUpdate;
+      group.updateIntervalMinutes = normalizeSubscriptionUpdateInterval(updateIntervalMinutes);
       await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     }
     return SubscriptionStore.load(context);
@@ -260,7 +287,9 @@ export class SubscriptionStore {
         updatedAt: Date.now(),
         userAgent: '',
         filter: '',
-        allowInsecureUrl: false
+        allowInsecureUrl: false,
+        autoUpdate: false,
+        updateIntervalMinutes: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
       };
       profile.groups.push(localGroup);
     }
@@ -326,7 +355,9 @@ export class SubscriptionStore {
         nodes: SubscriptionStore.normalizeNodes(profile.nodes),
         updatedAt: profile.updatedAt,
         userAgent: '',
-        allowInsecureUrl: false
+        allowInsecureUrl: false,
+        autoUpdate: false,
+        updateIntervalMinutes: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
       });
     }
 
@@ -363,7 +394,9 @@ export class SubscriptionStore {
       updatedAt: group.updatedAt ?? 0,
       userAgent: group.userAgent ?? '',
       filter: group.filter ?? '',
-      allowInsecureUrl: group.allowInsecureUrl ?? false
+      allowInsecureUrl: group.allowInsecureUrl ?? false,
+      autoUpdate: group.autoUpdate ?? false,
+      updateIntervalMinutes: normalizeSubscriptionUpdateInterval(group.updateIntervalMinutes)
     };
   }
 
@@ -481,7 +514,15 @@ export class SubscriptionStore {
     return `json:${node.outboundJson.trim()}`;
   }
 
-  private static createGroup(url: string, name: string, userAgent: string = '', filter: string = '', allowInsecureUrl: boolean = false): SubscriptionGroup {
+  private static createGroup(
+    url: string,
+    name: string,
+    userAgent: string = '',
+    filter: string = '',
+    allowInsecureUrl: boolean = false,
+    autoUpdate: boolean = false,
+    updateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+  ): SubscriptionGroup {
     const seed = `${url}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     return {
       id: SubscriptionStore.makeGroupId(seed),
@@ -493,7 +534,9 @@ export class SubscriptionStore {
       updatedAt: 0,
       userAgent,
       filter,
-      allowInsecureUrl
+      allowInsecureUrl,
+      autoUpdate,
+      updateIntervalMinutes: normalizeSubscriptionUpdateInterval(updateIntervalMinutes)
     };
   }
 

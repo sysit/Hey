@@ -1,6 +1,10 @@
 import { common } from '@kit.AbilityKit';
 import { DEFAULT_LANGUAGE } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
+import {
+  DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
+  MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+} from '../core/SubscriptionGroups';
 import { SUBSCRIPTIONS_CONTROLLER, SubscriptionsControllerState } from '../features/subscriptions/SubscriptionsController';
 import { DEFAULT_SUBSCRIPTION_USER_AGENT } from '../services/SubscriptionManager';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
@@ -22,7 +26,10 @@ struct SubscriptionEditPage {
   @State private userAgent: string = '';
   @State private filter: string = '';
   @State private allowInsecureUrl: boolean = false;
+  @State private autoUpdate: boolean = false;
+  @State private updateInterval: string = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString();
   @State private isBusy: boolean = false;
+  private originalUpdateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
 
   aboutToAppear(): void {
     const params = router.getParams() as Record<string, Object>;
@@ -195,7 +202,68 @@ struct SubscriptionEditPage {
             .clip(true)
             .margin({ left: Space.lg, right: Space.lg })
 
-            // 卡片三：自定义 User-Agent
+            SectionHeader({ title: '自动更新订阅' })
+            Column() {
+              Row() {
+                Column({ space: 4 }) {
+                  Text('启用自动更新')
+                    .fontSize(FontSz.body)
+                    .fontColor(AppColor.textPrimary)
+                  Text('开启后会在应用前台按间隔检查并刷新该订阅。')
+                    .fontSize(FontSz.footnote)
+                    .fontColor(AppColor.textTertiary)
+                    .maxLines(2)
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+
+                Toggle({ type: ToggleType.Switch, isOn: this.autoUpdate })
+                  .selectedColor(AppColor.brand)
+                  .switchPointColor(AppColor.onBrand)
+                  .onChange((isOn: boolean) => {
+                    this.autoUpdate = isOn;
+                  })
+              }
+              .width('100%')
+              .padding({ left: Space.lg, right: Space.lg, top: Space.lg, bottom: Space.md })
+              .alignItems(VerticalAlign.Center)
+
+              Row() {
+                Column({ space: 4 }) {
+                  Text('更新间隔（分钟）')
+                    .fontSize(FontSz.body)
+                    .fontColor(AppColor.textPrimary)
+                  Text(`最小 ${MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES} 分钟，默认 ${DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES} 分钟。`)
+                    .fontSize(FontSz.footnote)
+                    .fontColor(AppColor.textTertiary)
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1)
+
+                TextInput({ text: this.updateInterval, placeholder: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString() })
+                  .width(104)
+                  .height(40)
+                  .fontSize(FontSz.body)
+                  .fontColor(AppColor.textPrimary)
+                  .placeholderColor(AppColor.textTertiary)
+                  .backgroundColor(AppColor.surfaceAlt)
+                  .borderRadius(Radius.md)
+                  .padding({ left: Space.md, right: Space.md })
+                  .onChange((val) => {
+                    this.updateInterval = val;
+                  })
+              }
+              .width('100%')
+              .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.lg })
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+            .backgroundColor(AppColor.surface)
+            .borderRadius(Radius.lg)
+            .clip(true)
+            .margin({ left: Space.lg, right: Space.lg })
+
+            // 卡片四：自定义 User-Agent
             SectionHeader({ title: '自定义 User-Agent' })
             Column() {
               TextInput({ text: this.userAgent, placeholder: `留空默认 ${DEFAULT_SUBSCRIPTION_USER_AGENT}` })
@@ -224,7 +292,7 @@ struct SubscriptionEditPage {
               .lineHeight(16)
               .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
 
-            // 卡片四：节点过滤（正则）
+            // 卡片五：节点过滤（正则）
             SectionHeader({ title: '节点过滤 (正则)' })
             Column() {
               TextInput({ text: this.filter, placeholder: '留空导入全部节点，例如 香港|HK' })
@@ -319,11 +387,16 @@ struct SubscriptionEditPage {
           this.userAgent = group.userAgent ?? '';
           this.filter = group.filter ?? '';
           this.allowInsecureUrl = group.allowInsecureUrl ?? false;
+          this.autoUpdate = group.autoUpdate ?? false;
+          this.originalUpdateIntervalMinutes = group.updateIntervalMinutes ?? DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
+          this.updateInterval = this.originalUpdateIntervalMinutes.toString();
           break;
         }
       }
     } else {
       this.pageTitle = '新建订阅分组';
+      this.originalUpdateIntervalMinutes = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
+      this.updateInterval = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString();
     }
   }
 
@@ -337,14 +410,18 @@ struct SubscriptionEditPage {
 
     const userAgent = this.userAgent.trim();
     const filter = this.filter.trim();
+    const updateIntervalMinutes = this.resolveUpdateIntervalForSave();
+    if (updateIntervalMinutes < 0) {
+      return;
+    }
     this.isBusy = true;
     try {
       const context = getContext(this) as common.Context;
       let state: SubscriptionsControllerState;
       if (this.groupId.length === 0) {
-        state = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, url, userAgent, filter, this.allowInsecureUrl, this.language);
+        state = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, url, userAgent, filter, this.allowInsecureUrl, this.language, this.autoUpdate, updateIntervalMinutes);
       } else {
-        state = await SUBSCRIPTIONS_CONTROLLER.updateGroup(context, this.groupId, name, url, userAgent, filter, this.allowInsecureUrl, this.language);
+        state = await SUBSCRIPTIONS_CONTROLLER.updateGroup(context, this.groupId, name, url, userAgent, filter, this.allowInsecureUrl, this.language, this.autoUpdate, updateIntervalMinutes);
       }
       promptAction.showToast({ message: state.subscriptionMessage });
       router.back();
@@ -373,5 +450,36 @@ struct SubscriptionEditPage {
     } catch (error) {
       promptAction.showToast({ message: '无法读取剪贴板' });
     }
+  }
+
+  private resolveUpdateIntervalForSave(): number {
+    const parsed = this.parseUpdateIntervalInput();
+    if (this.autoUpdate) {
+      if (parsed === null) {
+        return DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
+      }
+      if (parsed < MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES) {
+        promptAction.showToast({ message: `自动更新间隔不能小于 ${MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES} 分钟` });
+        return -1;
+      }
+      return parsed;
+    }
+
+    if (parsed !== null && parsed >= MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES) {
+      return parsed;
+    }
+    return this.originalUpdateIntervalMinutes;
+  }
+
+  private parseUpdateIntervalInput(): number | null {
+    const value = this.updateInterval.trim();
+    if (value.length === 0) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (Number.isNaN(parsed) || Math.floor(parsed) !== parsed) {
+      return null;
+    }
+    return parsed;
   }
 }

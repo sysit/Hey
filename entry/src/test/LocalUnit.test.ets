@@ -4,7 +4,13 @@ import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/
 import { buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateOutboundJson } from '../main/ets/core/XrayConfig';
 import { parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
 import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
-import { moveSubscriptionGroup } from '../main/ets/core/SubscriptionGroups';
+import {
+  DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
+  MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
+  isSubscriptionAutoUpdateDue,
+  moveSubscriptionGroup,
+  normalizeSubscriptionUpdateInterval
+} from '../main/ets/core/SubscriptionGroups';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
 import { formatBytes, formatDuration } from '../main/ets/utils/Formatters';
@@ -373,6 +379,31 @@ export default function localUnitTest() {
       expect(outOfRange[2].id).assertEqual('sub-c');
       expect(outOfRange[0] === groups[0]).assertFalse();
     });
+
+    it('calculates subscription auto update due windows', 0, () => {
+      expect(normalizeSubscriptionUpdateInterval(undefined)).assertEqual(DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES);
+      expect(normalizeSubscriptionUpdateInterval(0)).assertEqual(DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES);
+      expect(normalizeSubscriptionUpdateInterval(1)).assertEqual(MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES);
+      expect(normalizeSubscriptionUpdateInterval(60)).assertEqual(60);
+
+      const group = buildSubscriptionGroupFixture('sub-auto', 'Auto');
+      group.autoUpdate = true;
+      group.updateIntervalMinutes = 60;
+      group.updatedAt = 1000;
+      expect(isSubscriptionAutoUpdateDue(group, 1000 + 59 * 60 * 1000)).assertFalse();
+      expect(isSubscriptionAutoUpdateDue(group, 1000 + 60 * 60 * 1000)).assertTrue();
+
+      group.updatedAt = 0;
+      expect(isSubscriptionAutoUpdateDue(group, 2000)).assertTrue();
+      group.autoUpdate = false;
+      expect(isSubscriptionAutoUpdateDue(group, 2000)).assertFalse();
+      group.autoUpdate = true;
+      group.enabled = false;
+      expect(isSubscriptionAutoUpdateDue(group, 2000)).assertFalse();
+      group.enabled = true;
+      group.url = '';
+      expect(isSubscriptionAutoUpdateDue(group, 2000)).assertFalse();
+    });
   });
 }
 
@@ -442,7 +473,9 @@ function buildSubscriptionGroupFixture(id: string, name: string): SubscriptionGr
     updatedAt: 0,
     userAgent: '',
     filter: '',
-    allowInsecureUrl: false
+    allowInsecureUrl: false,
+    autoUpdate: false,
+    updateIntervalMinutes: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
   };
 }
 

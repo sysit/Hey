@@ -26,7 +26,7 @@
 | 真机 VPN 闭环 | ✅ **已真机验证通过（2026-06-15）**：`TUN fd → CGoSetTunFd → Xray native TUN → 出站` 端到端可上网 | 阻塞项解除，主线推进至 M1 |
 | Native 桥接 | M1 已接通 7 个（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`），代码完成 | **待 `libxray.so` 重建（导出符号已加）+ 真机复测**；`CGoReadGeoFiles`/`CGoConvertShareLinks` 仍未接线 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules` | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
-| 订阅 | 多分组 + 手动更新 | **无自动更新、无去重、无正则过滤、无自定义 UA** |
+| 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 | 后台定时调度、代理经由更新仍待补齐 |
 | 分享导出 | 仅文本 | **无二维码生成** |
 | 深链导入 | 无 | **URL Scheme / Want 导入未实现** |
 | 高级路由 | 无 | 负载均衡 / 策略组 / 代理链均无 |
@@ -137,9 +137,15 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 - UI：Nodes 菜单补「删除配置」，执行前二次确认
 - 日志：删除后记录删除数量，并同步空状态
 
+**进展（2026-06-18 续）**：订阅自动更新设置与前台到期刷新已落地：
+- 模型：`SubscriptionGroup.autoUpdate` / `updateIntervalMinutes` 持久化，默认 1440 分钟、最小 15 分钟，兼容旧存储
+- UI：订阅编辑页新增「启用自动更新」和「更新间隔（分钟）」设置
+- 更新：首页启动/返回时节流检查到期订阅，复用订阅拉取、过滤和保存逻辑；批量/自动刷新不再切换当前分组
+- 测试：新增纯函数单测覆盖间隔归一化、到期窗口、禁用/无 URL/未开启自动更新不触发
+
 **任务**
-- **订阅自动更新**：用鸿蒙后台任务/定时（`backgroundTaskManager` 或 `reminderAgent`）
-  按 `updateInterval` 周期刷新；最小间隔保护（如 15 分钟）
+- **订阅自动更新**：前台到期刷新已完成；下一步用鸿蒙后台任务/定时（`backgroundTaskManager` 或 `reminderAgent`）
+  在应用不打开时也按 `updateInterval` 周期刷新
 - **正则过滤** `filter`：按节点名筛选导入（2026-06-15 已完成）
 - **自定义 User-Agent** 与订阅级 `allowInsecureUrl` 已完成
 - **订阅分组重排**：上移/下移并持久化顺序（2026-06-18 已完成）
@@ -273,5 +279,6 @@ VPN 接口 `dnsAddresses` 改为读 `vpnDns` 设置（当前写死 `1.1.1.1/8.8.
 | 2026-06-18 | M3 | ✅ 订阅分组重排（纯排序函数 + Store 持久化 + Subs 页滑动上移/下移 + 单测）；批量更新全部确认已落地 |
 | 2026-06-18 | M3 | ✅ 订阅级不安全 URL 开关（编辑页 `allowInsecureUrl` + 保存/更新 HTTP 校验 + 重定向校验 + 单测）；默认拒绝 `http://` 订阅，开启后允许 |
 | 2026-06-18 | M3 | ✅ 当前分组删除全部配置（Nodes 菜单确认弹窗 + Store/Controller 清空 active group nodes + 删除数量日志）；补齐 v2rayNG `removeAllServer` 的日常批处理路径 |
+| 2026-06-18 | M3 | ✅ 订阅自动更新设置与前台到期刷新（`autoUpdate`/`updateIntervalMinutes` + 1440/15 分钟规则 + 首页节流到期刷新 + 单测）；后台任务调度仍待补 |
 | 2026-06-15 | 自查 | ✅ 字段一致性总扫：AppSettings/SettingsDraft 5 个构造点字段完整一致，SubscriptionGroup.filter 贯通，无需修改 |
 | 2026-06-15 | 自查 | ✅ 深链/metrics 配置形状核对 Xray 官方一致；自查清单收尾（净修复：预检非阻断 + 清理未用导入） |

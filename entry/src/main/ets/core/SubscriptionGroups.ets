@@ -1,5 +1,8 @@
 import { ProxyNode, SubscriptionGroup } from './Profile';
 
+export const DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES: number = 1440;
+export const MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES: number = 15;
+
 export function moveSubscriptionGroup(groups: Array<SubscriptionGroup>, groupId: string, delta: number): Array<SubscriptionGroup> {
   const next = copySubscriptionGroups(groups);
   const fromIndex = findSubscriptionGroupIndex(next, groupId);
@@ -12,6 +15,26 @@ export function moveSubscriptionGroup(groups: Array<SubscriptionGroup>, groupId:
   next[fromIndex] = next[toIndex];
   next[toIndex] = current;
   return next;
+}
+
+export function normalizeSubscriptionUpdateInterval(value: number | undefined): number {
+  if (value === undefined || Number.isNaN(value) || Math.floor(value) !== value || value <= 0) {
+    return DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
+  }
+  return Math.max(MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES, value);
+}
+
+export function isSubscriptionAutoUpdateDue(group: SubscriptionGroup, now: number): boolean {
+  if (!group.enabled || !group.autoUpdate || group.url.trim().length === 0) {
+    return false;
+  }
+
+  const intervalMinutes = normalizeSubscriptionUpdateInterval(group.updateIntervalMinutes);
+  const intervalMs = intervalMinutes * 60 * 1000;
+  if (group.updatedAt <= 0) {
+    return true;
+  }
+  return now - group.updatedAt >= intervalMs;
 }
 
 function findSubscriptionGroupIndex(groups: Array<SubscriptionGroup>, groupId: string): number {
@@ -42,7 +65,9 @@ function copySubscriptionGroup(group: SubscriptionGroup): SubscriptionGroup {
     updatedAt: group.updatedAt,
     userAgent: group.userAgent,
     filter: group.filter,
-    allowInsecureUrl: group.allowInsecureUrl
+    allowInsecureUrl: group.allowInsecureUrl,
+    autoUpdate: group.autoUpdate,
+    updateIntervalMinutes: group.updateIntervalMinutes
   };
 }
 

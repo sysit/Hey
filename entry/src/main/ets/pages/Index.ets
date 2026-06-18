@@ -26,6 +26,7 @@ const EMPTY_STATS: RuntimeStats = {
   tunRunning: false,
   lastMessage: translate(DEFAULT_LANGUAGE, 'runtime.nativeBridgeNotQueried')
 };
+const AUTO_SUBSCRIPTION_CHECK_THROTTLE_MS: number = 60 * 1000;
 
 @Entry
 @Component
@@ -33,6 +34,7 @@ struct Index {
   private timerId: number = -1;
   private currentSettings: AppSettings = DEFAULT_APP_SETTINGS;
   private tabsController: TabsController = new TabsController();
+  private lastAutoSubscriptionCheckAt: number = 0;
 
   @State private currentTab: number = 0;
   @State private showSearch: boolean = false;
@@ -83,6 +85,7 @@ struct Index {
     await this.loadSettings();
     await this.loadNodes();
     await this.handlePendingDeepLink();
+    await this.refreshDueSubscriptions();
   }
 
   // Imports a stashed deep link (hey://install-sub|install-config?url=...) once
@@ -826,6 +829,7 @@ struct Index {
   private async loadInitialState(): Promise<void> {
     await this.loadSettings();
     await this.loadNodes();
+    await this.refreshDueSubscriptions();
     await this.refreshRuntime();
   }
 
@@ -847,6 +851,31 @@ struct Index {
     } catch (error) {
       this.lastError = this.f1('error.loadSubscription', 'error', JSON.stringify(error));
       SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+    }
+  }
+
+  private async refreshDueSubscriptions(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastAutoSubscriptionCheckAt < AUTO_SUBSCRIPTION_CHECK_THROTTLE_MS || this.subscriptionUpdating) {
+      return;
+    }
+
+    this.lastAutoSubscriptionCheckAt = now;
+    this.subscriptionUpdating = true;
+    try {
+      const context = getContext(this) as common.Context;
+      const result = await SUBSCRIPTIONS_CONTROLLER.updateDue(context, this.language, now);
+      if (result.updatedCount === 0 && result.failedCount === 0) {
+        return;
+      }
+      this.applySubscriptionsState(result.state);
+      SHARED_RUNTIME_CONTROLLER.appendLog(result.state.subscriptionMessage);
+      this.applyNodesState(await NODES_CONTROLLER.load(context, this.language));
+    } catch (error) {
+      this.lastError = this.f1('error.updateSubscription', 'error', JSON.stringify(error));
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+    } finally {
+      this.subscriptionUpdating = false;
     }
   }
 

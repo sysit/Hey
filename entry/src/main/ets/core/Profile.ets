@@ -31,6 +31,8 @@ export interface SubscriptionGroup {
   userAgent?: string;
   filter?: string;
   allowInsecureUrl?: boolean;
+  autoUpdate?: boolean;
+  updateIntervalMinutes?: number;
 }
 
 export interface SubscriptionProfile {
