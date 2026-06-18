@@ -19,6 +19,7 @@ struct AboutPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private isCheckingUpdate: boolean = false;
   @State private coreVersion: string = '';
+  @State private checkUpdatePreRelease: boolean = false;
 
   aboutToAppear(): void {
     this.loadState();
@@ -88,6 +89,15 @@ struct AboutPage {
               isChecking: this.isCheckingUpdate,
               onAction: () => {
                 this.checkUpdate();
+              }
+            })
+            this.RowDivider()
+            AboutToggleItem({
+              title: this.t('about.update.preRelease'),
+              detail: this.t('about.update.preRelease.detail'),
+              isEnabled: this.checkUpdatePreRelease,
+              onToggle: () => {
+                this.toggleCheckUpdatePreRelease();
               }
             })
           }
@@ -217,7 +227,7 @@ struct AboutPage {
     }
     this.isCheckingUpdate = true;
     try {
-      const result = await UPDATE_CHECKER_MANAGER.checkForUpdate(CURRENT_APP_VERSION);
+      const result = await UPDATE_CHECKER_MANAGER.checkForUpdate(CURRENT_APP_VERSION, this.checkUpdatePreRelease);
       if (!result.ok) {
         promptAction.showToast({ message: this.f1('about.update.failed', 'error', result.error) });
         SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('about.update.failed', 'error', result.error));
@@ -240,10 +250,26 @@ struct AboutPage {
 
   private async loadState(): Promise<void> {
     const context = getContext(this) as common.Context;
-    this.language = (await SETTINGS_CONTROLLER.load(context)).language;
+    const settings = await SETTINGS_CONTROLLER.load(context);
+    this.language = settings.language;
+    this.checkUpdatePreRelease = settings.checkUpdatePreRelease;
     const version = nativeXrayVersion();
     if (version.ok && version.message.length > 0) {
       this.coreVersion = version.message;
+    }
+  }
+
+  private async toggleCheckUpdatePreRelease(): Promise<void> {
+    try {
+      const context = getContext(this) as common.Context;
+      const settings = await SETTINGS_CONTROLLER.load(context);
+      const draft = SETTINGS_CONTROLLER.toDraft(settings);
+      draft.checkUpdatePreRelease = !this.checkUpdatePreRelease;
+      const saved = await SETTINGS_CONTROLLER.save(context, draft);
+      this.checkUpdatePreRelease = saved.checkUpdatePreRelease;
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('about.update.preRelease')));
+    } catch (error) {
+      promptAction.showToast({ message: this.f1('error.saveSettings', 'error', JSON.stringify(error)) });
     }
   }
 
@@ -310,5 +336,43 @@ struct AboutItem {
         this.onAction();
       }
     })
+  }
+}
+
+@Component
+struct AboutToggleItem {
+  title: string = '';
+  detail: string = '';
+  isEnabled: boolean = false;
+  onToggle: () => void = () => {};
+
+  build() {
+    Row({ space: Space.md }) {
+      Column({ space: 3 }) {
+        Text(this.title)
+          .fontSize(FontSz.callout)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppColor.textPrimary)
+        if (this.detail) {
+          Text(this.detail)
+            .fontSize(FontSz.footnote)
+            .fontColor(AppColor.textTertiary)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+
+      Toggle({ type: ToggleType.Switch, isOn: this.isEnabled })
+        .selectedColor(AppColor.brand)
+        .switchPointColor(AppColor.onBrand)
+        .onChange((_isOn: boolean) => {
+          this.onToggle();
+        })
+    }
+    .width('100%')
+    .padding(Space.lg)
+    .backgroundColor(AppColor.surface)
   }
 }

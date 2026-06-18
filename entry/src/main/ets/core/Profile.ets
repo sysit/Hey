@@ -225,6 +225,7 @@ export interface AppSettings {
   confirmRemove: boolean;
   startScanImmediate: boolean;
   startOnBoot: boolean;
+  checkUpdatePreRelease: boolean;
   groupAllDisplay: boolean;
   doubleColumnDisplay: boolean;
   sniffingEnabled: boolean;

@@ -359,6 +359,7 @@ export default function localUnitTest() {
         confirmRemove: false,
         startScanImmediate: false,
         startOnBoot: false,
+        checkUpdatePreRelease: false,
         groupAllDisplay: false,
         doubleColumnDisplay: false,
         sniffingEnabled: true,
@@ -889,6 +890,7 @@ export default function localUnitTest() {
       settings.confirmRemove = true;
       settings.startScanImmediate = true;
       settings.startOnBoot = true;
+      settings.checkUpdatePreRelease = true;
       settings.groupAllDisplay = true;
       settings.doubleColumnDisplay = true;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
@@ -897,6 +899,7 @@ export default function localUnitTest() {
       expect(draft.confirmRemove).assertTrue();
       expect(draft.startScanImmediate).assertTrue();
       expect(draft.startOnBoot).assertTrue();
+      expect(draft.checkUpdatePreRelease).assertTrue();
       expect(draft.groupAllDisplay).assertTrue();
       expect(draft.doubleColumnDisplay).assertTrue();
       expect(draft.ipv6Enabled).assertTrue();
@@ -931,6 +934,7 @@ export default function localUnitTest() {
       expect(rebuilt.confirmRemove).assertTrue();
       expect(rebuilt.startScanImmediate).assertTrue();
       expect(rebuilt.startOnBoot).assertTrue();
+      expect(rebuilt.checkUpdatePreRelease).assertTrue();
       expect(rebuilt.groupAllDisplay).assertTrue();
       expect(rebuilt.doubleColumnDisplay).assertTrue();
       expect(rebuilt.ipv6Enabled).assertTrue();
@@ -1466,6 +1470,19 @@ export default function localUnitTest() {
 
       const invalid = buildUpdateCheckResult('{"body":"missing tag"}', '1.1.0');
       expect(invalid.ok).assertFalse();
+
+      const releases = '[{"tag_name":"v1.3.0-beta.1","body":"beta","html_url":"https://example.com/beta","prerelease":true,"assets":[{"name":"Hey-beta.hap","browser_download_url":"https://example.com/beta.hap"}]},{"tag_name":"v1.2.0","body":"stable","html_url":"https://example.com/stable","prerelease":false,"assets":[{"name":"Hey-stable.hap","browser_download_url":"https://example.com/stable.hap"}]}]';
+      const stableOnly = buildUpdateCheckResult(releases, '1.1.0');
+      expect(stableOnly.ok).assertTrue();
+      expect(stableOnly.latestVersion).assertEqual('1.2.0');
+      expect(stableOnly.isPreRelease).assertFalse();
+      expect(stableOnly.downloadUrl).assertEqual('https://example.com/stable.hap');
+
+      const withPreRelease = buildUpdateCheckResult(releases, '1.1.0', true);
+      expect(withPreRelease.ok).assertTrue();
+      expect(withPreRelease.latestVersion).assertEqual('1.3.0');
+      expect(withPreRelease.isPreRelease).assertTrue();
+      expect(withPreRelease.downloadUrl).assertEqual('https://example.com/beta.hap');
     });
 
     it('builds subscription background auto update schedule plan', 0, () => {
@@ -1507,6 +1524,7 @@ function buildSettingsFixture(): AppSettings {
     confirmRemove: false,
     startScanImmediate: false,
     startOnBoot: false,
+    checkUpdatePreRelease: false,
     groupAllDisplay: false,
     doubleColumnDisplay: false,
     sniffingEnabled: true,

@@ -1,8 +1,8 @@
 import { http } from '@kit.NetworkKit';
-import { CURRENT_APP_VERSION, HEY_LATEST_RELEASE_API_URL, UpdateCheckResult, buildUpdateCheckResult } from '../core/UpdateChecker';
+import { CURRENT_APP_VERSION, HEY_LATEST_RELEASE_API_URL, HEY_RELEASES_API_URL, UpdateCheckResult, buildUpdateCheckResult } from '../core/UpdateChecker';
 
 export class UpdateCheckerManager {
-  async checkForUpdate(currentVersion: string = CURRENT_APP_VERSION, timeoutMs: number = 5000): Promise<UpdateCheckResult> {
+  async checkForUpdate(currentVersion: string = CURRENT_APP_VERSION, includePreRelease: boolean = false, timeoutMs: number = 5000): Promise<UpdateCheckResult> {
     const request = http.createHttp();
     try {
       const options: http.HttpRequestOptions = {
@@ -17,12 +17,13 @@ export class UpdateCheckerManager {
           'Cache-Control': 'no-cache'
         }
       };
-      const response = await request.request(HEY_LATEST_RELEASE_API_URL, options);
+      const url = includePreRelease ? HEY_RELEASES_API_URL : HEY_LATEST_RELEASE_API_URL;
+      const response = await request.request(url, options);
       const responseCode = Number(response.responseCode);
       if (responseCode < 200 || responseCode >= 300) {
         return this.failed(currentVersion, `HTTP ${response.responseCode}`);
       }
-      const result = buildUpdateCheckResult(this.responseText(response.result), currentVersion);
+      const result = buildUpdateCheckResult(this.responseText(response.result), currentVersion, includePreRelease);
       return result.ok ? result : this.failed(currentVersion, result.error);
     } catch (error) {
       return this.failed(currentVersion, JSON.stringify(error));

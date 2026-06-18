@@ -43,6 +43,7 @@ struct SettingsPage {
   @State private settingConfirmRemove: boolean = false;
   @State private settingStartScanImmediate: boolean = false;
   @State private settingStartOnBoot: boolean = false;
+  @State private settingCheckUpdatePreRelease: boolean = false;
   @State private settingGroupAllDisplay: boolean = false;
   @State private settingDoubleColumnDisplay: boolean = false;
   @State private settingSniffing: boolean = true;
@@ -550,6 +551,7 @@ struct SettingsPage {
       confirmRemove: this.settingConfirmRemove,
       startScanImmediate: this.settingStartScanImmediate,
       startOnBoot: this.settingStartOnBoot,
+      checkUpdatePreRelease: this.settingCheckUpdatePreRelease,
       groupAllDisplay: this.settingGroupAllDisplay,
       doubleColumnDisplay: this.settingDoubleColumnDisplay,
       sniffingEnabled: this.settingSniffing,
@@ -608,6 +610,7 @@ struct SettingsPage {
     this.settingConfirmRemove = draft.confirmRemove;
     this.settingStartScanImmediate = draft.startScanImmediate;
     this.settingStartOnBoot = draft.startOnBoot;
+    this.settingCheckUpdatePreRelease = draft.checkUpdatePreRelease;
     this.settingGroupAllDisplay = draft.groupAllDisplay;
     this.settingDoubleColumnDisplay = draft.doubleColumnDisplay;
     this.settingSniffing = draft.sniffingEnabled;

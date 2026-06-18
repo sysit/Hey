@@ -24,11 +24,12 @@ interface GitHubRelease {
   body: string;
   assets: Array<GitHubReleaseAsset>;
   prerelease: boolean;
+  draft: boolean;
   htmlUrl: string;
 }
 
-export function buildUpdateCheckResult(content: string, currentVersion: string = CURRENT_APP_VERSION): UpdateCheckResult {
-  const release = parseGitHubRelease(content);
+export function buildUpdateCheckResult(content: string, currentVersion: string = CURRENT_APP_VERSION, includePreRelease: boolean = false): UpdateCheckResult {
+  const release = parseGitHubRelease(content, includePreRelease);
   if (release === null) {
     return updateFailed(currentVersion, 'invalid-release');
   }
@@ -77,14 +78,24 @@ export function normalizeVersionTag(tag: string): string {
   return value.trim();
 }
 
-function parseGitHubRelease(content: string): GitHubRelease | null {
+function parseGitHubRelease(content: string, includePreRelease: boolean): GitHubRelease | null {
   try {
     const parsed = JSON.parse(content) as Object;
     if (Array.isArray(parsed)) {
       const releases = parsed as Array<Object>;
-      return releases.length > 0 ? releaseFromObject(releases[0]) : null;
+      for (let index = 0; index < releases.length; index++) {
+        const release = releaseFromObject(releases[index]);
+        if (release !== null && !release.draft && (includePreRelease || !release.prerelease)) {
+          return release;
+        }
+      }
+      return null;
     }
-    return releaseFromObject(parsed);
+    const release = releaseFromObject(parsed);
+    if (release === null || release.draft || (!includePreRelease && release.prerelease)) {
+      return null;
+    }
+    return release;
   } catch (error) {
     return null;
   }
@@ -104,6 +115,7 @@ function releaseFromObject(value: Object): GitHubRelease | null {
     body: stringValue(record['body'], ''),
     assets: assetsFromValue(record['assets']),
     prerelease: record['prerelease'] === true,
+    draft: record['draft'] === true,
     htmlUrl: stringValue(record['html_url'], HEY_RELEASES_PAGE_URL)
   };
 }
