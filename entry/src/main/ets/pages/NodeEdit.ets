@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
+import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
@@ -700,18 +701,11 @@ struct NodeEditPage {
     this.language = (await SETTINGS_CONTROLLER.load(context)).language;
   }
 
-  private formatEndpoint(host: string, port: number): string {
-    if (host.indexOf(':') >= 0 && !host.startsWith('[')) {
-      return `[${host}]:${port}`;
-    }
-    return `${host}:${port}`;
-  }
-
   private async saveManualNode(): Promise<void> {
     const host = this.serverHost.trim();
     const port = Number(this.serverPort.trim());
     if (host.length === 0 || Number.isNaN(port) || port < 1 || port > 65535) {
-      this.lastError = '请填写有效的服务器 and 端口';
+      this.lastError = '请填写有效的服务器和端口。';
       return;
     }
 
@@ -799,61 +793,42 @@ struct NodeEditPage {
         } as FormServerSettings;
       }
       else if (this.protocol === 'wireguard') {
-        const peer: FormWireguardPeer = {
-          publicKey: this.wgPublicKey.trim(),
-          endpoint: this.formatEndpoint(host, port)
-        };
-        if (this.wgPreSharedKey.trim().length > 0) {
-          peer.preSharedKey = this.wgPreSharedKey.trim();
+        const built = buildManualWireguardOutbound({
+          tag: outbound.tag,
+          host,
+          port: this.serverPort,
+          secretKey: this.userIdOrPassword,
+          publicKey: this.wgPublicKey,
+          preSharedKey: this.wgPreSharedKey,
+          localAddress: this.wgLocalAddress,
+          reserved: this.wgReserved,
+          mtu: this.wgMtu
+        });
+        if (!built.success) {
+          this.lastError = built.message;
+          return;
         }
-        const reservedArr: Array<number> = [];
-        const resParts = this.wgReserved.split(',');
-        for (let i = 0; i < resParts.length; i++) {
-          const parsed = Number(resParts[i].trim());
-          if (!Number.isNaN(parsed)) {
-            reservedArr.push(Math.floor(parsed));
-          }
-        }
-        const wgSettings: FormWireguardSettings = {
-          secretKey: this.userIdOrPassword.trim(),
-          address: this.wgLocalAddress.split(',').map(s => s.trim()).filter(s => s.length > 0),
-          peers: [peer],
-          mtu: this.numberOr(this.wgMtu, 1420)
-        };
-        if (reservedArr.length > 0) {
-          wgSettings.reserved = reservedArr;
-        }
-        outbound.settings = wgSettings;
+        outbound.settings = (JSON.parse(built.outboundJson) as FormOutbound).settings;
       }
       else if (this.protocol === 'hysteria2') {
-        const server: FormHysteria2Server = {
-          address: host,
-          port: port,
-          password: this.userIdOrPassword.trim()
-        };
-        if (this.hy2ObfsPassword.trim().length > 0) {
-          server.obfsPassword = this.hy2ObfsPassword.trim();
+        const built = buildManualHysteria2Outbound({
+          tag: outbound.tag,
+          host,
+          port: this.serverPort,
+          password: this.userIdOrPassword,
+          sni: this.tlsSni,
+          alpn: this.tlsAlpn,
+          allowInsecure: this.tlsAllowInsecure,
+          obfsPassword: this.hy2ObfsPassword,
+          portHopping: this.hy2PortHopping,
+          bandwidthDown: this.hy2BandwidthDown,
+          bandwidthUp: this.hy2BandwidthUp
+        });
+        if (!built.success) {
+          this.lastError = built.message;
+          return;
         }
-        if (this.hy2PortHopping.trim().length > 0) {
-          server.portHopping = this.hy2PortHopping.trim();
-        }
-        if (this.hy2BandwidthDown.trim().length > 0) {
-          server.bandwidthDown = this.hy2BandwidthDown.trim();
-        }
-        if (this.hy2BandwidthUp.trim().length > 0) {
-          server.bandwidthUp = this.hy2BandwidthUp.trim();
-        }
-        if (this.tlsSni.trim().length > 0) {
-          server.sni = this.tlsSni.trim();
-        }
-        if (this.tlsAlpn.trim().length > 0) {
-          server.alpn = this.tlsAlpn.trim();
-        }
-        server.insecure = this.tlsAllowInsecure;
-        
-        outbound.settings = {
-          servers: [server]
-        } as FormHysteria2Settings;
+        outbound.settings = (JSON.parse(built.outboundJson) as FormOutbound).settings;
       }
 
       // 3. 填充 streamSettings (适用于 VLESS, VMess, Trojan, SS)

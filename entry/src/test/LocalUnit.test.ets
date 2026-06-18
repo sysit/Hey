@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate } from '../main/ets/core/I18n';
+import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson } from '../main/ets/core/XrayConfig';
@@ -78,6 +79,68 @@ export default function localUnitTest() {
       expect(extracted[0].outboundJson).assertContain('"protocol": "vless"');
       expect(extracted[1].name).assertEqual('Beta');
       expect(extractOutboundsFromXrayConfig('{"outbound":{"name":"single","protocol":"socks","settings":{}}}')[0].name).assertEqual('single');
+    });
+
+    it('builds manual wireguard and hysteria2 outbounds', 0, () => {
+      const wireguard = buildManualWireguardOutbound({
+        tag: 'WG',
+        host: '2001:db8::1',
+        port: '51820',
+        secretKey: 'private-key',
+        publicKey: 'public-key',
+        preSharedKey: 'shared-key',
+        localAddress: '172.16.0.2/32, fd00::2/128',
+        reserved: '1,2,3',
+        mtu: '1420'
+      });
+      expect(wireguard.success).assertTrue();
+      expect(wireguard.outboundJson).assertContain('"protocol": "wireguard"');
+      expect(wireguard.outboundJson).assertContain('"endpoint": "[2001:db8::1]:51820"');
+      expect(wireguard.outboundJson).assertContain('"reserved"');
+      expect(validateOutboundJson(wireguard.outboundJson).valid).assertTrue();
+      expect(buildManualWireguardOutbound({
+        tag: 'WG',
+        host: 'example.com',
+        port: '51820',
+        secretKey: '',
+        publicKey: 'public-key',
+        preSharedKey: '',
+        localAddress: '',
+        reserved: '',
+        mtu: ''
+      }).success).assertFalse();
+
+      const hysteria2 = buildManualHysteria2Outbound({
+        tag: 'HY2',
+        host: 'hy2.example.com',
+        port: '443',
+        password: 'secret',
+        sni: 'cdn.example.com',
+        alpn: 'h3',
+        allowInsecure: true,
+        obfsPassword: 'obfs-secret',
+        portHopping: '20000-50000',
+        bandwidthDown: '100 mbps',
+        bandwidthUp: '20 mbps'
+      });
+      expect(hysteria2.success).assertTrue();
+      expect(hysteria2.outboundJson).assertContain('"protocol": "hysteria2"');
+      expect(hysteria2.outboundJson).assertContain('"portHopping": "20000-50000"');
+      expect(hysteria2.outboundJson).assertContain('"obfsPassword": "obfs-secret"');
+      expect(validateOutboundJson(hysteria2.outboundJson).valid).assertTrue();
+      expect(buildManualHysteria2Outbound({
+        tag: 'HY2',
+        host: 'hy2.example.com',
+        port: '443',
+        password: '',
+        sni: '',
+        alpn: '',
+        allowInsecure: false,
+        obfsPassword: '',
+        portHopping: '',
+        bandwidthDown: '',
+        bandwidthUp: ''
+      }).success).assertFalse();
     });
 
     it('builds runtime config from full custom config without wrapping', 0, () => {
