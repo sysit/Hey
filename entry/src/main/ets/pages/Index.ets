@@ -3,7 +3,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { IconButton } from '../components/IconButton';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
-import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrency, ProxyNode, RuntimeStats, SubscriptionGroup } from '../core/Profile';
+import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrency, ProxyNode, resolveDelayTestUrl, RuntimeStats, SubscriptionGroup } from '../core/Profile';
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
@@ -38,6 +38,8 @@ interface NodeDelayBatchResult {
   result: DelayTestResult;
   testedAt: number;
 }
+
+type NodeDelayTestMode = 'tcp' | 'real';
 
 @Entry
 @Component
@@ -568,7 +570,11 @@ struct Index {
         })
       MenuItem({ content: this.t('menu.testTcping') })
         .onClick(() => {
-          this.testVisibleNodeDelay();
+          this.testVisibleNodeDelay('tcp');
+        })
+      MenuItem({ content: this.t('menu.testRealConnection') })
+        .onClick(() => {
+          this.testVisibleNodeDelay('real');
         })
       MenuItem({ content: this.t('menu.deleteConfig') })
         .onClick(() => {
@@ -1207,7 +1213,7 @@ struct Index {
     promptAction.showToast({ message });
   }
 
-  private async testVisibleNodeDelay(): Promise<void> {
+  private async testVisibleNodeDelay(mode: NodeDelayTestMode = 'real'): Promise<void> {
     if (this.delayTesting) {
       return;
     }
@@ -1230,7 +1236,7 @@ struct Index {
           SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.delayTestingNode', 'name', node.name));
         }
 
-        const results = await this.measureNodeDelayBatch(batch);
+        const results = await this.measureNodeDelayBatch(batch, context, mode);
         for (let index = 0; index < results.length; index++) {
           const item = results[index];
           const result = item.result;
@@ -1292,19 +1298,26 @@ struct Index {
     return DelayTester.measureTcp(address, port, timeoutMs);
   }
 
-  private async measureNodeDelayBatch(batch: Array<ProxyNode>): Promise<Array<NodeDelayBatchResult>> {
+  private async measureNodeRealDelay(node: ProxyNode, context: common.Context, timeoutMs: number): Promise<DelayTestResult> {
+    const url = resolveDelayTestUrl(this.currentSettings.delayTestUrl);
+    return DelayTester.measureNodeOutbound(node.outboundJson, context.filesDir, url, timeoutMs);
+  }
+
+  private async measureNodeDelayBatch(batch: Array<ProxyNode>, context: common.Context, mode: NodeDelayTestMode): Promise<Array<NodeDelayBatchResult>> {
     const tasks = new Array<Promise<NodeDelayBatchResult>>();
     for (let index = 0; index < batch.length; index++) {
-      tasks.push(this.measureNodeDelayForBatch(batch[index]));
+      tasks.push(this.measureNodeDelayForBatch(batch[index], context, mode));
     }
     return Promise.all(tasks);
   }
 
-  private async measureNodeDelayForBatch(node: ProxyNode): Promise<NodeDelayBatchResult> {
+  private async measureNodeDelayForBatch(node: ProxyNode, context: common.Context, mode: NodeDelayTestMode): Promise<NodeDelayBatchResult> {
     try {
       return {
         node,
-        result: await this.measureNodeTcpDelay(node, 8000),
+        result: mode === 'real'
+          ? await this.measureNodeRealDelay(node, context, 8000)
+          : await this.measureNodeTcpDelay(node, 8000),
         testedAt: Date.now()
       };
     } catch (error) {

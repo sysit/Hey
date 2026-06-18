@@ -7,7 +7,7 @@ import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/et
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
-import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_IP_API_URL, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
+import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
@@ -143,9 +143,13 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"inboundTag": [\n        "http-in"');
       expect(result.httpProxyPort).assertEqual(LOCAL_HTTP_PROXY_PORT);
 
+      settings.delayTestUrl = 'https://probe.example/generate_204';
+      const leastPing = buildRuntimeXrayConfig(`{"type":"policy-group","outbounds":[${VLESS_REALITY_OUTBOUND}]}`, settings, 'policy-group');
+      expect(leastPing.configJson).assertContain('"probeUrl": "https://probe.example/generate_204"');
       const leastLoad = buildRuntimeXrayConfig(`{"type":"policy-group","policyGroupType":"1","outbounds":[${VLESS_REALITY_OUTBOUND}]}`, settings, 'policy-group');
       expect(leastLoad.configJson).assertContain('"type": "leastLoad"');
       expect(leastLoad.configJson).assertContain('"burstObservatory"');
+      expect(leastLoad.configJson).assertContain('"destination": "https://probe.example/generate_204"');
     });
 
     it('builds proxy chain and policy group configs from existing outbound nodes', 0, () => {
@@ -408,7 +412,7 @@ export default function localUnitTest() {
         remoteDns: '9.9.9.9',
         domesticDns: '223.5.5.5',
         dnsHosts: '',
-        delayTestUrl: 'https://www.gstatic.com/generate_204',
+        delayTestUrl: DEFAULT_DELAY_TEST_URL,
         ipApiUrl: DEFAULT_IP_API_URL,
         realPingConcurrency: 16,
         logLevel: 'debug',
@@ -1209,6 +1213,9 @@ export default function localUnitTest() {
       expect(normalizeRealPingConcurrency(0)).assertEqual(1);
       expect(normalizeRealPingConcurrency(5.8)).assertEqual(5);
       expect(normalizeRealPingConcurrency(256)).assertEqual(128);
+      expect(resolveDelayTestUrl(undefined)).assertEqual(DEFAULT_DELAY_TEST_URL);
+      expect(resolveDelayTestUrl('')).assertEqual(DEFAULT_DELAY_TEST_URL);
+      expect(resolveDelayTestUrl('  https://probe.example/ping  ')).assertEqual('https://probe.example/ping');
     });
 
     it('handles v2rayng style per-app package list actions', 0, () => {
@@ -2082,7 +2089,7 @@ function buildSettingsFixture(): AppSettings {
     remoteDns: '1.1.1.1',
     domesticDns: '223.5.5.5',
     dnsHosts: '',
-    delayTestUrl: 'https://www.gstatic.com/generate_204',
+    delayTestUrl: DEFAULT_DELAY_TEST_URL,
     ipApiUrl: DEFAULT_IP_API_URL,
     realPingConcurrency: 16,
     logLevel: 'warning',

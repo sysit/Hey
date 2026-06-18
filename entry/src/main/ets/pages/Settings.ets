@@ -6,6 +6,7 @@ import {
   APP_MODE_PROXY_ONLY,
   APP_MODE_VPN,
   AppLanguage,
+  DEFAULT_DELAY_TEST_URL,
   DEFAULT_IP_API_URL,
   normalizeAppRuntimeMode,
   OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
@@ -79,7 +80,7 @@ struct SettingsPage {
   @State private settingVpnBypassLan: string = VPN_BYPASS_LAN_BYPASS;
   @State private settingVpnMtu: string = '1400';
   @State private settingLogLevel: string = 'warning';
-  @State private settingDelayTestUrl: string = 'https://www.gstatic.com/generate_204';
+  @State private settingDelayTestUrl: string = DEFAULT_DELAY_TEST_URL;
   @State private settingIpApiUrl: string = DEFAULT_IP_API_URL;
   @State private settingRealPingConcurrency: string = '16';
   @State private settingMode: string = APP_MODE_VPN;

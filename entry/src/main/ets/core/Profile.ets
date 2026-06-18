@@ -102,6 +102,7 @@ export const VPN_INTERFACE_ADDRESS_CONFIGS: Array<VpnInterfaceAddressConfig> = [
 ];
 
 export const DEFAULT_VPN_INTERFACE_ADDRESS_INDEX: number = 0;
+export const DEFAULT_DELAY_TEST_URL: string = 'https://www.gstatic.com/generate_204';
 export const DEFAULT_IP_API_URL: string = 'https://api.ip.sb/geoip';
 export const VPN_BYPASS_LAN_FOLLOW_CONFIG: string = '0';
 export const VPN_BYPASS_LAN_BYPASS: string = '1';
@@ -175,6 +176,11 @@ export function normalizeRealPingConcurrency(value: number | undefined, fallback
     return MAX_REAL_PING_CONCURRENCY;
   }
   return concurrency;
+}
+
+export function resolveDelayTestUrl(value: string | undefined, fallback: string = DEFAULT_DELAY_TEST_URL): string {
+  const url = (value ?? '').trim();
+  return url.length > 0 ? url : fallback;
 }
 
 export function normalizeUiModeNight(value: string | undefined, fallback: AppUiModeNight = UI_MODE_NIGHT_SYSTEM): AppUiModeNight {

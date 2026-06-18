@@ -1,4 +1,4 @@
-import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
+import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
 
 interface XrayOutbound {
@@ -992,8 +992,7 @@ function buildPolicyGroupRuntime(config: XrayPolicyGroupConfig, settings: AppSet
 }
 
 function resolvePolicyGroupProbeUrl(settings: AppSettings | undefined): string {
-  const url = settings === undefined ? '' : settings.delayTestUrl.trim();
-  return url.length > 0 ? url : 'https://www.gstatic.com/generate_204';
+  return resolveDelayTestUrl(settings?.delayTestUrl);
 }
 
 function normalizePolicyGroupStrategy(value: string | undefined): string {
