@@ -156,8 +156,8 @@ export class SettingsController {
       localSocksUsername: draft.localSocksUsername.trim(),
       localSocksPassword: draft.localSocksPassword.trim(),
       muxEnabled: draft.muxEnabled,
-      muxConcurrency: this.positiveIntValue(draft.muxConcurrency, DEFAULT_APP_SETTINGS.muxConcurrency),
-      muxXudpConcurrency: this.positiveIntValue(draft.muxXudpConcurrency, DEFAULT_APP_SETTINGS.muxXudpConcurrency),
+      muxConcurrency: this.muxConcurrencyValue(draft.muxConcurrency, DEFAULT_APP_SETTINGS.muxConcurrency),
+      muxXudpConcurrency: this.muxConcurrencyValue(draft.muxXudpConcurrency, DEFAULT_APP_SETTINGS.muxXudpConcurrency),
       muxXudpQuic: this.muxXudpQuicValue(draft.muxXudpQuic, DEFAULT_APP_SETTINGS.muxXudpQuic),
       fragmentEnabled: draft.fragmentEnabled,
       fragmentPackets: this.nonEmptyString(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
@@ -239,7 +239,7 @@ export class SettingsController {
     return port;
   }
 
-  private positiveIntValue(value: string, fallback: number): number {
+  private muxConcurrencyValue(value: string, fallback: number): number {
     const normalized = value.trim();
     if (normalized.length === 0) {
       return fallback;
@@ -249,7 +249,7 @@ export class SettingsController {
       return fallback;
     }
     const result = Math.floor(parsed);
-    if (result < 1 || result > 1024) {
+    if (result < -1 || result > 1024) {
       return fallback;
     }
     return result;

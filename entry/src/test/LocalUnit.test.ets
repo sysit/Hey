@@ -480,6 +480,14 @@ export default function localUnitTest() {
       expect(vmess.configJson).assertContain('"xudpConcurrency": 5');
       expect(vmess.configJson).assertContain('"xudpProxyUDP443": "allow"');
 
+      settings.muxConcurrency = -1;
+      settings.muxXudpConcurrency = -1;
+      settings.muxXudpQuic = 'skip';
+      const muxDisabledByConcurrency = buildXrayConfigWithSettings(VMESS_TCP_OUTBOUND, settings);
+      expect(muxDisabledByConcurrency.configJson).assertContain('"concurrency": -1');
+      expect(muxDisabledByConcurrency.configJson).assertContain('"xudpConcurrency": -1');
+      expect(muxDisabledByConcurrency.configJson).assertContain('"xudpProxyUDP443": "skip"');
+
       const trojan = buildXrayConfigWithSettings(TROJAN_OUTBOUND, settings);
       expect(trojan.configJson.indexOf('"mux"')).assertEqual(-1);
 
@@ -1341,8 +1349,18 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnMtu).assertEqual(DEFAULT_VPN_MTU);
       draft.vpnMtu = '';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnMtu).assertEqual(DEFAULT_VPN_MTU);
+      draft.muxConcurrency = '-1';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).muxConcurrency).assertEqual(-1);
       draft.muxConcurrency = '0';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).muxConcurrency).assertEqual(0);
+      draft.muxConcurrency = '-2';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).muxConcurrency).assertEqual(8);
+      draft.muxXudpConcurrency = '-1';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).muxXudpConcurrency).assertEqual(-1);
+      draft.muxXudpConcurrency = '0';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).muxXudpConcurrency).assertEqual(0);
+      draft.muxXudpConcurrency = '1025';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).muxXudpConcurrency).assertEqual(8);
       draft.muxXudpConcurrency = 'bad';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).muxXudpConcurrency).assertEqual(8);
       draft.muxXudpQuic = 'bad';

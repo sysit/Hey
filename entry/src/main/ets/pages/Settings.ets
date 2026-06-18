@@ -207,8 +207,10 @@ struct SettingsPage {
               this.SettingInput(this.t('settings.muxConcurrency'), this.settingMuxConcurrency, 'muxConcurrency')
               this.RowDivider()
               this.SettingInput(this.t('settings.muxXudpConcurrency'), this.settingMuxXudpConcurrency, 'muxXudpConcurrency')
-              this.RowDivider()
-              this.SettingOption(this.t('settings.muxXudpQuic'), this.muxXudpQuicLabel(), 'muxXudpQuic')
+              if (this.isMuxXudpQuicAvailable()) {
+                this.RowDivider()
+                this.SettingOption(this.t('settings.muxXudpQuic'), this.muxXudpQuicLabel(), 'muxXudpQuic')
+              }
             }
             this.RowDivider()
             this.SettingToggle(this.t('settings.fragment'), this.settingFragment, 'fragment')
@@ -967,6 +969,14 @@ struct SettingsPage {
       return this.t('settings.muxXudpQuic.skip');
     }
     return this.t('settings.muxXudpQuic.reject');
+  }
+
+  private isMuxXudpQuicAvailable(): boolean {
+    const parsed = Number(this.settingMuxXudpConcurrency.trim());
+    if (Number.isNaN(parsed)) {
+      return true;
+    }
+    return Math.floor(parsed) >= 0;
   }
 
   private t(key: string): string {
