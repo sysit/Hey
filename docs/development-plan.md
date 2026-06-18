@@ -271,6 +271,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ uTLS fingerprint（`fp`）：分享链接导入导出保留，NodeEdit 指纹选项对齐 v2rayNG `chrome/firefox/safari/ios/android/edge/360/qq/random/randomized`（2026-06-19）
 - ✅ finalMask（`fm`）：分享链接导入导出保留 `streamSettings.finalmask`，NodeEdit 可填写 FinalMask raw JSON（2026-06-19）
 - ✅ HTTPUpgrade / XHTTP 传输参数：`httpupgrade` host/path 导入导出保留，NodeEdit 可选择；XHTTP `mode/extra` 可手动填写并导入导出保留（2026-06-19）
+- ✅ gRPC 传输模式：`mode=multi` 可导入导出为 `grpcSettings.multiMode`，NodeEdit 手动编辑可在 v2rayNG `gun/multi` 两种模式间选择（2026-06-19）
 - ✅ KCP 传输参数：`type=kcp` 的 `headerType`/`seed`/`mtu`/`tti` 可导入导出，运行 outbound 生成 v2rayNG 风格 `kcpSettings` + `finalmask.udp`，NodeEdit 可选择 KCP header/seed/MTU/TTI（2026-06-19）
 - ✅ Hysteria2 端口跳跃（`mport`/`mportHopInt`）、`obfs`、证书 pin（`pinSHA256`）与带宽：分享链接解析和手动编辑器均已写入 outbound，导出 `mportHopInt` 时按 v2rayNG 规则规范化为不少于 5 秒的单值间隔，运行配置会生成 `finalmask.quicParams.brutalUp/brutalDown`、`udpHop` 与 `salamander` mask（2026-06-19；运行态仍待真机/内核验证）
 - ✅ WireGuard `.conf` 文件整段解析（2026-06-18 已完成：`[Interface]`/`[Peer]` 文本或文件导入转为 Xray wireguard outbound）
@@ -418,6 +419,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ `flow`/uTLS 指纹选项完成（NodeEdit 手动编辑补齐 `xtls-rprx-vision-udp443` 与 `ios/android/randomized` 指纹选项，分享链接导入导出保留这些值；补选项和 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ finalMask `fm` 完成（分享链接 `fm` raw JSON 导入为 `streamSettings.finalmask`，导出保留；NodeEdit 手动编辑可填写 FinalMask JSON；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ HTTPUpgrade/XHTTP 传输参数完成（分享链接 `type=httpupgrade` 的 host/path 导出不再丢失，NodeEdit 可选择 httpupgrade；XHTTP `mode/extra` 可手动填写并 round-trip 保留；补传输选项与参数单测） |
+| 2026-06-19 | 协议点检 | ✅ gRPC 传输模式完成（NodeEdit 可选择 v2rayNG `gun/multi`，保存时写入 `grpcSettings.multiMode`；分享链接 `mode=multi` round-trip 保留） |
 | 2026-06-19 | 协议点检 | ✅ KCP 传输参数完成（分享链接 `type=kcp` 的 `headerType`/`seed`/`mtu`/`tti` 导入导出保留，运行 JSON 生成 `kcpSettings` 与 v2rayNG 风格 `finalmask.udp`，NodeEdit 可手动填写；补 KCP 参数与 VMess QR round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 端口跳跃间隔完成（分享链接 `mportHopInt` 导入为 `portHoppingInterval`，导出时按 v2rayNG 规则规范化，NodeEdit 可填写端口跳跃间隔；补手动 builder 与 share round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 `pinSHA256` 完成（分享链接导入/导出保留 HY2 专属证书 pin，NodeEdit 手动编辑可填写并写入 outbound；补手动 builder 与 share round-trip 单测） |

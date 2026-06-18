@@ -25,7 +25,7 @@ import { buildSubscriptionAutoUpdateSchedulePlan } from '../main/ets/core/Subscr
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
-import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
+import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
@@ -1449,6 +1449,7 @@ export default function localUnitTest() {
       expect(V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS.join('|')).assertEqual('tcp|kcp|ws|httpupgrade|xhttp|h2|grpc');
       expect(V2RAYNG_KCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|srtp|utp|wechat-video|dtls|wireguard|dns');
       expect(V2RAYNG_XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
+      expect(V2RAYNG_GRPC_MODE_OPTIONS.join('|')).assertEqual('gun|multi');
 
       const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision-udp443&security=reality&sni=www.example.com&fp=randomized&pbk=test-public-key&sid=abcd&type=tcp#udp443';
       const imported = parseShareLinkToOutboundJson(link);
@@ -1479,6 +1480,20 @@ export default function localUnitTest() {
       expect(exportedXhttp).assertContain('type=xhttp');
       expect(exportedXhttp).assertContain('mode=packet-up');
       expect(exportedXhttp).assertContain('extra=%7B%22headers%22%3A%7B%22X-Test%22%3A%22yes%22%7D%7D');
+    });
+
+    it('round-trips grpc multi transport mode', 0, () => {
+      const grpc = parseShareLinkToOutboundJson('vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&security=tls&type=grpc&authority=grpc.example&serviceName=svc&mode=multi#grpc');
+      expect(grpc.success).assertTrue();
+      expect(grpc.outboundJson).assertContain('"network": "grpc"');
+      expect(grpc.outboundJson).assertContain('"authority": "grpc.example"');
+      expect(grpc.outboundJson).assertContain('"serviceName": "svc"');
+      expect(grpc.outboundJson).assertContain('"multiMode": true');
+      const exportedGrpc = formatOutboundJsonToShareLink(grpc.outboundJson, 'grpc');
+      expect(exportedGrpc).assertContain('type=grpc');
+      expect(exportedGrpc).assertContain('authority=grpc.example');
+      expect(exportedGrpc).assertContain('serviceName=svc');
+      expect(exportedGrpc).assertContain('mode=multi');
     });
 
     it('round-trips kcp transport share parameters', 0, () => {

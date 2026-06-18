@@ -44,3 +44,8 @@ export const V2RAYNG_XHTTP_MODE_OPTIONS: Array<string> = [
   'stream-up',
   'stream-one'
 ];
+
+export const V2RAYNG_GRPC_MODE_OPTIONS: Array<string> = [
+  'gun',
+  'multi'
+];

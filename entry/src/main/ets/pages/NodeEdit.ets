@@ -4,7 +4,7 @@ import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { buildKcpFinalMask } from '../core/KcpTransport';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
-import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../core/V2rayNgOptions';
+import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../core/V2rayNgOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -362,6 +362,7 @@ struct NodeEditPage {
   @State private transportKcpHeaderType: string = 'none';
   @State private transportKcpMtu: string = '';
   @State private transportKcpTti: string = '';
+  @State private transportGrpcMode: string = 'gun';
   @State private transportXhttpMode: string = 'auto';
   @State private transportXhttpExtra: string = '';
   
@@ -615,6 +616,13 @@ struct NodeEditPage {
                   })
                   this.EditorRow('伪装路径 (Path / ServiceName)', this.transportPath, '请求路径或 gRPC 服务名', (value: string) => {
                     this.transportPath = value;
+                  })
+                }
+                if (this.transportType === 'grpc') {
+                  PickerRow({
+                    label: 'gRPC 模式 (mode)',
+                    options: V2RAYNG_GRPC_MODE_OPTIONS,
+                    selectedValue: $transportGrpcMode
                   })
                 }
                 if (this.transportType === 'xhttp') {
@@ -1010,7 +1018,7 @@ struct NodeEditPage {
           const grpcSettings: FormGrpcSettings = {
             serviceName: this.transportPath.trim(),
             authority: this.transportHost.trim(),
-            multiMode: false
+            multiMode: this.transportGrpcMode === 'multi'
           };
           streamSettings.grpcSettings = grpcSettings;
         } 
