@@ -2,7 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
-import { AppLanguage, RoutingRule } from '../core/Profile';
+import { AppLanguage, ProxyNode, RoutingRule } from '../core/Profile';
 import {
   exportRoutingRulesJson,
   importRoutingRulesJson,
@@ -13,6 +13,7 @@ import {
 } from '../core/RoutingRules';
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
+import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
@@ -31,6 +32,7 @@ struct RoutingPage {
   @State private showRuleDialog: boolean = false;
   @State private ruleDialogTitle: string = '';
   @State private editingRuleId: string = '';
+  @State private advancedOutboundTargets: Array<string> = [];
   @State private initialRule: RoutingRule = {
     id: '',
     remarks: '',
@@ -47,6 +49,10 @@ struct RoutingPage {
   private draft: SettingsDraft | null = null;
 
   aboutToAppear(): void {
+    this.loadState();
+  }
+
+  onPageShow(): void {
     this.loadState();
   }
 
@@ -159,6 +165,7 @@ struct RoutingPage {
           language: this.language,
           title: this.ruleDialogTitle,
           initialRule: this.initialRule,
+          advancedOutboundTargets: this.advancedOutboundTargets,
           onCancel: () => {
             this.showRuleDialog = false;
           },
@@ -595,6 +602,8 @@ struct RoutingPage {
     this.routeOnlyEnabled = this.draft.routeOnlyEnabled;
     this.adBlockEnabled = this.draft.adBlockEnabled;
     this.routingRules = this.copyRules(this.draft.routingRules);
+    const profile = await SubscriptionStore.load(context);
+    this.advancedOutboundTargets = this.resolveAdvancedOutboundTargets(profile.nodes, profile.selectedNodeId);
   }
 
   private async persistSettings(logMessage: string): Promise<void> {
@@ -907,6 +916,26 @@ struct RoutingPage {
       return AppColor.dangerTint;
     }
     return AppColor.brandTint;
+  }
+
+  private resolveAdvancedOutboundTargets(nodes: Array<ProxyNode>, selectedNodeId: string): Array<string> {
+    for (let index = 0; index < nodes.length; index++) {
+      if (nodes[index].id === selectedNodeId) {
+        const target = this.advancedTargetOf(nodes[index]);
+        return target.length > 0 ? [target] : [];
+      }
+    }
+    return [];
+  }
+
+  private advancedTargetOf(node: ProxyNode): string {
+    if (node.configType === 'proxy-chain' || node.protocol === 'proxy-chain') {
+      return 'proxy-chain';
+    }
+    if (node.configType === 'policy-group' || node.protocol === 'policy-group') {
+      return 'policy-group';
+    }
+    return '';
   }
 
   private createBlankRule(): RoutingRule {

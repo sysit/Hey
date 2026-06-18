@@ -551,6 +551,52 @@ export default function localUnitTest() {
       expect(importRoutingRulesJson([], '{"bad":true}').success).assertFalse();
     });
 
+    it('preserves advanced outbound routing targets in rules json', 0, () => {
+      const content = '[{"remarks":"Policy group target","domain":["domain:group.example"],"outboundTag":"policy-group"},{"remarks":"Proxy chain target","domain":["domain:chain.example"],"outboundTag":"proxy-chain"}]';
+      const result = importRoutingRulesJson([], content);
+
+      expect(result.success).assertTrue();
+      expect(result.count).assertEqual(2);
+      expect(result.rules[0].outboundTag).assertEqual('policy-group');
+      expect(result.rules[1].outboundTag).assertEqual('proxy-chain');
+      expect(exportRoutingRulesJson(result.rules)).assertContain('"outboundTag": "policy-group"');
+      expect(exportRoutingRulesJson(result.rules)).assertContain('"outboundTag": "proxy-chain"');
+    });
+
+    it('routes policy-group custom rules to the current balancer target', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.routingRules = [
+        {
+          id: 'policy-group-rule',
+          remarks: 'Policy group route',
+          domain: ['domain:group.example'],
+          ip: [],
+          process: [],
+          outboundTag: 'policy-group',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        }
+      ];
+
+      const result = buildRuntimeXrayConfig(POLICY_GROUP_CONFIG, settings, 'policy-group');
+      const config = JSON.parse(result.configJson) as Record<string, Object>;
+      const routing = config.routing as Record<string, Object>;
+      const rules = routing.rules as Array<Record<string, Object>>;
+      let matchedRule = '';
+      for (let index = 0; index < rules.length; index++) {
+        const domains = rules[index].domain as Array<string>;
+        if (Array.isArray(domains) && domains.indexOf('domain:group.example') >= 0) {
+          matchedRule = JSON.stringify(rules[index]);
+        }
+      }
+
+      expect(matchedRule).assertContain('"balancerTag":"balancer"');
+      expect(matchedRule.indexOf('"outboundTag"')).assertEqual(-1);
+    });
+
     it('has complete zh and en translations with fallback helpers', 0, () => {
       expect(missingTranslationKeys('zh').length).assertEqual(0);
       expect(missingTranslationKeys('en').length).assertEqual(0);

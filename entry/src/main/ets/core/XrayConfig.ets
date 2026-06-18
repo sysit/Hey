@@ -1289,6 +1289,14 @@ function buildCustomRoutingRule(item: RoutingRule, proxyBalancerTag?: string): X
 }
 
 function normalizeRoutingTarget(value: string, proxyBalancerTag?: string): XrayRoutingTarget {
+  const advancedTag = value.trim();
+  if (advancedTag === 'policy-group') {
+    return buildProxyRoutingTarget(proxyBalancerTag);
+  }
+  if (advancedTag === 'proxy-chain') {
+    return buildProxyRoutingTarget(proxyBalancerTag);
+  }
+
   const outboundTag = normalizeOutboundTag(value);
   if (outboundTag === 'proxy' && proxyBalancerTag !== undefined) {
     return {

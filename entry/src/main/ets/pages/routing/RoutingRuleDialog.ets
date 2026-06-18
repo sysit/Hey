@@ -8,6 +8,7 @@ export struct RoutingRuleDialog {
   @Prop language: AppLanguage;
   @Prop title: string;
   @Prop initialRule: RoutingRule;
+  advancedOutboundTargets: Array<string> = [];
 
   @State private remarks: string = '';
   @State private domain: string = '';
@@ -99,6 +100,18 @@ export struct RoutingRuleDialog {
                 this.OutboundTagButton('block', this.t('routing.rule.target.block'))
               }
               .width('100%')
+
+              if (this.shouldShowAdvancedTarget('proxy-chain') || this.shouldShowAdvancedTarget('policy-group')) {
+                Row({ space: Space.sm }) {
+                  if (this.shouldShowAdvancedTarget('proxy-chain')) {
+                    this.OutboundTagButton('proxy-chain', this.t('routing.rule.target.proxyChain'))
+                  }
+                  if (this.shouldShowAdvancedTarget('policy-group')) {
+                    this.OutboundTagButton('policy-group', this.t('routing.rule.target.policyGroup'))
+                  }
+                }
+                .width('100%')
+              }
             }
 
             Text(this.t('routing.rule.matcherHint'))
@@ -279,6 +292,10 @@ export struct RoutingRuleDialog {
       }
     }
     return result;
+  }
+
+  private shouldShowAdvancedTarget(value: string): boolean {
+    return this.outboundTag === value || this.advancedOutboundTargets.indexOf(value) >= 0;
   }
 
   private t(key: string): string {

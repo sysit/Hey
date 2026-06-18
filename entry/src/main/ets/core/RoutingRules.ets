@@ -269,7 +269,8 @@ function boolValue(value: boolean | undefined, fallback: boolean): boolean {
 
 function outboundTagValue(value: string | undefined): string {
   const normalized = stringValue(value, 'proxy').trim();
-  if (normalized === 'direct' || normalized === 'block' || normalized === 'proxy') {
+  if (normalized === 'direct' || normalized === 'block' || normalized === 'proxy' ||
+    normalized === 'proxy-chain' || normalized === 'policy-group') {
     return normalized;
   }
   return 'proxy';
