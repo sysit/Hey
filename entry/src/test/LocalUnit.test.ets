@@ -25,7 +25,7 @@ import { buildSubscriptionAutoUpdateSchedulePlan } from '../main/ets/core/Subscr
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
-import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
+import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
 import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
@@ -1408,7 +1408,8 @@ export default function localUnitTest() {
     it('keeps v2rayNG flow and uTLS fingerprint options complete', 0, () => {
       expect(V2RAYNG_FLOW_OPTIONS.join('|')).assertEqual('none|xtls-rprx-vision|xtls-rprx-vision-udp443');
       expect(V2RAYNG_UTLS_FINGERPRINT_OPTIONS.join('|')).assertEqual('none|chrome|firefox|safari|ios|android|edge|360|qq|random|randomized');
-      expect(V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS.join('|')).assertEqual('tcp|ws|httpupgrade|xhttp|h2|grpc');
+      expect(V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS.join('|')).assertEqual('tcp|kcp|ws|httpupgrade|xhttp|h2|grpc');
+      expect(V2RAYNG_KCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|srtp|utp|wechat-video|dtls|wireguard|dns');
       expect(V2RAYNG_XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
 
       const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision-udp443&security=reality&sni=www.example.com&fp=randomized&pbk=test-public-key&sid=abcd&type=tcp#udp443';
@@ -1440,6 +1441,34 @@ export default function localUnitTest() {
       expect(exportedXhttp).assertContain('type=xhttp');
       expect(exportedXhttp).assertContain('mode=packet-up');
       expect(exportedXhttp).assertContain('extra=%7B%22headers%22%3A%7B%22X-Test%22%3A%22yes%22%7D%7D');
+    });
+
+    it('round-trips kcp transport share parameters', 0, () => {
+      const kcp = parseShareLinkToOutboundJson('vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&type=kcp&headerType=dns&host=dns.example&seed=test-seed&mtu=1200&tti=30#kcp');
+      expect(kcp.success).assertTrue();
+      expect(kcp.outboundJson).assertContain('"network": "kcp"');
+      expect(kcp.outboundJson).assertContain('"kcpSettings"');
+      expect(kcp.outboundJson).assertContain('"mtu": 1200');
+      expect(kcp.outboundJson).assertContain('"tti": 30');
+      expect(kcp.outboundJson).assertContain('"type": "header-dns"');
+      expect(kcp.outboundJson).assertContain('"domain": "dns.example"');
+      expect(kcp.outboundJson).assertContain('"password": "test-seed"');
+      const exportedKcp = formatOutboundJsonToShareLink(kcp.outboundJson, 'kcp');
+      expect(exportedKcp).assertContain('type=kcp');
+      expect(exportedKcp).assertContain('headerType=dns');
+      expect(exportedKcp).assertContain('host=dns.example');
+      expect(exportedKcp).assertContain('seed=test-seed');
+      expect(exportedKcp).assertContain('mtu=1200');
+      expect(exportedKcp).assertContain('tti=30');
+      expect(exportedKcp.indexOf('fm=')).assertEqual(-1);
+
+      const vmessOutboundJson = '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","security":"auto"}]}]},"streamSettings":{"network":"kcp","kcpSettings":{"mtu":1200,"tti":30},"finalmask":{"udp":[{"type":"header-wechat"},{"type":"mkcp-aes128gcm","settings":{"password":"vmess-seed"}}]}}}';
+      const exportedVmess = formatOutboundJsonToShareLink(vmessOutboundJson, 'vmess-kcp');
+      const importedVmess = parseShareLinkToOutboundJson(exportedVmess);
+      expect(importedVmess.success).assertTrue();
+      expect(importedVmess.outboundJson).assertContain('"network": "kcp"');
+      expect(importedVmess.outboundJson).assertContain('"type": "header-wechat"');
+      expect(importedVmess.outboundJson).assertContain('"password": "vmess-seed"');
     });
 
     it('round-trips v2rayNG finalMask fm share parameter', 0, () => {

@@ -1,4 +1,5 @@
 import { decodeBase64ToUtf8, encodeUtf8ToBase64 } from './Encoding';
+import { buildKcpFinalMask, isCanonicalKcpFinalMask, readKcpShareParamsFromFinalMask } from './KcpTransport';
 
 export interface ShareLinkParseResult {
   success: boolean;
@@ -72,6 +73,11 @@ interface XrayHttpUpgradeSettings {
   host: string;
 }
 
+interface XrayKcpSettings {
+  mtu?: number;
+  tti?: number;
+}
+
 interface XrayXhttpSettings {
   path: string;
   host: string;
@@ -96,6 +102,7 @@ interface XrayStreamSettings {
   network: string;
   security?: string;
   tcpSettings?: XrayTcpSettings;
+  kcpSettings?: XrayKcpSettings;
   wsSettings?: XrayWsSettings;
   httpupgradeSettings?: XrayHttpUpgradeSettings;
   xhttpSettings?: XrayXhttpSettings;
@@ -418,7 +425,10 @@ function parseVmessLink(input: string): ShareLinkParseResult {
   query.set('sni', valueOr(vmess.sni, ''));
   query.set('fp', valueOr(vmess.fp, ''));
   query.set('alpn', valueOr(vmess.alpn, ''));
-  if (valueOr(vmess.net, '') === 'grpc') {
+  const vmessNetwork = valueOr(vmess.net, '').toLowerCase();
+  if (vmessNetwork === 'kcp') {
+    query.set('seed', valueOr(vmess.path, ''));
+  } else if (vmessNetwork === 'grpc') {
     query.set('mode', valueOr(vmess.type, ''));
     query.set('serviceName', valueOr(vmess.path, ''));
     query.set('authority', valueOr(vmess.host, ''));
@@ -568,6 +578,15 @@ function makeShadowsocksResult(method: string, password: string, host: string, p
     streamQuery.set('host', queryValue(query, 'host', ''));
     streamQuery.set('path', queryValue(query, 'path', ''));
     streamQuery.set('security', queryValue(query, 'security', ''));
+    streamQuery.set('headerType', queryValue(query, 'headerType', 'none'));
+    streamQuery.set('seed', queryValue(query, 'seed', ''));
+    streamQuery.set('mtu', queryValue(query, 'mtu', ''));
+    streamQuery.set('tti', queryValue(query, 'tti', ''));
+    streamQuery.set('fm', queryValue(query, 'fm', ''));
+    streamQuery.set('mode', queryValue(query, 'mode', ''));
+    streamQuery.set('extra', queryValue(query, 'extra', ''));
+    streamQuery.set('serviceName', queryValue(query, 'serviceName', ''));
+    streamQuery.set('authority', queryValue(query, 'authority', ''));
   }
 
   const settings: XrayShadowsocksSettings = {
@@ -922,6 +941,19 @@ function buildStreamSettings(query: Map<string, string>, defaultSecurity: string
       }
     };
     derivedSni = firstCsvValue(host);
+  } else if (network === 'kcp') {
+    const kcpSettings: XrayKcpSettings = {};
+    const mtu = parseOptionalPositiveInt(queryValue(query, 'mtu', ''));
+    const tti = parseOptionalPositiveInt(queryValue(query, 'tti', ''));
+    if (mtu > 0) {
+      kcpSettings.mtu = mtu;
+    }
+    if (tti > 0) {
+      kcpSettings.tti = tti;
+    }
+    stream.kcpSettings = kcpSettings;
+    stream.finalmask = buildKcpFinalMask(headerType, host, queryValue(query, 'seed', path));
+    derivedSni = host;
   } else if (network === 'httpupgrade') {
     stream.httpupgradeSettings = {
       path: path.length > 0 ? path : '/',
@@ -1293,7 +1325,7 @@ function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: 
     }
   }
 
-  if (stream.finalmask) {
+  if (stream.finalmask && (network !== 'kcp' || !isCanonicalKcpFinalMask(stream.finalmask))) {
     queryParams.set('fm', JSON.stringify(stream.finalmask));
   }
 
@@ -1303,6 +1335,21 @@ function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: 
     }
     if (stream.wsSettings.headers?.Host) {
       queryParams.set('host', stream.wsSettings.headers.Host);
+    }
+  } else if (network === 'kcp') {
+    const kcpParams = readKcpShareParamsFromFinalMask(stream.finalmask);
+    queryParams.set('headerType', kcpParams.headerType);
+    if (kcpParams.seed.length > 0) {
+      queryParams.set('seed', kcpParams.seed);
+    }
+    if (kcpParams.host.length > 0) {
+      queryParams.set('host', kcpParams.host);
+    }
+    if (stream.kcpSettings?.mtu !== undefined && stream.kcpSettings.mtu > 0) {
+      queryParams.set('mtu', String(stream.kcpSettings.mtu));
+    }
+    if (stream.kcpSettings?.tti !== undefined && stream.kcpSettings.tti > 0) {
+      queryParams.set('tti', String(stream.kcpSettings.tti));
     }
   } else if (network === 'httpupgrade' && stream.httpupgradeSettings) {
     if (stream.httpupgradeSettings.path) {
@@ -1394,6 +1441,11 @@ function formatVmess(outbound: XrayOutbound, name: string): string {
   if (network === 'ws' && stream?.wsSettings) {
     vmessObj.path = stream.wsSettings.path || '/';
     vmessObj.host = stream.wsSettings.headers?.Host || '';
+  } else if (network === 'kcp') {
+    const kcpParams = readKcpShareParamsFromFinalMask(stream?.finalmask);
+    vmessObj.type = kcpParams.headerType;
+    vmessObj.host = kcpParams.host;
+    vmessObj.path = kcpParams.seed;
   } else if (network === 'httpupgrade' && stream?.httpupgradeSettings) {
     vmessObj.path = stream.httpupgradeSettings.path || '/';
     vmessObj.host = stream.httpupgradeSettings.host || '';

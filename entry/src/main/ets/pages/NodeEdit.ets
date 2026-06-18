@@ -1,9 +1,10 @@
 import { common } from '@kit.AbilityKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
+import { buildKcpFinalMask } from '../core/KcpTransport';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
-import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../core/V2rayNgOptions';
+import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../core/V2rayNgOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -275,6 +276,11 @@ interface FormHttpUpgradeSettings {
   host: string;
 }
 
+interface FormKcpSettings {
+  mtu?: number;
+  tti?: number;
+}
+
 interface FormGrpcSettings {
   serviceName: string;
   authority: string;
@@ -311,6 +317,7 @@ interface FormStreamSettings {
   network: string;
   security?: string;
   tcpSettings?: FormTcpSettings;
+  kcpSettings?: FormKcpSettings;
   wsSettings?: FormWsSettings;
   httpupgradeSettings?: FormHttpUpgradeSettings;
   grpcSettings?: FormGrpcSettings;
@@ -350,6 +357,9 @@ struct NodeEditPage {
   @State private transportHost: string = '';
   @State private transportPath: string = '';
   @State private transportFinalMask: string = '';
+  @State private transportKcpHeaderType: string = 'none';
+  @State private transportKcpMtu: string = '';
+  @State private transportKcpTti: string = '';
   @State private transportXhttpMode: string = 'auto';
   @State private transportXhttpExtra: string = '';
   
@@ -571,12 +581,32 @@ struct NodeEditPage {
                   options: V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS,
                   selectedValue: $transportType
                 })
-                this.EditorRow('伪装域名 (Host)', this.transportHost, 'Host 字段或权威域名', (value: string) => {
-                  this.transportHost = value;
-                })
-                this.EditorRow('伪装路径 (Path / ServiceName)', this.transportPath, '请求路径或 gRPC 服务名', (value: string) => {
-                  this.transportPath = value;
-                })
+                if (this.transportType === 'kcp') {
+                  PickerRow({
+                    label: 'KCP 伪装类型 (headerType)',
+                    options: V2RAYNG_KCP_HEADER_TYPE_OPTIONS,
+                    selectedValue: $transportKcpHeaderType
+                  })
+                  this.EditorRow('KCP DNS Host (host - 可选)', this.transportHost, '仅 dns header 需要填写', (value: string) => {
+                    this.transportHost = value;
+                  })
+                  this.EditorRow('KCP Seed (seed - 可选)', this.transportPath, '留空使用 mkcp-original', (value: string) => {
+                    this.transportPath = value;
+                  })
+                  this.EditorRow('KCP MTU (mtu - 可选)', this.transportKcpMtu, '默认 1350', (value: string) => {
+                    this.transportKcpMtu = value;
+                  })
+                  this.EditorRow('KCP TTI (tti - 可选)', this.transportKcpTti, '默认 50', (value: string) => {
+                    this.transportKcpTti = value;
+                  })
+                } else {
+                  this.EditorRow('伪装域名 (Host)', this.transportHost, 'Host 字段或权威域名', (value: string) => {
+                    this.transportHost = value;
+                  })
+                  this.EditorRow('伪装路径 (Path / ServiceName)', this.transportPath, '请求路径或 gRPC 服务名', (value: string) => {
+                    this.transportPath = value;
+                  })
+                }
                 if (this.transportType === 'xhttp') {
                   PickerRow({
                     label: 'XHTTP 模式 (mode)',
@@ -926,7 +956,28 @@ struct NodeEditPage {
         }
 
         // 填充底层传输协议专属配置
-        if (network === 'ws') {
+        if (network === 'kcp') {
+          const kcpSettings: FormKcpSettings = {};
+          const mtu = this.optionalPositiveInteger(this.transportKcpMtu);
+          if (mtu < 0) {
+            this.lastError = 'KCP MTU 必须是正整数。';
+            return;
+          }
+          const tti = this.optionalPositiveInteger(this.transportKcpTti);
+          if (tti < 0) {
+            this.lastError = 'KCP TTI 必须是正整数。';
+            return;
+          }
+          if (mtu > 0) {
+            kcpSettings.mtu = mtu;
+          }
+          if (tti > 0) {
+            kcpSettings.tti = tti;
+          }
+          streamSettings.kcpSettings = kcpSettings;
+          streamSettings.finalmask = buildKcpFinalMask(this.transportKcpHeaderType, this.transportHost, this.transportPath);
+        }
+        else if (network === 'ws') {
           const wsHeaders: FormWsHeaders = {
             Host: this.transportHost.trim()
           };
@@ -1041,6 +1092,18 @@ struct NodeEditPage {
       return fallback;
     }
     return Math.floor(parsed);
+  }
+
+  private optionalPositiveInteger(value: string): number {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return 0;
+    }
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed) || parsed <= 0 || Math.floor(parsed) !== parsed) {
+      return -1;
+    }
+    return parsed;
   }
 
   private applyProtocolDefaults(protocol: string): void {
