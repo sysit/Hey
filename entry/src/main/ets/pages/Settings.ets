@@ -33,6 +33,7 @@ struct SettingsPage {
   @State private settingAppendHttpProxy: boolean = false;
   @State private settingLocalSocks: boolean = false;
   @State private settingLocalSocksPort: string = '10809';
+  @State private settingLocalSocksDynamicPort: boolean = false;
   @State private settingLocalSocksUdp: boolean = true;
   @State private settingLocalSocksUsername: string = '';
   @State private settingLocalSocksPassword: string = '';
@@ -120,6 +121,8 @@ struct SettingsPage {
             this.SettingToggle(this.t('settings.localSocks'), this.settingLocalSocks, 'localSocks')
             this.RowDivider()
             this.SettingInput(this.t('settings.localSocksPort'), this.settingLocalSocksPort, 'localSocksPort')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.localSocksDynamicPort'), this.settingLocalSocksDynamicPort, 'localSocksDynamicPort')
             this.RowDivider()
             this.SettingToggle(this.t('settings.localSocksUdp'), this.settingLocalSocksUdp, 'localSocksUdp')
             this.RowDivider()
@@ -336,6 +339,9 @@ struct SettingsPage {
       case 'localSocks':
         this.settingLocalSocks = !this.settingLocalSocks;
         break;
+      case 'localSocksDynamicPort':
+        this.settingLocalSocksDynamicPort = !this.settingLocalSocksDynamicPort;
+        break;
       case 'localSocksUdp':
         this.settingLocalSocksUdp = !this.settingLocalSocksUdp;
         break;
@@ -433,6 +439,7 @@ struct SettingsPage {
       appendHttpProxy: this.settingAppendHttpProxy,
       localSocksEnabled: this.settingLocalSocks,
       localSocksPort: this.settingLocalSocksPort,
+      localSocksDynamicPort: this.settingLocalSocksDynamicPort,
       localSocksUdpEnabled: this.settingLocalSocksUdp,
       localSocksUsername: this.settingLocalSocksUsername,
       localSocksPassword: this.settingLocalSocksPassword,
@@ -471,6 +478,7 @@ struct SettingsPage {
     this.settingAppendHttpProxy = draft.appendHttpProxy;
     this.settingLocalSocks = draft.localSocksEnabled;
     this.settingLocalSocksPort = draft.localSocksPort;
+    this.settingLocalSocksDynamicPort = draft.localSocksDynamicPort;
     this.settingLocalSocksUdp = draft.localSocksUdpEnabled;
     this.settingLocalSocksUsername = draft.localSocksUsername;
     this.settingLocalSocksPassword = draft.localSocksPassword;

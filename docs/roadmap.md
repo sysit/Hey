@@ -12,12 +12,12 @@
 | 原生 TUN 数据通路 | ✅ 93% | 代码就位且**真机闭环验证通过（2026-06-15）**——TUN→Xray→出站→可上网；IPv6 地址/路由与 outbound Happy Eyeballs 已按设置生成，待真机回归 |
 | 分享链接解析 | ✅ 90% | vless/vmess/trojan/ss/socks/http/wireguard/hy2 已覆盖，WireGuard `.conf` 整段导入已支持；导入失败后可走 native 转换兜底支持 v2rayN 多行/base64 与 Clash.Meta YAML（待重建 `.so` 真机验证）；**缺 TUIC** |
 | 订阅管理 | 🟡 91% | 多分组 + 旧版迁移 + 编辑/重排/批量更新全部 + 订阅级不安全 URL 开关 + 当前分组删除全部 + 自动更新设置/前台到期刷新 + 本地 HTTP 代理经由更新；**缺后台调度** |
-| Xray 配置生成 | 🟡 73% | 普通节点生成 TUN/metrics/DNS/routing/HTTP 代理配置，HTTP 代理支持局域网共享监听；完整自定义 Xray config 可校验后原样运行；高级出站目标仍待补 |
+| Xray 配置生成 | 🟡 74% | 普通节点生成 TUN/metrics/DNS/routing/HTTP 代理和本地 SOCKS 配置，HTTP/SOCKS 代理支持局域网共享监听，SOCKS 支持启动前动态端口；完整自定义 Xray config 可校验后原样运行；高级出站目标仍待补 |
 | 节点延迟测速 / 排序 | ✅ 82% | `CGoPing` 真测速 + 排序，测速 SOCKS inbound 优先使用 `CGoGetFreePorts` 动态端口；需真机验证 |
 | 路由设置页 | ✅ 80% | 广告拦截、自定义规则、预设规则集导入/导出均已生效；高级出站目标与真机规则回归待补 |
 | Geo 资产管理 | ✅ 90% | 下载 / 自定义 URL / 备份还原已实现；Geo 文件 native 计数/校验已接线，待重建 `.so` 真机验证 |
 | 分应用代理 | 🟡 70% | 开关、黑白名单、手动包名、应用枚举和 VPN 应用映射已接线；仍受平台可见性限制，待真机回归 |
-| 设置页 | 🟡 73% | 核心项持久化并生效，本地 SOCKS 代理端口/UDP/认证已写入运行配置 |
+| 设置页 | 🟡 76% | 核心项持久化并生效，本地 SOCKS 代理静态/动态端口、UDP、认证已写入运行配置 |
 | 扫码导入 | ✅ 80% | 粘贴导入和 ScanKit 相机扫码已接线，待真机相机权限/机型回归 |
 | 导出 / 分享 | ✅ 82% | 文本/文件导出、节点二维码与系统分享面板已完成；后续主要是真机分享目标兼容回归 |
 | 平台集成 | 🔴 20% | Want / URL Scheme 深链导入已完成；快捷方式 / 卡片仍待补 |
@@ -124,7 +124,8 @@
 | 2026-06-18 | 阶段 0 | ✅ 本地 DNS / FakeDNS 完成；开启后生成 TUN 53 → `dns-out` 路由、DNS outbound 与 FakeDNS 配置 |
 | 2026-06-18 | 阶段 4 | ✅ 本地 HTTP 代理共享监听完成；`proxySharingEnabled` 开启时 `http-in` 监听 `0.0.0.0:10808` |
 | 2026-06-18 | 阶段 1 | 🟡 Geo 文件校验/计数接线完成；`CGoReadGeoFiles`/`CGoCountGeoData` 已导出并在 Assets 页展示分类数/规则数，待重建 `.so` + 真机验证 |
-| 2026-06-18 | 阶段 1 | 🟡 Native 空闲端口接线完成；延迟测速优先用 `CGoGetFreePorts` 获取临时 SOCKS 端口，失败回退 `10825`，待重建 `.so` + 真机验证 |
+| 2026-06-18 | 阶段 1 | 🟡 Native 空闲端口接线完成；延迟测速与本地 SOCKS 动态端口优先用 `CGoGetFreePorts` 获取运行端口，失败回退静态端口，待重建 `.so` + 真机验证 |
 | 2026-06-18 | 阶段 1 | 🟡 Native 分享转换接线完成；导入失败后调用 `CGoConvertShareLinksToXrayJson` 解析 v2rayN 多行/base64 与 Clash.Meta YAML，并提取 outbounds 保存为手动节点，待重建 `.so` + 真机验证 |
 | 2026-06-18 | 阶段 4 | ✅ WireGuard/Hysteria2 手动编辑器校验完成；NodeEdit 生成可校验 outbound，覆盖 WG IPv6 endpoint、reserved/MTU 与 HY2 obfs/mport/SNI/ALPN 单测 |
 | 2026-06-18 | 阶段 4 | ✅ 本地 SOCKS 代理设置完成；Settings 可配置启用、端口、UDP、用户名/密码认证，Xray 生成 `socks-in` 并随代理共享监听 LAN |
+| 2026-06-18 | 阶段 4 | ✅ 本地 SOCKS 动态端口完成；`localSocksDynamicPort` 开启后连接前通过 `CGoGetFreePorts` 写入运行端口，失败回退用户设置端口 |

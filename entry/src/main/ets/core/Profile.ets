@@ -157,6 +157,7 @@ export interface AppSettings {
   appendHttpProxy: boolean;
   localSocksEnabled: boolean;
   localSocksPort: number;
+  localSocksDynamicPort: boolean;
   localSocksUdpEnabled: boolean;
   localSocksUsername: string;
   localSocksPassword: string;

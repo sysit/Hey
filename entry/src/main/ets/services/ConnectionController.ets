@@ -3,9 +3,10 @@ import { vpnExtension } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AppSettings, ConnectionStatus, GeneratedXrayConfig, ProxyProfile, RuntimeStats } from '../core/Profile';
-import { buildRuntimeXrayConfig, normalizeConfigInput } from '../core/XrayConfig';
+import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../core/LocalProxy';
+import { buildRuntimeXrayConfig, LOCAL_HTTP_PROXY_PORT, METRICS_PORT, normalizeConfigInput } from '../core/XrayConfig';
 import { createStopCommandVpnWant, createStopVpnWant, createVpnWant } from '../vpn/VpnConstants';
-import { getNativeStats } from '../native/HeyNative';
+import { getNativeFreePorts, getNativeStats } from '../native/HeyNative';
 import { DiagnosticEvent, DiagnosticLog } from './DiagnosticLog';
 
 const LOG_DOMAIN: number = 0x0001;
@@ -68,7 +69,8 @@ export class ConnectionController {
 
     this.status = ConnectionStatus.STARTING;
     this.lastError = '';
-    this.generatedConfig = buildRuntimeXrayConfig(profile.outboundJson, settings, profile.configType);
+    const runtimeSettings = validation.configType === 'full' ? settings : this.resolveRuntimeSettings(settings);
+    this.generatedConfig = buildRuntimeXrayConfig(profile.outboundJson, runtimeSettings, validation.configType);
     const requestedAt = Date.now();
 
     try {
@@ -96,6 +98,25 @@ export class ConnectionController {
       hilog.error(LOG_DOMAIN, LOG_TAG, 'startVpnExtensionAbility failed: %{public}s', this.lastError);
     }
     return this.getSnapshot();
+  }
+
+  private resolveRuntimeSettings(settings?: AppSettings): AppSettings | undefined {
+    if (!shouldUseDynamicLocalSocksPort(settings)) {
+      return settings;
+    }
+    const resolvedSettings = settings as AppSettings;
+    const reservedPorts = this.reservedRuntimePorts(resolvedSettings);
+    const freePorts = getNativeFreePorts(reservedPorts.length + 1);
+    const runtimePort = selectRuntimeLocalSocksPort(resolvedSettings, freePorts.ok ? freePorts.ports : [], reservedPorts);
+    return withRuntimeLocalSocksPort(resolvedSettings, runtimePort);
+  }
+
+  private reservedRuntimePorts(settings: AppSettings): Array<number> {
+    const ports: Array<number> = [METRICS_PORT];
+    if (settings.appendHttpProxy) {
+      ports.push(LOCAL_HTTP_PROXY_PORT);
+    }
+    return ports;
   }
 
   async stop(context: common.Context): Promise<ConnectionSnapshot> {

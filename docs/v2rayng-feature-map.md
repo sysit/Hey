@@ -22,7 +22,7 @@ v2rayNG's features and design, see
 | ServerActivity protocol editors | Add | Partial. Field-level editor is present for VLESS/VMess/Trojan/Shadowsocks/SOCKS/HTTP/WireGuard/Hysteria2 and saves validated outbound JSON. TUIC editor remains pending. |
 | ServerCustomConfigActivity | Add | Present for pasted/file JSON. Raw outbound JSON and full Xray config import work; full configs persist as custom manual nodes and start without Hey wrapping them in generated TUN/routing config. Advanced custom-config editing remains pending. |
 | RoutingSettingActivity / RoutingEditActivity | Route | Present for core ruleset management. Traffic mode (global/rules/direct), domain strategy, bypass-LAN/CN, ad-block, custom routing rules, locked rules, predefined ruleset import, clipboard import, and clipboard export persist and feed generated Xray routing. Advanced custom outbound targets remain future work. |
-| SettingsActivity | Config | Core, VPN DNS, IPv6 preference, local HTTP proxy append/sharing, local SOCKS proxy port/UDP/auth, mux, sniffing, log level and routing strategy persist; VPN DNS feeds Harmony `VpnConfig.dnsAddresses`, IPv6 preference feeds the VPN interface address/route and generated Xray outbound Happy Eyeballs, proxy sharing changes local HTTP/SOCKS inbound listen, while remote/domestic DNS feed generated Xray DNS. Dedicated pickers and full advanced options pending. |
+| SettingsActivity | Config | Core, VPN DNS, IPv6 preference, local HTTP proxy append/sharing, local SOCKS proxy static/dynamic port/UDP/auth, mux, sniffing, log level and routing strategy persist; VPN DNS feeds Harmony `VpnConfig.dnsAddresses`, IPv6 preference feeds the VPN interface address/route and generated Xray outbound Happy Eyeballs, proxy sharing changes local HTTP/SOCKS inbound listen, dynamic SOCKS port resolves a free runtime port before start, while remote/domestic DNS feed generated Xray DNS. Dedicated pickers and full advanced options pending. |
 | PerAppProxyActivity | Apps | Partial. Toggle, allowlist/blocklist mode, preset/manual package list, and VPN `blockedApplications`/`trustedApplications` mapping are wired; unrestricted installed-app enumeration is platform-limited. |
 | UserAssetActivity / UserAssetUrlActivity | Assets | Present. geoip/geosite download (Loyalsoldier rules), custom asset URL CRUD, clipboard backup/restore, and native Geo count status are implemented. |
 | LogcatActivity | Logs | Present. App diagnostic logs and native runtime stats are visible. |
@@ -36,7 +36,7 @@ v2rayNG's features and design, see
 | --- | --- |
 | Subscription URL fetch and parse | Present for `vless://`, `vmess://`, `trojan://`, `ss://`, `socks://`, `http://`, `https://`, `wireguard://`, `hysteria2://`, `hy2://`. |
 | Node select and save current profile | Present. |
-| Xray config generation | Present for outbound + native TUN inbound + metrics inbound + optional local HTTP/SOCKS proxy inbounds/listen sharing + basic direct/block outbounds. Full custom Xray configs are validated and passed through unchanged at runtime. |
+| Xray config generation | Present for outbound + native TUN inbound + metrics inbound + optional local HTTP/SOCKS proxy inbounds/listen sharing + dynamic local SOCKS runtime port + basic direct/block outbounds. Full custom Xray configs are validated and passed through unchanged at runtime. |
 | Persistent app settings | Present for core VPN, DNS, IPv6, mux, sniffing, log and routing strategy; selected values are applied at connection start, including VPN interface DNS, IPv6 routing, and outbound Happy Eyeballs. |
 | VPN Extension start/stop | Present, with emulator timeout diagnostics. Real-device verified for IPv4 data path (2026-06-15); IPv6 interface address/route generation is wired and awaits real-device regression. |
 | Xray native TUN runtime | Present in HAP via `CGoSetTunFd` + Xray TUN inbound. Real-device closed loop verified (2026-06-15): TUN → Xray → outbound → reachable. |
@@ -61,7 +61,7 @@ v2rayNG's features and design, see
   `/debug/vars` endpoint), `CGoTestXray` (pre-connect config preflight),
   `CGoXrayVersion` (core version on the About page),
   `CGoReadGeoFiles` / `CGoCountGeoData` (Geo file validation/count status on Assets),
-  `CGoGetFreePorts` (dynamic ports for real outbound delay tests),
+  `CGoGetFreePorts` (dynamic ports for real outbound delay tests and local SOCKS runtime port),
   `CGoConvertShareLinksToXrayJson` / `CGOConvertXrayJsonToShareLinks`
   (native share text ⇄ Xray JSON conversion).
 - Idle: `CGoRunXray`.
@@ -74,5 +74,5 @@ v2rayNG's features and design, see
 > **`libxray.so` rebuild + device retest** is required before these optional
 > paths take effect. Until then the bridge degrades gracefully (stats fall back,
 > preflight is skipped, version shows the static label, Geo count reports
-> unavailable, delay tests use the static fallback port, and import falls back to
-> the built-in single-link parser only).
+> unavailable, delay tests and dynamic local SOCKS use static fallback ports,
+> and import falls back to the built-in single-link parser only).

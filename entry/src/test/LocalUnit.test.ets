@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, translate } from '../main/ets/core/I18n';
+import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { AppSettings, ProxyNode, RoutingRule, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
@@ -186,6 +187,7 @@ export default function localUnitTest() {
         appendHttpProxy: false,
         localSocksEnabled: false,
         localSocksPort: LOCAL_SOCKS_PROXY_PORT,
+        localSocksDynamicPort: false,
         localSocksUdpEnabled: true,
         localSocksUsername: '',
         localSocksPassword: '',
@@ -358,6 +360,26 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain(`"listen": "${LOCAL_HTTP_PROXY_LAN_HOST}"`);
     });
 
+    it('selects runtime local socks dynamic port safely', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.localSocksEnabled = true;
+      settings.localSocksDynamicPort = true;
+      settings.localSocksPort = 10818;
+      expect(shouldUseDynamicLocalSocksPort(settings)).assertTrue();
+      expect(selectRuntimeLocalSocksPort(settings, [19080])).assertEqual(19080);
+      expect(selectRuntimeLocalSocksPort(settings, [LOCAL_HTTP_PROXY_PORT, 19080], [LOCAL_HTTP_PROXY_PORT])).assertEqual(19080);
+      expect(selectRuntimeLocalSocksPort(settings, [0, 70000])).assertEqual(10818);
+      expect(selectRuntimeLocalSocksPort(settings, [LOCAL_HTTP_PROXY_PORT], [LOCAL_HTTP_PROXY_PORT])).assertEqual(10818);
+
+      const runtimeSettings = withRuntimeLocalSocksPort(settings, 19081);
+      expect(runtimeSettings.localSocksPort).assertEqual(19081);
+      expect(settings.localSocksPort).assertEqual(10818);
+
+      settings.localSocksDynamicPort = false;
+      expect(shouldUseDynamicLocalSocksPort(settings)).assertFalse();
+      expect(selectRuntimeLocalSocksPort(settings, [19082])).assertEqual(10818);
+    });
+
     it('uses requested socks port for delay test config', 0, () => {
       const customPort = 19081;
       const result = buildDelayTestConfig(VLESS_REALITY_OUTBOUND, customPort);
@@ -453,6 +475,7 @@ export default function localUnitTest() {
       settings.localDnsPort = 1053;
       settings.localSocksEnabled = true;
       settings.localSocksPort = 10818;
+      settings.localSocksDynamicPort = true;
       settings.localSocksUdpEnabled = false;
       settings.localSocksUsername = 'socks-user';
       settings.localSocksPassword = 'socks-pass';
@@ -464,6 +487,7 @@ export default function localUnitTest() {
       expect(draft.localDnsPort).assertEqual('1053');
       expect(draft.localSocksEnabled).assertTrue();
       expect(draft.localSocksPort).assertEqual('10818');
+      expect(draft.localSocksDynamicPort).assertTrue();
       expect(draft.localSocksUdpEnabled).assertFalse();
       expect(draft.localSocksUsername).assertEqual('socks-user');
       expect(draft.localSocksPassword).assertEqual('socks-pass');
@@ -475,6 +499,7 @@ export default function localUnitTest() {
       expect(rebuilt.localDnsPort).assertEqual(1053);
       expect(rebuilt.localSocksEnabled).assertTrue();
       expect(rebuilt.localSocksPort).assertEqual(10818);
+      expect(rebuilt.localSocksDynamicPort).assertTrue();
       expect(rebuilt.localSocksUdpEnabled).assertFalse();
       expect(rebuilt.localSocksUsername).assertEqual('socks-user');
       expect(rebuilt.localSocksPassword).assertEqual('socks-pass');
@@ -758,6 +783,7 @@ function buildSettingsFixture(): AppSettings {
     appendHttpProxy: false,
     localSocksEnabled: false,
     localSocksPort: LOCAL_SOCKS_PROXY_PORT,
+    localSocksDynamicPort: false,
     localSocksUdpEnabled: true,
     localSocksUsername: '',
     localSocksPassword: '',

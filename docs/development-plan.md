@@ -85,14 +85,14 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 **进展（2026-06-18 续）**：`CGoGetFreePorts` 接线完成：
 - 构建：version-script 继续导出 `CGoGetFreePorts`
 - Native：`napi_init.cpp` 新增 `getFreePorts`，符号缺失时优雅降级
-- 消费：真实延迟测速优先使用 native 空闲端口生成临时 SOCKS inbound，失败回退旧端口 `10825`
+- 消费：真实延迟测速优先使用 native 空闲端口生成临时 SOCKS inbound；本地 SOCKS 动态端口在连接前读取空闲端口写入 `socks-in`，失败分别回退旧端口 `10825` / 用户设置端口
 
 **进展（2026-06-18 续）**：`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks` 接线完成：
 - 构建：version-script 继续导出两个分享转换符号
 - Native：`napi_init.cpp` 新增 `convertShareLinksToXrayJson`/`convertXrayJsonToShareLinks`，符号缺失时优雅降级
 - 消费：导入页在内置单节点解析失败后调用 native 转换，支持 v2rayN 多行/base64 与 Clash.Meta YAML，提取返回配置中的 outbounds 保存为手动节点
 
-**仍需**：用更新后的脚本重建 `libxray.so`（当前 `.so` 未导出这些新增符号），真机复测流量/预检/版本/Geo 计数/动态测速端口/native 分享转换，并确认新增 metrics inbound 不影响已验证的连接路径。
+**仍需**：用更新后的脚本重建 `libxray.so`（当前 `.so` 未导出这些新增符号），真机复测流量/预检/版本/Geo 计数/动态测速端口/动态本地 SOCKS 端口/native 分享转换，并确认新增 metrics inbound 不影响已验证的连接路径。
 
 **任务**（按性价比排序）
 1. `CGoQueryStats` → 真实上下行流量统计，替换当前 C++ 侧近似计数
@@ -249,7 +249,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ Hysteria2 端口跳跃（`mport`）与 `obfs`：分享链接解析和手动编辑器均已写入 outbound（2026-06-18；运行态仍待真机/内核验证）
 - ✅ WireGuard `.conf` 文件整段解析（2026-06-18 已完成：`[Interface]`/`[Peer]` 文本或文件导入转为 Xray wireguard outbound）
 - ✅ WireGuard/Hysteria2 手动编辑器：NodeEdit 已生成可校验 outbound，WG 支持 secret/public/pre-shared/reserved/MTU/IPv6 endpoint，HY2 支持 SNI/ALPN/insecure/obfs/mport/bandwidth（2026-06-18）
-- ✅ SOCKS 端口/UDP/认证：Settings 已可配置本地 SOCKS inbound，写入 `socks-in` 端口、UDP 与用户名/密码认证，并随代理共享监听 LAN（2026-06-18）；动态 SOCKS 端口仍待补
+- ✅ SOCKS 端口/UDP/认证/动态端口：Settings 已可配置本地 SOCKS inbound，写入 `socks-in` 端口、UDP 与用户名/密码认证，并随代理共享监听 LAN；动态端口开启时连接前通过 `CGoGetFreePorts` 选择运行端口，失败回退用户设置端口（2026-06-18）
 - 本地 DNS / FakeDNS 已生成 Xray `dns-out`、FakeDNS server 和 TUN 53 端口路由；
   `localDnsPort` 已可持久化，后续仅代理模式本地 DNS 入口继续复用
 
@@ -337,9 +337,10 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M0 补点 | ✅ VPN 绕过 LAN 三态设置完成（保存 `vpnBypassLan=0/1/2`，绕过时用 v2rayNG 公网 IPv4 路由表 + IPv6 `2000::/3`/`fc00::/18` 替代默认路由） |
 | 2026-06-18 | M0 补点 | ✅ 本地 DNS / FakeDNS 接线完成（`localDnsEnabled` 生成 TUN 53 → `dns-out` 路由和 DNS outbound；`fakeDnsEnabled` 生成 `fakedns` server、顶层 `fakedns` 与 sniffing `fakedns`，`localDnsPort` 可保存） |
 | 2026-06-18 | M1 | 🟡 Geo 文件校验/计数接线完成（`CGoReadGeoFiles`/`CGoCountGeoData` 导出 + native wrapper + Assets 页显示分类数/规则数）；待重建 `.so` + 真机复测 |
-| 2026-06-18 | M1 | 🟡 Native 空闲端口接线完成（`CGoGetFreePorts` 导出 + native wrapper + 延迟测速动态 SOCKS 端口，失败回退 `10825`）；待重建 `.so` + 真机复测 |
+| 2026-06-18 | M1 | 🟡 Native 空闲端口接线完成（`CGoGetFreePorts` 导出 + native wrapper + 延迟测速/本地 SOCKS 动态端口，失败回退静态端口）；待重建 `.so` + 真机复测 |
 | 2026-06-18 | M1 | 🟡 Native 分享转换接线完成（`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks` 导出 + native wrapper + 导入页批量/base64/Clash YAML 兜底）；待重建 `.so` + 真机复测 |
 | 2026-06-18 | M4 | ✅ WireGuard/Hysteria2 手动编辑器校验完成（抽出 `ManualOutboundBuilder`，NodeEdit 复用，补 WG/HY2 outbound 生成单测）；运行态仍待真机/内核复测 |
-| 2026-06-18 | M4 | ✅ 本地 SOCKS 代理设置完成（`localSocksEnabled`/端口/UDP/用户名/密码 + `socks-in` 生成 + LAN 共享监听 + 单测）；动态 SOCKS 端口仍待补 |
+| 2026-06-18 | M4 | ✅ 本地 SOCKS 代理设置完成（`localSocksEnabled`/端口/UDP/用户名/密码 + `socks-in` 生成 + LAN 共享监听 + 单测） |
+| 2026-06-18 | M4 | ✅ 本地 SOCKS 动态端口完成（`localSocksDynamicPort` 设置 + 启动前 `CGoGetFreePorts` 选择运行端口 + 设置/端口选择单测）；待重建 `.so` + 真机复测 |
 | 2026-06-15 | 自查 | ✅ 字段一致性总扫：AppSettings/SettingsDraft 5 个构造点字段完整一致，SubscriptionGroup.filter 贯通，无需修改 |
 | 2026-06-15 | 自查 | ✅ 深链/metrics 配置形状核对 Xray 官方一致；自查清单收尾（净修复：预检非阻断 + 清理未用导入） |

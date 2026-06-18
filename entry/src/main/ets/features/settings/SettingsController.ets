@@ -14,6 +14,7 @@ export interface SettingsDraft {
   appendHttpProxy: boolean;
   localSocksEnabled: boolean;
   localSocksPort: string;
+  localSocksDynamicPort: boolean;
   localSocksUdpEnabled: boolean;
   localSocksUsername: string;
   localSocksPassword: string;
@@ -61,6 +62,7 @@ export class SettingsController {
       appendHttpProxy: settings.appendHttpProxy,
       localSocksEnabled: settings.localSocksEnabled,
       localSocksPort: settings.localSocksPort.toString(),
+      localSocksDynamicPort: settings.localSocksDynamicPort,
       localSocksUdpEnabled: settings.localSocksUdpEnabled,
       localSocksUsername: settings.localSocksUsername,
       localSocksPassword: settings.localSocksPassword,
@@ -100,6 +102,7 @@ export class SettingsController {
       appendHttpProxy: draft.appendHttpProxy,
       localSocksEnabled: draft.localSocksEnabled,
       localSocksPort: this.portValue(draft.localSocksPort, DEFAULT_APP_SETTINGS.localSocksPort),
+      localSocksDynamicPort: draft.localSocksDynamicPort,
       localSocksUdpEnabled: draft.localSocksUdpEnabled,
       localSocksUsername: draft.localSocksUsername.trim(),
       localSocksPassword: draft.localSocksPassword.trim(),
