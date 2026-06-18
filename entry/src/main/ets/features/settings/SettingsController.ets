@@ -32,6 +32,7 @@ export interface SettingsDraft {
   fragmentPackets: string;
   fragmentLength: string;
   fragmentInterval: string;
+  ipv6Enabled: boolean;
   preferIpv6: boolean;
   proxySharingEnabled: boolean;
   allowInsecure: boolean;
@@ -95,6 +96,7 @@ export class SettingsController {
       fragmentPackets: settings.fragmentPackets,
       fragmentLength: settings.fragmentLength,
       fragmentInterval: settings.fragmentInterval,
+      ipv6Enabled: settings.ipv6Enabled,
       preferIpv6: settings.preferIpv6,
       proxySharingEnabled: settings.proxySharingEnabled,
       allowInsecure: settings.allowInsecure,
@@ -150,6 +152,7 @@ export class SettingsController {
       fragmentPackets: this.nonEmptyString(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
       fragmentLength: this.nonEmptyString(draft.fragmentLength, DEFAULT_APP_SETTINGS.fragmentLength),
       fragmentInterval: this.nonEmptyString(draft.fragmentInterval, DEFAULT_APP_SETTINGS.fragmentInterval),
+      ipv6Enabled: draft.ipv6Enabled,
       preferIpv6: draft.preferIpv6,
       proxySharingEnabled: draft.proxySharingEnabled,
       allowInsecure: draft.allowInsecure,

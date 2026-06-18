@@ -56,6 +56,7 @@ struct SettingsPage {
   @State private settingFragmentPackets: string = 'tlshello';
   @State private settingFragmentLength: string = '50-100';
   @State private settingFragmentInterval: string = '10-20';
+  @State private settingIpv6Enabled: boolean = false;
   @State private settingPreferIpv6: boolean = false;
   @State private settingProxySharing: boolean = false;
   @State private settingAllowInsecure: boolean = false;
@@ -161,6 +162,8 @@ struct SettingsPage {
             this.SettingInput(this.t('settings.localSocksUsername'), this.settingLocalSocksUsername, 'localSocksUsername')
             this.RowDivider()
             this.SettingInput(this.t('settings.localSocksPassword'), this.settingLocalSocksPassword, 'localSocksPassword')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.ipv6Enabled'), this.settingIpv6Enabled, 'ipv6Enabled')
             this.RowDivider()
             this.SettingToggle(this.t('settings.preferIpv6'), this.settingPreferIpv6, 'preferIpv6')
             this.RowDivider()
@@ -396,6 +399,9 @@ struct SettingsPage {
       case 'fragment':
         this.settingFragment = !this.settingFragment;
         break;
+      case 'ipv6Enabled':
+        this.settingIpv6Enabled = !this.settingIpv6Enabled;
+        break;
       case 'preferIpv6':
         this.settingPreferIpv6 = !this.settingPreferIpv6;
         break;
@@ -548,6 +554,7 @@ struct SettingsPage {
       fragmentPackets: this.settingFragmentPackets,
       fragmentLength: this.settingFragmentLength,
       fragmentInterval: this.settingFragmentInterval,
+      ipv6Enabled: this.settingIpv6Enabled,
       preferIpv6: this.settingPreferIpv6,
       proxySharingEnabled: this.settingProxySharing,
       allowInsecure: this.settingAllowInsecure,
@@ -602,6 +609,7 @@ struct SettingsPage {
     this.settingFragmentPackets = draft.fragmentPackets;
     this.settingFragmentLength = draft.fragmentLength;
     this.settingFragmentInterval = draft.fragmentInterval;
+    this.settingIpv6Enabled = draft.ipv6Enabled;
     this.settingPreferIpv6 = draft.preferIpv6;
     this.settingProxySharing = draft.proxySharingEnabled;
     this.settingAllowInsecure = draft.allowInsecure;

@@ -377,6 +377,7 @@ export default function localUnitTest() {
         fragmentPackets: 'tlshello',
         fragmentLength: '50-100',
         fragmentInterval: '10-20',
+        ipv6Enabled: false,
         preferIpv6: false,
         proxySharingEnabled: false,
         allowInsecure: false,
@@ -609,6 +610,32 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"tlshello"');
     });
 
+    it('keeps ipv6 routing separate from prefer ipv6', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.preferIpv6 = true;
+      const wireguard = buildManualWireguardOutbound({
+        tag: 'WG',
+        host: 'wg.example.com',
+        port: '51820',
+        secretKey: 'private-key',
+        publicKey: 'public-key',
+        preSharedKey: '',
+        localAddress: '172.16.0.2/32, fd00::2/128',
+        reserved: '',
+        mtu: '1420'
+      });
+      expect(wireguard.success).assertTrue();
+
+      let result = buildXrayConfigWithSettings(wireguard.outboundJson, settings);
+      expect(result.configJson).assertContain('"happyEyeballs"');
+      expect(result.configJson).assertContain('"172.16.0.2/32"');
+      expect(result.configJson.indexOf('"fd00::2/128"')).assertEqual(-1);
+
+      settings.ipv6Enabled = true;
+      result = buildXrayConfigWithSettings(wireguard.outboundJson, settings);
+      expect(result.configJson).assertContain('"fd00::2/128"');
+    });
+
     it('imports routing presets while preserving locked rules', 0, () => {
       const lockedRule = buildRoutingRuleFixture('locked-rule', 'Locked keep', 'direct');
       lockedRule.locked = true;
@@ -722,6 +749,7 @@ export default function localUnitTest() {
 
     it('round-trips vpn settings through settings draft', 0, () => {
       const settings = buildSettingsFixture();
+      settings.ipv6Enabled = true;
       settings.preferIpv6 = true;
       settings.localDnsPort = 1053;
       settings.localSocksEnabled = true;
@@ -758,6 +786,7 @@ export default function localUnitTest() {
       expect(draft.startScanImmediate).assertTrue();
       expect(draft.groupAllDisplay).assertTrue();
       expect(draft.doubleColumnDisplay).assertTrue();
+      expect(draft.ipv6Enabled).assertTrue();
       expect(draft.preferIpv6).assertTrue();
       expect(draft.localDnsPort).assertEqual('1053');
       expect(draft.localSocksEnabled).assertTrue();
@@ -788,6 +817,7 @@ export default function localUnitTest() {
       expect(rebuilt.startScanImmediate).assertTrue();
       expect(rebuilt.groupAllDisplay).assertTrue();
       expect(rebuilt.doubleColumnDisplay).assertTrue();
+      expect(rebuilt.ipv6Enabled).assertTrue();
       expect(rebuilt.preferIpv6).assertTrue();
       expect(rebuilt.localDnsPort).assertEqual(1053);
       expect(rebuilt.localSocksEnabled).assertTrue();
@@ -1231,6 +1261,7 @@ function buildSettingsFixture(): AppSettings {
     fragmentPackets: 'tlshello',
     fragmentLength: '50-100',
     fragmentInterval: '10-20',
+    ipv6Enabled: false,
     preferIpv6: false,
     proxySharingEnabled: false,
     allowInsecure: false,

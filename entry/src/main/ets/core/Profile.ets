@@ -216,6 +216,7 @@ export interface AppSettings {
   fragmentPackets: string;
   fragmentLength: string;
   fragmentInterval: string;
+  ipv6Enabled: boolean;
   preferIpv6: boolean;
   proxySharingEnabled: boolean;
   allowInsecure: boolean;

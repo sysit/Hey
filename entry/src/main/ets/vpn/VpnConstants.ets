@@ -91,7 +91,7 @@ export function createDefaultVpnConfig(
   bypassMode: boolean,
   appList: string[],
   vpnDns?: string,
-  preferIpv6?: boolean,
+  ipv6Enabled?: boolean,
   vpnMtu?: number,
   vpnInterfaceAddressIndex?: number,
   vpnBypassLan?: string,
@@ -99,7 +99,7 @@ export function createDefaultVpnConfig(
   routeOnlyBypassesPrivate?: boolean
 ): vpnExtension.VpnConfig {
   const selfBundle = BUNDLE_NAME;
-  const ipv6Enabled = preferIpv6 === true;
+  const routeIpv6 = ipv6Enabled === true;
   const addressConfig = resolveVpnInterfaceAddressConfig(vpnInterfaceAddressIndex);
   const bypassLan = resolveVpnBypassLan(vpnBypassLan, routingRules, routeOnlyBypassesPrivate);
   let blockedApps: string[] = [];
@@ -127,9 +127,9 @@ export function createDefaultVpnConfig(
       prefixLength: 30
     }
   ];
-  const routes = buildVpnRoutes(bypassLan, ipv6Enabled);
+  const routes = buildVpnRoutes(bypassLan, routeIpv6);
 
-  if (ipv6Enabled) {
+  if (routeIpv6) {
     addresses.push({
       address: {
         address: addressConfig.ipv6Client,
@@ -145,7 +145,7 @@ export function createDefaultVpnConfig(
     dnsAddresses: normalizeVpnDnsAddresses(vpnDns),
     mtu: normalizeVpnMtu(vpnMtu),
     isIPv4Accepted: true,
-    isIPv6Accepted: ipv6Enabled
+    isIPv6Accepted: routeIpv6
   };
 
   if (blockedApps.length > 0) {

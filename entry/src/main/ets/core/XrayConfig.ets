@@ -9,6 +9,10 @@ interface XrayOutbound {
   mux?: XrayMuxConfig;
 }
 
+interface XrayWireguardSettings {
+  address?: Array<string>;
+}
+
 interface XrayLogConfig {
   loglevel: string;
 }
@@ -225,6 +229,7 @@ export const METRICS_SERVER_URL: string = 'http://127.0.0.1:10845/debug/vars';
 const METRICS_OUT_TAG: string = 'metrics_out';
 const METRICS_IN_TAG: string = 'metrics_in';
 const DNS_OUT_TAG: string = 'dns-out';
+const DEFAULT_WIREGUARD_IPV4_ADDRESS: string = '172.16.0.2/32';
 const DEFAULT_LOG_LEVEL: string = 'warning';
 const DEFAULT_ROUTING_DOMAIN_STRATEGY: string = 'AsIs';
 
@@ -897,6 +902,7 @@ function cloneOutbound(outbound: XrayOutbound): XrayOutbound {
 }
 
 function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSettings | undefined): void {
+  applyWireguardIpv6Setting(outbound, settings);
   if (settings !== undefined && settings.muxEnabled) {
     const mux: XrayMuxConfig = {
       enabled: true,
@@ -924,6 +930,18 @@ function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSetti
     sockopt['domainStrategy'] = 'UseIP';
     sockopt['happyEyeballs'] = happyEyeballs;
   }
+}
+
+function applyWireguardIpv6Setting(outbound: XrayOutbound, settings: AppSettings | undefined): void {
+  if (settings === undefined || settings.ipv6Enabled || outbound.protocol?.toLowerCase() !== 'wireguard' || outbound.settings === undefined) {
+    return;
+  }
+  const wireguard = outbound.settings as XrayWireguardSettings;
+  if (!Array.isArray(wireguard.address)) {
+    return;
+  }
+  const ipv4Addresses = wireguard.address.filter((address: string) => address.indexOf(':') < 0);
+  wireguard.address = ipv4Addresses.length > 0 ? ipv4Addresses : [DEFAULT_WIREGUARD_IPV4_ADDRESS];
 }
 
 function buildXrayConfigFromOutbounds(
