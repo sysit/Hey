@@ -117,4 +117,5 @@
 | 2026-06-18 | 阶段 0 | ✅ TUN IPv6 设置接线完成；`preferIpv6` 持久化后生成 IPv6 TUN 地址与 `::/0` 默认路由 |
 | 2026-06-18 | 阶段 0 | ✅ Xray IPv6 优先解析接线完成；`preferIpv6` 开启时生成 outbound `sockopt.happyEyeballs` |
 | 2026-06-18 | 阶段 0 | ✅ VPN MTU 设置接线完成；`vpnMtu` 保存后同时应用到 Harmony `VpnConfig` 与 Xray TUN inbound |
+| 2026-06-18 | 阶段 0 | ✅ VPN 接口地址方案完成；按 v2rayNG 7 组预设选择 TUN IPv4/IPv6 client 地址 |
 | 2026-06-18 | 阶段 4 | ✅ 本地 HTTP 代理共享监听完成；`proxySharingEnabled` 开启时 `http-in` 监听 `0.0.0.0:10808` |

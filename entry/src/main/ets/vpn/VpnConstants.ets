@@ -1,14 +1,14 @@
 import { vpnExtension } from '@kit.NetworkKit';
 import Want from '@ohos.app.ability.Want';
-import { DEFAULT_VPN_MTU, normalizeVpnMtuValue } from '../core/Profile';
+import { DEFAULT_VPN_MTU, normalizeVpnMtuValue, resolveVpnInterfaceAddressConfig } from '../core/Profile';
 
 export const BUNDLE_NAME: string = 'com.lmlm.hey';
 export const VPN_ABILITY_NAME: string = 'HeyVpnAbility';
 export const VPN_COMMAND_KEY: string = 'command';
 export const VPN_COMMAND_STOP: string = 'stop';
 export const VPN_MTU: number = DEFAULT_VPN_MTU;
-export const TUN_IPV4: string = '172.19.0.2';
-export const TUN_IPV6: string = 'fd00:172:19::2';
+export const TUN_IPV4: string = resolveVpnInterfaceAddressConfig().ipv4Client;
+export const TUN_IPV6: string = resolveVpnInterfaceAddressConfig().ipv6Client;
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
 export const DEFAULT_VPN_DNS_ADDRESSES: string[] = ['1.1.1.1', '8.8.8.8'];
 const ADDRESS_FAMILY_IPV4: number = 1;
@@ -50,10 +50,12 @@ export function createDefaultVpnConfig(
   appList: string[],
   vpnDns?: string,
   preferIpv6?: boolean,
-  vpnMtu?: number
+  vpnMtu?: number,
+  vpnInterfaceAddressIndex?: number
 ): vpnExtension.VpnConfig {
   const selfBundle = BUNDLE_NAME;
   const ipv6Enabled = preferIpv6 === true;
+  const addressConfig = resolveVpnInterfaceAddressConfig(vpnInterfaceAddressIndex);
   let blockedApps: string[] = [];
   let trustedApps: string[] = [];
 
@@ -73,7 +75,7 @@ export function createDefaultVpnConfig(
   const addresses: Array<vpnExtension.LinkAddress> = [
     {
       address: {
-        address: TUN_IPV4,
+        address: addressConfig.ipv4Client,
         family: ADDRESS_FAMILY_IPV4
       },
       prefixLength: 30
@@ -102,7 +104,7 @@ export function createDefaultVpnConfig(
   if (ipv6Enabled) {
     addresses.push({
       address: {
-        address: TUN_IPV6,
+        address: addressConfig.ipv6Client,
         family: ADDRESS_FAMILY_IPV6
       },
       prefixLength: 126

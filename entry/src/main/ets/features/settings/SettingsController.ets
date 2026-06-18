@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { AppLanguage, AppSettings, normalizeVpnMtuValue, RoutingRule } from '../../core/Profile';
+import { AppLanguage, AppSettings, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, RoutingRule } from '../../core/Profile';
 import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore';
 
 export interface SettingsDraft {
@@ -19,6 +19,7 @@ export interface SettingsDraft {
   allowInsecure: boolean;
   remoteDns: string;
   domesticDns: string;
+  vpnInterfaceAddressIndex: number;
   vpnMtu: string;
   vpnDns: string;
   logLevel: string;
@@ -58,6 +59,7 @@ export class SettingsController {
       allowInsecure: settings.allowInsecure,
       remoteDns: settings.remoteDns,
       domesticDns: settings.domesticDns,
+      vpnInterfaceAddressIndex: settings.vpnInterfaceAddressIndex,
       vpnMtu: settings.vpnMtu.toString(),
       vpnDns: settings.vpnDns,
       logLevel: settings.logLevel,
@@ -94,6 +96,7 @@ export class SettingsController {
       proxySharingEnabled: draft.proxySharingEnabled,
       allowInsecure: draft.allowInsecure,
       localDnsPort: DEFAULT_APP_SETTINGS.localDnsPort,
+      vpnInterfaceAddressIndex: normalizeVpnInterfaceAddressIndex(draft.vpnInterfaceAddressIndex, DEFAULT_APP_SETTINGS.vpnInterfaceAddressIndex),
       vpnMtu: this.vpnMtuValue(draft.vpnMtu, DEFAULT_APP_SETTINGS.vpnMtu),
       vpnDns: draft.vpnDns.trim(),
       remoteDns: draft.remoteDns.trim(),

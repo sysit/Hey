@@ -2,7 +2,7 @@ import { BusinessError } from '@kit.BasicServicesKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { vpnExtension, VpnExtensionAbility } from '@kit.NetworkKit';
 import Want from '@ohos.app.ability.Want';
-import { RuntimeStats } from '../core/Profile';
+import { resolveVpnInterfaceAddressConfig, RuntimeStats } from '../core/Profile';
 import {
   createDefaultVpnConfig,
   normalizeVpnDnsAddresses,
@@ -85,9 +85,18 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       const appList = settings.perAppProxyList ?? [];
       const dnsAddresses = normalizeVpnDnsAddresses(settings.vpnDns);
       const vpnMtu = normalizeVpnMtu(settings.vpnMtu);
-      const vpnConfig = createDefaultVpnConfig(perAppEnabled, bypassMode, appList, settings.vpnDns, settings.preferIpv6, vpnMtu);
+      const addressConfig = resolveVpnInterfaceAddressConfig(settings.vpnInterfaceAddressIndex);
+      const vpnConfig = createDefaultVpnConfig(
+        perAppEnabled,
+        bypassMode,
+        appList,
+        settings.vpnDns,
+        settings.preferIpv6,
+        vpnMtu,
+        settings.vpnInterfaceAddressIndex
+      );
       this.tunFd = await this.vpnConnection.create(vpnConfig);
-      this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}, ipv6=${settings.preferIpv6}, mtu=${vpnMtu}`);
+      this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}, ipv6=${settings.preferIpv6}, mtu=${vpnMtu}, address=${addressConfig.displayName}`);
 
       const tunResult = setNativeTunFd(this.tunFd);
       if (!tunResult.ok) {

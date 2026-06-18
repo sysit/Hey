@@ -81,9 +81,44 @@ export interface RoutingRule {
   locked: boolean;
 }
 
+export interface VpnInterfaceAddressConfig {
+  displayName: string;
+  ipv4Client: string;
+  ipv4Router: string;
+  ipv6Client: string;
+  ipv6Router: string;
+}
+
+export const VPN_INTERFACE_ADDRESS_CONFIGS: Array<VpnInterfaceAddressConfig> = [
+  { displayName: '10.10.14.x', ipv4Client: '10.10.14.1', ipv4Router: '10.10.14.2', ipv6Client: 'fc00::10:10:14:1', ipv6Router: 'fc00::10:10:14:2' },
+  { displayName: '10.1.0.x', ipv4Client: '10.1.0.1', ipv4Router: '10.1.0.2', ipv6Client: 'fc00::10:1:0:1', ipv6Router: 'fc00::10:1:0:2' },
+  { displayName: '10.0.0.x', ipv4Client: '10.0.0.1', ipv4Router: '10.0.0.2', ipv6Client: 'fc00::10:0:0:1', ipv6Router: 'fc00::10:0:0:2' },
+  { displayName: '172.31.0.x', ipv4Client: '172.31.0.1', ipv4Router: '172.31.0.2', ipv6Client: 'fc00::172:31:0:1', ipv6Router: 'fc00::172:31:0:2' },
+  { displayName: '172.20.0.x', ipv4Client: '172.20.0.1', ipv4Router: '172.20.0.2', ipv6Client: 'fc00::172:20:0:1', ipv6Router: 'fc00::172:20:0:2' },
+  { displayName: '172.16.0.x', ipv4Client: '172.16.0.1', ipv4Router: '172.16.0.2', ipv6Client: 'fc00::172:16:0:1', ipv6Router: 'fc00::172:16:0:2' },
+  { displayName: '192.168.100.x', ipv4Client: '192.168.100.1', ipv4Router: '192.168.100.2', ipv6Client: 'fc00::192:168:100:1', ipv6Router: 'fc00::192:168:100:2' }
+];
+
+export const DEFAULT_VPN_INTERFACE_ADDRESS_INDEX: number = 0;
 export const DEFAULT_VPN_MTU: number = 1400;
 export const MIN_VPN_MTU: number = 1280;
 export const MAX_VPN_MTU: number = 9000;
+
+export function normalizeVpnInterfaceAddressIndex(value: number | undefined, fallback: number = DEFAULT_VPN_INTERFACE_ADDRESS_INDEX): number {
+  const safeFallback = fallback >= 0 && fallback < VPN_INTERFACE_ADDRESS_CONFIGS.length ? fallback : DEFAULT_VPN_INTERFACE_ADDRESS_INDEX;
+  if (value === undefined || Number.isNaN(value)) {
+    return safeFallback;
+  }
+  const index = Math.floor(value);
+  if (index < 0 || index >= VPN_INTERFACE_ADDRESS_CONFIGS.length) {
+    return safeFallback;
+  }
+  return index;
+}
+
+export function resolveVpnInterfaceAddressConfig(index?: number): VpnInterfaceAddressConfig {
+  return VPN_INTERFACE_ADDRESS_CONFIGS[normalizeVpnInterfaceAddressIndex(index)];
+}
 
 export function normalizeVpnMtuValue(value: number | undefined, fallback: number = DEFAULT_VPN_MTU): number {
   if (value === undefined || Number.isNaN(value)) {
@@ -121,6 +156,7 @@ export interface AppSettings {
   proxySharingEnabled: boolean;
   allowInsecure: boolean;
   localDnsPort: number;
+  vpnInterfaceAddressIndex: number;
   vpnMtu: number;
   vpnDns: string;
   remoteDns: string;

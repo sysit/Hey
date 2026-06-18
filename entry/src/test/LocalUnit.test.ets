@@ -120,6 +120,7 @@ export default function localUnitTest() {
         proxySharingEnabled: false,
         allowInsecure: false,
         localDnsPort: 10853,
+        vpnInterfaceAddressIndex: 0,
         vpnMtu: 1400,
         vpnDns: '1.1.1.1',
         remoteDns: '9.9.9.9',
@@ -283,14 +284,19 @@ export default function localUnitTest() {
     it('round-trips vpn settings through settings draft', 0, () => {
       const settings = buildSettingsFixture();
       settings.preferIpv6 = true;
+      settings.vpnInterfaceAddressIndex = 5;
       settings.vpnMtu = 1420;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
       expect(draft.preferIpv6).assertTrue();
+      expect(draft.vpnInterfaceAddressIndex).assertEqual(5);
       expect(draft.vpnMtu).assertEqual('1420');
       const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
       expect(rebuilt.preferIpv6).assertTrue();
+      expect(rebuilt.vpnInterfaceAddressIndex).assertEqual(5);
       expect(rebuilt.vpnMtu).assertEqual(1420);
 
+      draft.vpnInterfaceAddressIndex = 99;
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnInterfaceAddressIndex).assertEqual(0);
       draft.vpnMtu = '1279';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnMtu).assertEqual(1280);
       draft.vpnMtu = 'bad';
@@ -569,6 +575,7 @@ function buildSettingsFixture(): AppSettings {
     proxySharingEnabled: false,
     allowInsecure: false,
     localDnsPort: 10853,
+    vpnInterfaceAddressIndex: 0,
     vpnMtu: 1400,
     vpnDns: '1.1.1.1',
     remoteDns: '1.1.1.1',

@@ -1,7 +1,8 @@
 import { common } from '@kit.AbilityKit';
+import { promptAction } from '@kit.ArkUI';
 import { SectionHeader } from '../components/SectionHeader';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
-import { AppLanguage, RoutingRule } from '../core/Profile';
+import { AppLanguage, resolveVpnInterfaceAddressConfig, RoutingRule, VPN_INTERFACE_ADDRESS_CONFIGS } from '../core/Profile';
 import {
   LanguageToggleRow,
   SettingInputRow,
@@ -31,6 +32,7 @@ struct SettingsPage {
   @State private settingRemoteDns: string = '1.1.1.1';
   @State private settingDomesticDns: string = '223.5.5.5';
   @State private settingVpnDns: string = '1.1.1.1';
+  @State private settingVpnInterfaceAddressIndex: number = 0;
   @State private settingVpnMtu: string = '1400';
   @State private settingLogLevel: string = 'warning';
   @State private settingDelayTestUrl: string = 'https://www.gstatic.com/generate_204';
@@ -99,6 +101,8 @@ struct SettingsPage {
             this.SettingToggle(this.t('settings.appendHttpProxy'), this.settingAppendHttpProxy, 'appendHttpProxy')
             this.RowDivider()
             this.SettingToggle(this.t('settings.preferIpv6'), this.settingPreferIpv6, 'preferIpv6')
+            this.RowDivider()
+            this.SettingOption(this.t('settings.vpnInterfaceAddress'), this.vpnInterfaceAddressLabel())
             this.RowDivider()
             this.SettingInput(this.t('settings.vpnDns'), this.settingVpnDns, 'vpnDns')
             this.RowDivider()
@@ -236,6 +240,32 @@ struct SettingsPage {
     })
   }
 
+  @Builder
+  private SettingOption(title: string, value: string) {
+    Row({ space: Space.md }) {
+      Text(title)
+        .fontSize(FontSz.callout)
+        .fontColor(AppColor.textPrimary)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .layoutWeight(1)
+
+      Text(value)
+        .fontSize(FontSz.footnote)
+        .fontColor(AppColor.textSecondary)
+        .textAlign(TextAlign.End)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+    }
+    .width('100%')
+    .height(54)
+    .padding({ left: Space.lg, right: Space.lg })
+    .backgroundColor(AppColor.surface)
+    .onClick(() => {
+      this.showVpnInterfaceAddressMenu();
+    })
+  }
+
   private async loadState(): Promise<void> {
     try {
       const context = getContext(this) as common.Context;
@@ -361,6 +391,7 @@ struct SettingsPage {
       allowInsecure: this.settingAllowInsecure,
       remoteDns: this.settingRemoteDns,
       domesticDns: this.settingDomesticDns,
+      vpnInterfaceAddressIndex: this.settingVpnInterfaceAddressIndex,
       vpnMtu: this.settingVpnMtu,
       vpnDns: this.settingVpnDns,
       logLevel: this.settingLogLevel,
@@ -391,6 +422,7 @@ struct SettingsPage {
     this.settingAllowInsecure = draft.allowInsecure;
     this.settingRemoteDns = draft.remoteDns;
     this.settingDomesticDns = draft.domesticDns;
+    this.settingVpnInterfaceAddressIndex = draft.vpnInterfaceAddressIndex;
     this.settingVpnMtu = draft.vpnMtu;
     this.settingVpnDns = draft.vpnDns;
     this.settingLogLevel = draft.logLevel;
@@ -422,6 +454,27 @@ struct SettingsPage {
       });
     }
     return result;
+  }
+
+  private showVpnInterfaceAddressMenu(): void {
+    const buttons = new Array<promptAction.Button>();
+    for (let index = 0; index < VPN_INTERFACE_ADDRESS_CONFIGS.length; index++) {
+      buttons.push({ text: VPN_INTERFACE_ADDRESS_CONFIGS[index].displayName, color: AppColor.brand } as promptAction.Button);
+    }
+    promptAction.showActionMenu({
+      title: this.t('settings.vpnInterfaceAddress'),
+      buttons
+    }).then((result) => {
+      if (result.index >= 0 && result.index < VPN_INTERFACE_ADDRESS_CONFIGS.length) {
+        this.settingVpnInterfaceAddressIndex = result.index;
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.vpnInterfaceAddress')));
+        this.persistSettings(false);
+      }
+    });
+  }
+
+  private vpnInterfaceAddressLabel(): string {
+    return resolveVpnInterfaceAddressConfig(this.settingVpnInterfaceAddressIndex).displayName;
   }
 
   private t(key: string): string {

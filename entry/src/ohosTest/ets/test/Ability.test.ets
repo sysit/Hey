@@ -61,6 +61,15 @@ export default function abilityTest() {
       expect(config.mtu).assertEqual(1420);
     });
 
+    it('applies selected vpn interface address config', 0, () => {
+      const config = createDefaultVpnConfig(false, true, [], '1.1.1.1', true, 1420, 5);
+      expect(config.addresses[0].address.address).assertEqual('172.16.0.1');
+      expect(config.addresses[1].address.address).assertEqual('fc00::172:16:0:1');
+
+      const fallback = createDefaultVpnConfig(false, true, [], '1.1.1.1', false, 1420, 99);
+      expect(fallback.addresses[0].address.address).assertEqual('10.10.14.1');
+    });
+
     it('adds ipv6 interface address and route when enabled', 0, () => {
       const ipv4Only = createDefaultVpnConfig(false, true, [], '1.1.1.1', false);
       expect(ipv4Only.isIPv6Accepted).assertFalse();
@@ -70,7 +79,7 @@ export default function abilityTest() {
       const routes = ipv6Config.routes === undefined ? [] : ipv6Config.routes;
       expect(ipv6Config.isIPv6Accepted).assertTrue();
       expect(ipv6Config.addresses.length).assertEqual(2);
-      expect(ipv6Config.addresses[1].address.address).assertEqual('fd00:172:19::2');
+      expect(ipv6Config.addresses[1].address.address).assertEqual('fc00::10:10:14:1');
       expect(ipv6Config.addresses[1].address.family).assertEqual(2);
       expect(routes.length).assertEqual(2);
       expect(routes[1].destination.address.address).assertEqual('::');
