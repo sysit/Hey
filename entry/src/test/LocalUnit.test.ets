@@ -764,7 +764,7 @@ export default function localUnitTest() {
           id: 'rule-direct',
           remarks: 'Direct example',
           domain: ['domain:example.com'],
-          ip: ['geoip:private'],
+          ip: ['geoip:private', 'geoip:cn', 'geoip:google'],
           process: [],
           outboundTag: 'direct',
           port: '443',
@@ -790,7 +790,11 @@ export default function localUnitTest() {
 
       const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
       expect(result.configJson).assertContain('"domain:example.com"');
-      expect(result.configJson).assertContain('"geoip:private"');
+      expect(result.configJson).assertContain('"ext:geoip-only-cn-private.dat:private"');
+      expect(result.configJson).assertContain('"ext:geoip-only-cn-private.dat:cn"');
+      expect(result.configJson).assertContain('"geoip:google"');
+      expect(result.configJson.indexOf('"geoip:private"')).assertEqual(-1);
+      expect(result.configJson.indexOf('"geoip:cn"')).assertEqual(-1);
       expect(result.configJson).assertContain('"port": "443"');
       expect(result.configJson).assertContain('"network": "tcp"');
       expect(result.configJson).assertContain('"tls"');

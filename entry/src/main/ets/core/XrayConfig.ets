@@ -290,6 +290,10 @@ const DEFAULT_LOG_LEVEL: string = 'warning';
 const DEFAULT_ROUTING_DOMAIN_STRATEGY: string = 'AsIs';
 const GEOSITE_CN_DOMAIN: string = 'geosite:cn';
 const GEOIP_CN_EXPECT: string = 'geoip:cn';
+const GEOIP_PRIVATE_RULE: string = 'geoip:private';
+const GEOIP_ONLY_CN_PRIVATE_DAT: string = 'geoip-only-cn-private.dat';
+const GEOIP_CN_ROUTING_EXT: string = 'ext:' + GEOIP_ONLY_CN_PRIVATE_DAT + ':cn';
+const GEOIP_PRIVATE_ROUTING_EXT: string = 'ext:' + GEOIP_ONLY_CN_PRIVATE_DAT + ':private';
 const DNS_BLOCK_HOST: string = '127.0.0.1';
 const DEFAULT_DNS_HOSTS: Record<string, string | Array<string>> = {
   'domain:googleapis.cn': 'googleapis.com',
@@ -2083,7 +2087,7 @@ function buildRoutingRules(settings: AppSettings | undefined, proxyBalancerTag?:
     const rule: XrayRoutingRule = {
       type: 'field',
       outboundTag: 'direct',
-      ip: ['geoip:private', 'geoip:cn'],
+      ip: normalizeRoutingRuleIps([GEOIP_PRIVATE_RULE, GEOIP_CN_EXPECT]),
       domain: ['geosite:cn']
     };
     rules.push(rule);
@@ -2116,7 +2120,7 @@ function buildCustomRoutingRule(item: RoutingRule, allowProcessRouting: boolean,
     hasMatcher = true;
   }
   if (item.ip.length > 0) {
-    rule.ip = item.ip.slice();
+    rule.ip = normalizeRoutingRuleIps(item.ip);
     hasMatcher = true;
   }
   if (allowProcessRouting && item.process.length > 0) {
@@ -2137,6 +2141,21 @@ function buildCustomRoutingRule(item: RoutingRule, allowProcessRouting: boolean,
   }
 
   return hasMatcher ? rule : undefined;
+}
+
+function normalizeRoutingRuleIps(ipList: Array<string>): Array<string> {
+  const result = new Array<string>();
+  for (let index = 0; index < ipList.length; index++) {
+    const ip = ipList[index];
+    if (ip === GEOIP_CN_EXPECT) {
+      result.push(GEOIP_CN_ROUTING_EXT);
+    } else if (ip === GEOIP_PRIVATE_RULE) {
+      result.push(GEOIP_PRIVATE_ROUTING_EXT);
+    } else {
+      result.push(ip);
+    }
+  }
+  return result;
 }
 
 function normalizeRoutingTarget(value: string, proxyBalancerTag?: string): XrayRoutingTarget {
