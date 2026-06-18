@@ -204,6 +204,22 @@ export default function localUnitTest() {
       expect(result.httpProxyPort).assertEqual(LOCAL_HTTP_PROXY_PORT);
     });
 
+    it('applies prefer ipv6 to outbound happy eyeballs', 0, () => {
+      const settings = buildSettingsFixture();
+      let result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson.indexOf('"happyEyeballs"')).assertEqual(-1);
+
+      settings.preferIpv6 = true;
+      settings.fragmentEnabled = true;
+      result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson).assertContain('"domainStrategy": "UseIP"');
+      expect(result.configJson).assertContain('"happyEyeballs"');
+      expect(result.configJson).assertContain('"prioritizeIPv6": true');
+      expect(result.configJson).assertContain('"interleave": 2');
+      expect(result.configJson).assertContain('"fragment"');
+      expect(result.configJson).assertContain('"tlshello"');
+    });
+
     it('imports routing presets while preserving locked rules', 0, () => {
       const lockedRule = buildRoutingRuleFixture('locked-rule', 'Locked keep', 'direct');
       lockedRule.locked = true;

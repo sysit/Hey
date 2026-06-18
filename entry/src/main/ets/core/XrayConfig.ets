@@ -31,6 +31,11 @@ interface XrayFragmentConfig {
   interval: string;
 }
 
+interface XrayHappyEyeballsConfig {
+  prioritizeIPv6: boolean;
+  interleave: number;
+}
+
 interface XrayInboundConfig {
   tag: string;
   listen?: string;
@@ -407,16 +412,22 @@ function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | u
     outbound.mux = mux;
   }
   if (settings !== undefined && settings.fragmentEnabled) {
-    const streamSettings = (outbound.streamSettings ?? {}) as Record<string, Object | undefined>;
-    const sockopt = (streamSettings['sockopt'] ?? {}) as Record<string, Object | undefined>;
+    const sockopt = ensureOutboundSockopt(outbound);
     const fragment: XrayFragmentConfig = {
       packets: settings.fragmentPackets,
       length: settings.fragmentLength,
       interval: settings.fragmentInterval
     };
     sockopt['fragment'] = fragment;
-    streamSettings['sockopt'] = sockopt;
-    outbound.streamSettings = streamSettings;
+  }
+  if (settings !== undefined && settings.preferIpv6) {
+    const sockopt = ensureOutboundSockopt(outbound);
+    const happyEyeballs: XrayHappyEyeballsConfig = {
+      prioritizeIPv6: true,
+      interleave: 2
+    };
+    sockopt['domainStrategy'] = 'UseIP';
+    sockopt['happyEyeballs'] = happyEyeballs;
   }
 
   const tunInbound: XrayInboundConfig = {
@@ -587,6 +598,18 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
     }
   }
   return dns;
+}
+
+function ensureOutboundSockopt(outbound: XrayOutbound): Record<string, Object | string | number | boolean | undefined> {
+  const streamSettings = (outbound.streamSettings ?? {}) as Record<string, Object | string | number | boolean | undefined>;
+  const existing = streamSettings['sockopt'];
+  let sockopt: Record<string, Object | string | number | boolean | undefined> = {};
+  if (existing !== undefined) {
+    sockopt = existing as Record<string, Object | string | number | boolean | undefined>;
+  }
+  streamSettings['sockopt'] = sockopt;
+  outbound.streamSettings = streamSettings;
+  return sockopt;
 }
 
 function buildRoutingRules(settings: AppSettings | undefined): Array<XrayRoutingRule> {
