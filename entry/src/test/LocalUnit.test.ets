@@ -1353,10 +1353,22 @@ export default function localUnitTest() {
       expect(data.startUri).assertEqual(CONTROL_CARD_START_URI);
       expect(data.stopUri).assertEqual(CONTROL_CARD_STOP_URI);
       expect(data.scanUri).assertEqual(CONTROL_CARD_SCAN_URI);
+      expect(data.primaryActionUri).assertEqual(CONTROL_CARD_START_URI);
+      expect(data.primaryActionLabel).assertEqual('Start');
       expect(parseDeepLink(data.toggleUri).action).assertEqual('toggle');
       expect(parseDeepLink(data.startUri).action).assertEqual('start');
       expect(parseDeepLink(data.stopUri).action).assertEqual('stop');
       expect(parseDeepLink(data.scanUri).action).assertEqual('scan');
+
+      const running = buildControlCardFormData('en', ConnectionStatus.RUNNING, '00:03', '');
+      expect(running.statusLabel).assertEqual('Running');
+      expect(running.statusDetail).assertEqual('Duration 00:03');
+      expect(running.primaryActionUri).assertEqual(CONTROL_CARD_STOP_URI);
+      expect(running.primaryActionLabel).assertEqual('Stop');
+
+      const errored = buildControlCardFormData('en', ConnectionStatus.ERROR, '', 'bad config');
+      expect(errored.statusLabel).assertEqual('Error');
+      expect(errored.statusDetail).assertEqual('bad config');
     });
 
     it('builds subscription background auto update schedule plan', 0, () => {

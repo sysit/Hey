@@ -7,6 +7,7 @@ import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrenc
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
+import { CONTROL_CARD_MANAGER } from '../services/ControlCardManager';
 import { SPEED_NOTIFICATION_MANAGER } from '../services/SpeedNotificationManager';
 import { SubscriptionBackgroundScheduler } from '../services/SubscriptionBackgroundScheduler';
 import { SubscriptionManager } from '../services/SubscriptionManager';
@@ -1398,11 +1399,20 @@ struct Index {
     this.stats = state.stats;
     this.lastError = state.lastError;
     this.syncSpeedNotification();
+    this.syncControlCard();
   }
 
   private syncSpeedNotification(): void {
     const context = getContext(this) as common.Context;
     SPEED_NOTIFICATION_MANAGER.sync(context, this.status, this.speedEnabled, this.stats, this.elapsedText, this.language)
+      .catch((error: Error) => {
+        SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
+      });
+  }
+
+  private syncControlCard(): void {
+    const context = getContext(this) as common.Context;
+    CONTROL_CARD_MANAGER.sync(context, this.status, this.elapsedText, this.language, this.lastError)
       .catch((error: Error) => {
         SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
       });

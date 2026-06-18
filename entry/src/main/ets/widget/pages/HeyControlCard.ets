@@ -17,6 +17,14 @@ struct HeyControlCard {
   @LocalStorageProp('startUri') startUri: string = CONTROL_CARD_START_URI;
   @LocalStorageProp('stopUri') stopUri: string = CONTROL_CARD_STOP_URI;
   @LocalStorageProp('scanUri') scanUri: string = CONTROL_CARD_SCAN_URI;
+  @LocalStorageProp('statusLabel') statusLabel: string = '';
+  @LocalStorageProp('statusDetail') statusDetail: string = '';
+  @LocalStorageProp('primaryActionLabel') primaryActionLabel: string = '';
+  @LocalStorageProp('primaryActionUri') primaryActionUri: string = CONTROL_CARD_START_URI;
+  @LocalStorageProp('statusColor') statusColor: string = '#9A3412';
+  @LocalStorageProp('statusBackground') statusBackground: string = '#FED7AA';
+  @LocalStorageProp('primaryColor') primaryColor: string = '#F97316';
+  @LocalStorageProp('primaryTextColor') primaryTextColor: string = '#FFFFFF';
 
   build() {
     Column({ space: 10 }) {
@@ -30,11 +38,11 @@ struct HeyControlCard {
 
         Blank()
 
-        Text($r('app.string.control_card_badge'))
+        Text(this.statusLabel)
           .fontSize(11)
-          .fontColor('#9A3412')
+          .fontColor(this.statusColor)
           .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-          .backgroundColor('#FED7AA')
+          .backgroundColor(this.statusBackground)
           .borderRadius(10)
       }
       .width('100%')
@@ -46,7 +54,7 @@ struct HeyControlCard {
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-      Text($r('app.string.control_card_hint'))
+      Text(this.statusDetail)
         .fontSize(11)
         .fontColor('#6B7280')
         .lineHeight(15)
@@ -54,7 +62,7 @@ struct HeyControlCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
 
       Row({ space: 8 }) {
-        this.primaryAction(this.toggleUri)
+        this.primaryAction(this.primaryActionUri, this.primaryActionLabel, this.primaryColor, this.primaryTextColor)
         this.secondaryAction(this.scanUri)
       }
       .width('100%')
@@ -72,20 +80,20 @@ struct HeyControlCard {
   }
 
   @Builder
-  private primaryAction(uri: string) {
+  private primaryAction(uri: string, label: string, background: string, textColor: string) {
     FormLink({
       action: 'router',
       uri
     }) {
-      Text($r('app.string.control_card_toggle'))
+      Text(label)
         .fontSize(15)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF')
+        .fontColor(textColor)
         .textAlign(TextAlign.Center)
         .width('100%')
         .height(38)
         .lineHeight(38)
-        .backgroundColor('#F97316')
+        .backgroundColor(background)
         .borderRadius(12)
     }
     .layoutWeight(1)
