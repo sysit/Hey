@@ -36,6 +36,11 @@ interface XrayHappyEyeballsConfig {
   interleave: number;
 }
 
+interface XrayDnsServerConfig {
+  address: string;
+  domains?: Array<string>;
+}
+
 interface XrayInboundConfig {
   tag: string;
   listen?: string;
@@ -46,7 +51,7 @@ interface XrayInboundConfig {
 }
 
 interface XrayDnsConfig {
-  servers: Array<string>;
+  servers: Array<string | XrayDnsServerConfig>;
   hosts?: Object;
 }
 
@@ -89,6 +94,7 @@ interface XrayFullConfig {
   outbounds: Array<XrayOutbound>;
   routing: XrayRoutingConfig;
   stats?: Object;
+  fakedns?: Array<Object>;
   metrics?: XrayMetricsConfig;
   policy?: XrayPolicyConfig;
 }
@@ -136,6 +142,7 @@ export const METRICS_PORT: number = 10845;
 export const METRICS_SERVER_URL: string = 'http://127.0.0.1:10845/debug/vars';
 const METRICS_OUT_TAG: string = 'metrics_out';
 const METRICS_IN_TAG: string = 'metrics_in';
+const DNS_OUT_TAG: string = 'dns-out';
 const DEFAULT_LOG_LEVEL: string = 'warning';
 const DEFAULT_ROUTING_DOMAIN_STRATEGY: string = 'AsIs';
 
@@ -440,11 +447,8 @@ function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | u
     protocol: 'tun',
     settings: new TunInboundSettings(settings === undefined ? DEFAULT_VPN_MTU : settings.vpnMtu)
   };
-  if (settings === undefined || settings.sniffingEnabled) {
-    const sniffing: XraySniffingConfig = {
-      enabled: true,
-      destOverride: ['http', 'tls', 'quic']
-    };
+  const sniffing = buildTunSniffing(settings);
+  if (sniffing !== undefined) {
     tunInbound.sniffing = sniffing;
   }
   const directOutbound: XrayOutbound = {
@@ -467,6 +471,7 @@ function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | u
   };
 
   const inbounds: Array<XrayInboundConfig> = [tunInbound, metricsInbound];
+  const outbounds: Array<XrayOutbound> = [outbound, directOutbound, blockOutbound];
 
   // Route the metrics inbound to the metrics handler ahead of any user/traffic
   // rule so the local /debug/vars probe is never proxied or blocked.
@@ -495,6 +500,20 @@ function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | u
     inbounds.push(httpInbound);
     routingRules.unshift(httpProxyRule);
   }
+  if (settings !== undefined && settings.localDnsEnabled) {
+    const dnsOutbound: XrayOutbound = {
+      tag: DNS_OUT_TAG,
+      protocol: 'dns'
+    };
+    const dnsRule: XrayRoutingRule = {
+      type: 'field',
+      inboundTag: ['tun-in'],
+      outboundTag: DNS_OUT_TAG,
+      port: '53'
+    };
+    outbounds.push(dnsOutbound);
+    routingRules.unshift(dnsRule);
+  }
   routingRules.unshift(metricsRule);
 
   const policy: XrayPolicyConfig = {
@@ -512,7 +531,7 @@ function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | u
     },
     dns: buildDnsConfig(settings),
     inbounds,
-    outbounds: [outbound, directOutbound, blockOutbound],
+    outbounds,
     routing: {
       domainStrategy: settings?.routingDomainStrategy ?? DEFAULT_ROUTING_DOMAIN_STRATEGY,
       rules: routingRules
@@ -523,6 +542,9 @@ function buildXrayConfigInternal(outboundJson: string, settings: AppSettings | u
     },
     policy
   };
+  if (settings !== undefined && settings.localDnsEnabled && settings.fakeDnsEnabled) {
+    config.fakedns = [new EmptySettings()];
+  }
 
   const runtimeHttpProxyHost = settings !== undefined && settings.appendHttpProxy ? resolveLocalHttpProxyHost(settings) : undefined;
   const runtimeHttpProxyPort = settings !== undefined && settings.appendHttpProxy ? LOCAL_HTTP_PROXY_PORT : undefined;
@@ -590,7 +612,7 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
     };
     return defaultDns;
   }
-  const servers: Array<string> = [];
+  const servers: Array<string | XrayDnsServerConfig> = [];
   addCsvValues(servers, settings.remoteDns);
   addCsvValues(servers, settings.domesticDns);
   if (servers.length === 0) {
@@ -599,6 +621,12 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
   const dns: XrayDnsConfig = {
     servers
   };
+  if (settings.localDnsEnabled && settings.fakeDnsEnabled) {
+    dns.servers.unshift({
+      address: 'fakedns',
+      domains: buildFakeDnsDomains(settings)
+    });
+  }
   if (settings.dnsHosts.length > 0) {
     try {
       dns.hosts = JSON.parse(settings.dnsHosts) as Object;
@@ -607,6 +635,37 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
     }
   }
   return dns;
+}
+
+function buildTunSniffing(settings: AppSettings | undefined): XraySniffingConfig | undefined {
+  const destOverride = new Array<string>();
+  if (settings === undefined || settings.sniffingEnabled) {
+    destOverride.push('http');
+    destOverride.push('tls');
+    destOverride.push('quic');
+  }
+  if (settings !== undefined && settings.localDnsEnabled && settings.fakeDnsEnabled) {
+    destOverride.push('fakedns');
+  }
+  if (destOverride.length === 0) {
+    return undefined;
+  }
+  return {
+    enabled: true,
+    destOverride
+  };
+}
+
+function buildFakeDnsDomains(settings: AppSettings): Array<string> {
+  const domains: Array<string> = ['geosite:cn'];
+  for (let index = 0; index < settings.routingRules.length; index++) {
+    const rule = settings.routingRules[index];
+    if (!rule.enabled || (rule.outboundTag !== 'direct' && rule.outboundTag !== 'proxy')) {
+      continue;
+    }
+    addStringArrayValues(domains, rule.domain);
+  }
+  return domains;
 }
 
 function ensureOutboundSockopt(outbound: XrayOutbound): Record<string, Object | string | number | boolean | undefined> {
@@ -723,11 +782,20 @@ function normalizeOutboundTag(value: string): string {
   return 'proxy';
 }
 
-function addCsvValues(target: Array<string>, value: string): void {
+function addCsvValues(target: Array<string | XrayDnsServerConfig>, value: string): void {
   const parts = value.split(',');
   for (let index = 0; index < parts.length; index++) {
     const item = parts[index].trim();
-    if (item.length > 0) {
+    if (item.length > 0 && target.indexOf(item) < 0) {
+      target.push(item);
+    }
+  }
+}
+
+function addStringArrayValues(target: Array<string>, values: Array<string>): void {
+  for (let index = 0; index < values.length; index++) {
+    const item = values[index].trim();
+    if (item.length > 0 && target.indexOf(item) < 0) {
       target.push(item);
     }
   }

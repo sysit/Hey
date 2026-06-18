@@ -19,6 +19,7 @@ export interface SettingsDraft {
   allowInsecure: boolean;
   remoteDns: string;
   domesticDns: string;
+  localDnsPort: string;
   vpnInterfaceAddressIndex: number;
   vpnBypassLan: string;
   vpnMtu: string;
@@ -60,6 +61,7 @@ export class SettingsController {
       allowInsecure: settings.allowInsecure,
       remoteDns: settings.remoteDns,
       domesticDns: settings.domesticDns,
+      localDnsPort: settings.localDnsPort.toString(),
       vpnInterfaceAddressIndex: settings.vpnInterfaceAddressIndex,
       vpnBypassLan: settings.vpnBypassLan,
       vpnMtu: settings.vpnMtu.toString(),
@@ -97,7 +99,7 @@ export class SettingsController {
       preferIpv6: draft.preferIpv6,
       proxySharingEnabled: draft.proxySharingEnabled,
       allowInsecure: draft.allowInsecure,
-      localDnsPort: DEFAULT_APP_SETTINGS.localDnsPort,
+      localDnsPort: this.portValue(draft.localDnsPort, DEFAULT_APP_SETTINGS.localDnsPort),
       vpnInterfaceAddressIndex: normalizeVpnInterfaceAddressIndex(draft.vpnInterfaceAddressIndex, DEFAULT_APP_SETTINGS.vpnInterfaceAddressIndex),
       vpnBypassLan: normalizeVpnBypassLanMode(draft.vpnBypassLan, DEFAULT_APP_SETTINGS.vpnBypassLan),
       vpnMtu: this.vpnMtuValue(draft.vpnMtu, DEFAULT_APP_SETTINGS.vpnMtu),
@@ -148,6 +150,22 @@ export class SettingsController {
       return fallback;
     }
     return normalizeVpnMtuValue(parsed, fallback);
+  }
+
+  private portValue(value: string, fallback: number): number {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      return fallback;
+    }
+    const parsed = Number(normalized);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+    const port = Math.floor(parsed);
+    if (port < 1 || port > 65535) {
+      return fallback;
+    }
+    return port;
   }
 
 }

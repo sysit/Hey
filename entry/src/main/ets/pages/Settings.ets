@@ -40,6 +40,7 @@ struct SettingsPage {
   @State private settingRemoteDns: string = '1.1.1.1';
   @State private settingDomesticDns: string = '223.5.5.5';
   @State private settingVpnDns: string = '1.1.1.1';
+  @State private settingLocalDnsPort: string = '10853';
   @State private settingVpnInterfaceAddressIndex: number = 0;
   @State private settingVpnBypassLan: string = VPN_BYPASS_LAN_BYPASS;
   @State private settingVpnMtu: string = '1400';
@@ -104,6 +105,8 @@ struct SettingsPage {
             this.SettingToggle(this.t('settings.localDns'), this.settingLocalDns, 'localDns')
             this.RowDivider()
             this.SettingToggle(this.t('settings.fakeDns'), this.settingFakeDns, 'fakeDns')
+            this.RowDivider()
+            this.SettingInput(this.t('settings.localDnsPort'), this.settingLocalDnsPort, 'localDnsPort')
             this.RowDivider()
             this.SettingToggle(this.t('settings.proxySharing'), this.settingProxySharing, 'proxySharing')
             this.RowDivider()
@@ -342,6 +345,9 @@ struct SettingsPage {
       case 'vpnMtu':
         this.settingVpnMtu = value;
         break;
+      case 'localDnsPort':
+        this.settingLocalDnsPort = value;
+        break;
       case 'remoteDns':
         this.settingRemoteDns = value;
         break;
@@ -402,6 +408,7 @@ struct SettingsPage {
       allowInsecure: this.settingAllowInsecure,
       remoteDns: this.settingRemoteDns,
       domesticDns: this.settingDomesticDns,
+      localDnsPort: this.settingLocalDnsPort,
       vpnInterfaceAddressIndex: this.settingVpnInterfaceAddressIndex,
       vpnBypassLan: this.settingVpnBypassLan,
       vpnMtu: this.settingVpnMtu,
@@ -434,6 +441,7 @@ struct SettingsPage {
     this.settingAllowInsecure = draft.allowInsecure;
     this.settingRemoteDns = draft.remoteDns;
     this.settingDomesticDns = draft.domesticDns;
+    this.settingLocalDnsPort = draft.localDnsPort;
     this.settingVpnInterfaceAddressIndex = draft.vpnInterfaceAddressIndex;
     this.settingVpnBypassLan = draft.vpnBypassLan;
     this.settingVpnMtu = draft.vpnMtu;

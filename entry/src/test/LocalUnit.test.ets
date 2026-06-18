@@ -146,6 +146,36 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"9.9.9.9"');
     });
 
+    it('applies local dns and fakedns settings to generated xray config', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.localDnsEnabled = true;
+      settings.fakeDnsEnabled = true;
+      settings.sniffingEnabled = false;
+      settings.routingRules = [
+        {
+          id: 'proxy-domain',
+          remarks: 'Proxy domain',
+          domain: ['domain:proxy.example'],
+          ip: [],
+          process: [],
+          outboundTag: 'proxy',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        }
+      ];
+      const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(result.configJson).assertContain('"tag": "dns-out"');
+      expect(result.configJson).assertContain('"protocol": "dns"');
+      expect(result.configJson).assertContain('"port": "53"');
+      expect(result.configJson).assertContain('"fakedns"');
+      expect(result.configJson).assertContain('"geosite:cn"');
+      expect(result.configJson).assertContain('"domain:proxy.example"');
+      expect(result.configJson).assertContain('"destOverride"');
+    });
+
     it('applies vpn mtu to generated tun inbound', 0, () => {
       const settings = buildSettingsFixture();
       settings.vpnMtu = 1420;
@@ -285,16 +315,19 @@ export default function localUnitTest() {
     it('round-trips vpn settings through settings draft', 0, () => {
       const settings = buildSettingsFixture();
       settings.preferIpv6 = true;
+      settings.localDnsPort = 1053;
       settings.vpnInterfaceAddressIndex = 5;
       settings.vpnBypassLan = '2';
       settings.vpnMtu = 1420;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
       expect(draft.preferIpv6).assertTrue();
+      expect(draft.localDnsPort).assertEqual('1053');
       expect(draft.vpnInterfaceAddressIndex).assertEqual(5);
       expect(draft.vpnBypassLan).assertEqual('2');
       expect(draft.vpnMtu).assertEqual('1420');
       const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
       expect(rebuilt.preferIpv6).assertTrue();
+      expect(rebuilt.localDnsPort).assertEqual(1053);
       expect(rebuilt.vpnInterfaceAddressIndex).assertEqual(5);
       expect(rebuilt.vpnBypassLan).assertEqual('2');
       expect(rebuilt.vpnMtu).assertEqual(1420);
@@ -303,6 +336,8 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnInterfaceAddressIndex).assertEqual(0);
       draft.vpnBypassLan = 'bad';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnBypassLan).assertEqual('1');
+      draft.localDnsPort = '70000';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).localDnsPort).assertEqual(10853);
       draft.vpnMtu = '1279';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnMtu).assertEqual(1280);
       draft.vpnMtu = 'bad';
