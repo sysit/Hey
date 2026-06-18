@@ -6,7 +6,7 @@ import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLa
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
-import { clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, selectAllPerAppPackages } from '../main/ets/core/PerAppProxy';
+import { clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_IP_API_URL, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeUiModeNight, ProxyNode, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
@@ -1151,6 +1151,27 @@ export default function localUnitTest() {
       expect(packageOnlyImport.success).assertTrue();
       expect(packageOnlyImport.bypass).assertTrue();
       expect(packageOnlyImport.packages[0]).assertEqual('com.huawei.hbrowser');
+
+      const autoProxy = selectAutoProxyPackages([
+        'com.huawei.hbrowser',
+        'com.tencent.mm',
+        'com.google.android.youtube',
+        'com.google.android.webview',
+        selfPackage
+      ], false, 'com.huawei.hbrowser', selfPackage);
+      expect(autoProxy.length).assertEqual(2);
+      expect(autoProxy[0]).assertEqual('com.huawei.hbrowser');
+      expect(autoProxy[1]).assertEqual('com.google.android.youtube');
+
+      const autoBypass = selectAutoProxyPackages([
+        'com.huawei.hbrowser',
+        'com.tencent.mm',
+        'com.google.android.youtube',
+        'com.google.android.webview'
+      ], true, 'com.huawei.hbrowser', selfPackage);
+      expect(autoBypass.length).assertEqual(2);
+      expect(autoBypass[0]).assertEqual('com.tencent.mm');
+      expect(autoBypass[1]).assertEqual('com.google.android.webview');
     });
 
     it('maps per-app vpn package lists like v2rayNG', 0, () => {

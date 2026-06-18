@@ -5,6 +5,31 @@ export interface PerAppProxyImportResult {
   count: number;
 }
 
+export const DEFAULT_PROXY_APP_PACKAGE_LIST: string = [
+  'com.huawei.hbrowser',
+  'com.android.chrome',
+  'com.brave.browser',
+  'com.discord',
+  'com.dropbox.android',
+  'com.duckduckgo.mobile.android',
+  'com.facebook.katana',
+  'com.facebook.orca',
+  'com.google.android.apps.maps',
+  'com.google.android.apps.translate',
+  'com.google.android.gm',
+  'com.google.android.gms',
+  'com.google.android.googlequicksearchbox',
+  'com.google.android.youtube',
+  'com.instagram.android',
+  'com.netflix.mediaclient',
+  'com.openai.chatgpt',
+  'com.reddit.frontpage',
+  'com.spotify.music',
+  'com.twitter.android',
+  'org.mozilla.firefox',
+  'org.telegram.messenger'
+].join('\n');
+
 export function normalizePerAppPackageList(packages: Array<string>, selfPackageName: string = ''): Array<string> {
   const normalized = new Array<string>();
   const seen: Record<string, boolean> = {};
@@ -80,6 +105,25 @@ export function invertVisiblePerAppPackages(
   return next;
 }
 
+export function selectAutoProxyPackages(
+  visiblePackages: Array<string>,
+  bypass: boolean,
+  proxyListContent: string = DEFAULT_PROXY_APP_PACKAGE_LIST,
+  selfPackageName: string = '',
+  forceGoogle: boolean = true
+): Array<string> {
+  const visible = normalizePerAppPackageList(visiblePackages, selfPackageName);
+  const proxyPackages = buildPackageLookup(splitPackageList(proxyListContent));
+  const selected = new Array<string>();
+  for (let index = 0; index < visible.length; index++) {
+    const matched = isAutoProxyPackage(proxyPackages, visible[index], forceGoogle);
+    if ((bypass && !matched) || (!bypass && matched)) {
+      selected.push(visible[index]);
+    }
+  }
+  return selected;
+}
+
 export function exportPerAppProxyList(bypass: boolean, packages: Array<string>, selfPackageName: string = ''): string {
   const normalized = normalizePerAppPackageList(packages, selfPackageName);
   return [bypass ? 'true' : 'false'].concat(normalized).join('\n');
@@ -130,4 +174,39 @@ function isValidPackageName(value: string): boolean {
     return false;
   }
   return /^[A-Za-z0-9_.$-]+$/.test(value);
+}
+
+function isAutoProxyPackage(proxyPackages: Record<string, boolean>, packageName: string, forceGoogle: boolean): boolean {
+  const normalized = packageName.trim();
+  const key = normalized.toLowerCase();
+  if (normalized.length === 0) {
+    return false;
+  }
+  if (forceGoogle) {
+    if (key === 'com.google.android.webview') {
+      return false;
+    }
+    if (key.startsWith('com.google')) {
+      return true;
+    }
+  }
+  return proxyPackages[key] === true;
+}
+
+function splitPackageList(content: string): Array<string> {
+  const tokens = new Array<string>();
+  const parts = content.split(/[\s,]+/);
+  for (let index = 0; index < parts.length; index++) {
+    tokens.push(parts[index]);
+  }
+  return tokens;
+}
+
+function buildPackageLookup(packages: Array<string>): Record<string, boolean> {
+  const lookup: Record<string, boolean> = {};
+  const normalized = normalizePerAppPackageList(packages);
+  for (let index = 0; index < normalized.length; index++) {
+    lookup[normalized[index].toLowerCase()] = true;
+  }
+  return lookup;
 }

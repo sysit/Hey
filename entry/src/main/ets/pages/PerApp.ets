@@ -7,6 +7,7 @@ import {
   exportPerAppProxyList,
   importPerAppProxyList,
   invertVisiblePerAppPackages,
+  selectAutoProxyPackages,
   selectAllPerAppPackages
 } from '../core/PerAppProxy';
 import { AppLanguage } from '../core/Profile';
@@ -302,6 +303,9 @@ struct PerAppPage {
       .width('100%')
 
       Row({ space: Space.lg }) {
+        this.SelectionActionText(this.t('perApp.action.autoProxy'), AppColor.brand, () => {
+          this.autoSelectProxyApps();
+        })
         this.SelectionActionText(this.t('perApp.action.import'), AppColor.brand, () => {
           this.importProxyAppsFromClipboard();
         })
@@ -508,6 +512,15 @@ struct PerAppPage {
     this.enablePerAppProxy();
     this.perAppProxyList = invertVisiblePerAppPackages(this.perAppProxyList, this.visiblePackageNames(), SELF_BUNDLE_NAME);
     await this.saveSettings();
+  }
+
+  private async autoSelectProxyApps(): Promise<void> {
+    this.enablePerAppProxy();
+    this.perAppProxyList = selectAutoProxyPackages(this.visiblePackageNames(), this.perAppProxyBypass, undefined, SELF_BUNDLE_NAME);
+    await this.saveSettings();
+    const message = this.f1('perApp.autoSelected', 'count', this.perAppProxyList.length.toString());
+    promptAction.showToast({ message });
+    SHARED_RUNTIME_CONTROLLER.appendLog(message);
   }
 
   private async importProxyAppsFromClipboard(): Promise<void> {
