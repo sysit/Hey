@@ -41,7 +41,7 @@ v2rayNG's features and design, see
 | VPN Extension start/stop | Present, with emulator timeout diagnostics. Real-device verified (2026-06-15). |
 | Xray native TUN runtime | Present in HAP via `CGoSetTunFd` + Xray TUN inbound. Real-device closed loop verified (2026-06-15): TUN → Xray → outbound → reachable. |
 | VMess/VLESS/Trojan/Shadowsocks parsing | Present. |
-| SOCKS/HTTP/WireGuard/Hysteria2 parsing | Present for share-link import and subscription discovery. Runtime connection for WireGuard/Hysteria2 still needs core validation. |
+| SOCKS/HTTP/WireGuard/Hysteria2 parsing | Present for share-link import and subscription discovery; WireGuard `[Interface]/[Peer]` `.conf` text/file import is also supported. Runtime connection for WireGuard/Hysteria2 still needs core validation. |
 | TUIC parsing | Pending. |
 | Delay test / real ping / sort by delay | Present. Per-node real outbound delay via libXray `CGoPing` (own SOCKS test inbound on port 10825), persisted per node, with sort-by-delay. Falls back to direct URL test when the native core is unavailable (e.g. emulator). Needs real-device validation. |
 | Delete all / duplicate / invalid configs | Present for the active subscription group. Delete-all, duplicate cleanup, and invalid-node cleanup are wired from the Nodes menu. |

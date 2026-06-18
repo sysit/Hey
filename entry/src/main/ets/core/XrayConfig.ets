@@ -1,5 +1,5 @@
 import { AppSettings, GeneratedXrayConfig, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
-import { isSupportedShareLink, parseShareLinkToOutboundJson } from './ShareLinkParser';
+import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
 
 interface XrayOutbound {
   protocol?: string;
@@ -197,6 +197,30 @@ export function normalizeConfigInput(input: string, preferredType?: XrayConfigTy
   const trimmed = input.trim();
   if (preferredType === 'full') {
     return validateFullConfigJson(trimmed);
+  }
+
+  if (isWireguardConfigFile(trimmed)) {
+    const imported = parseWireguardConfigToOutboundJson(trimmed);
+    if (!imported.success) {
+      return {
+        valid: false,
+        message: imported.message,
+        protocol: imported.protocol,
+        normalizedJson: '',
+        configType: 'outbound'
+      };
+    }
+    const validation = validateOutboundJson(imported.outboundJson);
+    if (!validation.valid) {
+      return validation;
+    }
+    return {
+      valid: true,
+      message: imported.message,
+      protocol: validation.protocol,
+      normalizedJson: validation.normalizedJson,
+      configType: 'outbound'
+    };
   }
 
   if (!isSupportedShareLink(trimmed)) {

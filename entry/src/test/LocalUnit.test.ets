@@ -20,6 +20,8 @@ const VLESS_REALITY_OUTBOUND: string =
   '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision"}]}]},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"serverName":"www.example.com","publicKey":"test-public-key","shortId":"abcd","fingerprint":"chrome"}}}';
 const FULL_XRAY_CONFIG: string =
   '{"remarks":"Custom full config","log":{"loglevel":"info"},"inbounds":[{"tag":"tun-in","protocol":"tun","settings":{"name":"vpn-tun","mtu":1400}}],"outbounds":[{"tag":"direct","protocol":"freedom","settings":{}}],"routing":{"domainStrategy":"AsIs","rules":[]}}';
+const WIREGUARD_CONF: string =
+  '[Interface]\nPrivateKey = private-key\nAddress = 172.16.0.2/32, fd00::2/128\nMTU = 1420\n\n[Peer]\nPublicKey = peer-key\nPresharedKey = shared-key\nEndpoint = wg.example.com:51820\nReserved = 1,2,3\nAllowedIPs = 0.0.0.0/0, ::/0\n';
 
 export default function localUnitTest() {
   describe('xrayConfig', () => {
@@ -73,6 +75,24 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"metrics"')).assertEqual(-1);
       expect(result.configJson.indexOf('"http-in"')).assertEqual(-1);
       expect(result.httpProxyPort === undefined).assertTrue();
+    });
+
+    it('imports wireguard conf files as outbound json', 0, () => {
+      const validation = normalizeOutboundInput(WIREGUARD_CONF);
+      expect(validation.valid).assertTrue();
+      expect(validation.protocol).assertEqual('wireguard');
+      expect(validation.configType).assertEqual('outbound');
+      expect(localizeCoreMessage('en', validation.message)).assertEqual('WireGuard config file imported successfully.');
+      expect(validation.normalizedJson).assertContain('"secretKey": "private-key"');
+      expect(validation.normalizedJson).assertContain('"address": [');
+      expect(validation.normalizedJson).assertContain('"fd00::2/128"');
+      expect(validation.normalizedJson).assertContain('"endpoint": "wg.example.com:51820"');
+      expect(validation.normalizedJson).assertContain('"preSharedKey": "shared-key"');
+      expect(validation.normalizedJson).assertContain('"reserved": [');
+
+      const missingEndpoint = normalizeOutboundInput('[Interface]\nPrivateKey = private-key\n[Peer]\nPublicKey = peer-key\n');
+      expect(missingEndpoint.valid).assertFalse();
+      expect(localizeCoreMessage('en', missingEndpoint.message)).assertEqual('WireGuard config is missing endpoint.');
     });
 
     it('applies app settings when generating xray config', 0, () => {

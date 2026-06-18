@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 应用骨架 / 导航 / i18n | ✅ 95% | 双语、分层清晰、路由完整 |
 | 原生 TUN 数据通路 | ✅ 90% | 代码就位且**真机闭环验证通过（2026-06-15）**——TUN→Xray→出站→可上网 |
-| 分享链接解析 | ✅ 85% | vless/vmess/trojan/ss/socks/http/wireguard/hy2 已覆盖；**缺 TUIC** |
+| 分享链接解析 | ✅ 88% | vless/vmess/trojan/ss/socks/http/wireguard/hy2 已覆盖，WireGuard `.conf` 整段导入已支持；**缺 TUIC** |
 | 订阅管理 | 🟡 91% | 多分组 + 旧版迁移 + 编辑/重排/批量更新全部 + 订阅级不安全 URL 开关 + 当前分组删除全部 + 自动更新设置/前台到期刷新 + 本地 HTTP 代理经由更新；**缺后台调度** |
 | Xray 配置生成 | 🟡 72% | 普通节点生成 TUN/metrics/DNS/routing/HTTP 代理配置；完整自定义 Xray config 可校验后原样运行；高级出站目标仍待补 |
 | 节点延迟测速 / 排序 | ✅ 80% | `CGoPing` 真测速 + 排序，需真机验证 |
@@ -112,3 +112,4 @@
 | 2026-06-18 | 阶段 4 | ✅ 完整自定义 Xray config 导入与原样运行完成；手动节点/profile 记录 `configType`，导出/清无效兼容 full config |
 | 2026-06-18 | 阶段 4 | ✅ 自定义配置文件选择导入完成；JSON 导入页支持 `.json`/`.txt`/`.conf` 文件读取后校验保存 |
 | 2026-06-18 | 阶段 4 | ✅ 节点配置文件导出完成；Export 页支持当前分组复制文本与保存 `.txt` 文件 |
+| 2026-06-18 | 阶段 4 | ✅ WireGuard `.conf` 整段导入完成；`[Interface]`/`[Peer]` 文本会归一化为 Xray wireguard outbound |

@@ -111,6 +111,12 @@ export function localizeCoreMessage(language: AppLanguage, message: string): str
   if (message === 'WireGuard 链接缺少 publickey。') {
     return translate(language, 'core.wgMissingPublicKey');
   }
+  if (message === 'WireGuard 配置缺少 endpoint。') {
+    return translate(language, 'core.wgMissingEndpoint');
+  }
+  if (message === 'WireGuard 配置文件导入成功。') {
+    return translate(language, 'core.wgConfigImported');
+  }
   if (message === 'Hysteria2 链接缺少认证密码。') {
     return translate(language, 'core.hy2MissingPassword');
   }

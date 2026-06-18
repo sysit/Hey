@@ -13,6 +13,11 @@ interface HostPort {
   port: number;
 }
 
+interface WireguardConfigDocument {
+  interfaceParams: Map<string, string>;
+  peerParams: Map<string, string>;
+}
+
 interface ParsedShareUrl {
   userInfo: string;
   host: string;
@@ -255,6 +260,11 @@ export function isSupportedShareLink(input: string): boolean {
     lower.startsWith('hy2://');
 }
 
+export function isWireguardConfigFile(input: string): boolean {
+  const lower = input.trim().toLowerCase();
+  return lower.indexOf('[interface]') >= 0 && lower.indexOf('[peer]') >= 0;
+}
+
 export function parseShareLinkToOutboundJson(input: string): ShareLinkParseResult {
   const trimmed = input.trim();
   const lower = trimmed.toLowerCase();
@@ -290,6 +300,64 @@ export function parseShareLinkToOutboundJson(input: string): ShareLinkParseResul
     return makeFailure('暂只支持 vless://、vmess://、trojan://、ss://、socks://、http://、wireguard:// 和 hysteria2:// 分享链接。');
   } catch (error) {
     return makeFailure(`分享链接解析失败：${stringifyError(error)}`);
+  }
+}
+
+export function parseWireguardConfigToOutboundJson(input: string): ShareLinkParseResult {
+  try {
+    const document = parseWireguardConfigDocument(input);
+    const privateKey = mapValue(document.interfaceParams, 'privatekey');
+    if (privateKey.length === 0) {
+      return makeFailure('WireGuard 链接缺少私钥。', 'wireguard');
+    }
+
+    const publicKey = mapValue(document.peerParams, 'publickey');
+    if (publicKey.length === 0) {
+      return makeFailure('WireGuard 链接缺少 publickey。', 'wireguard');
+    }
+
+    const endpoint = mapValue(document.peerParams, 'endpoint');
+    if (endpoint.length === 0) {
+      return makeFailure('WireGuard 配置缺少 endpoint。', 'wireguard');
+    }
+    const hostPort = parseHostPort(endpoint);
+    const peer: XrayWireguardPeer = {
+      publicKey,
+      endpoint: formatEndpoint(hostPort.host, hostPort.port)
+    };
+    const preSharedKey = mapValue(document.peerParams, 'presharedkey');
+    if (preSharedKey.length > 0) {
+      peer.preSharedKey = preSharedKey;
+    }
+
+    const settings: XrayWireguardSettings = {
+      secretKey: privateKey,
+      address: splitCsvWithDefault(mapValue(document.interfaceParams, 'address'), '172.16.0.2/32'),
+      peers: [peer]
+    };
+    const mtu = parseOptionalPositiveInt(mapValue(document.interfaceParams, 'mtu'));
+    if (mtu > 0) {
+      settings.mtu = mtu;
+    }
+    const reserved = parseNumberCsv(mapValue(document.peerParams, 'reserved'));
+    if (reserved.length > 0) {
+      settings.reserved = reserved;
+    }
+
+    const outbound: XrayOutbound = {
+      protocol: 'wireguard',
+      tag: 'proxy',
+      settings
+    };
+    return {
+      success: true,
+      message: 'WireGuard 配置文件导入成功。',
+      protocol: 'wireguard',
+      name: 'WireGuard',
+      outboundJson: JSON.stringify(outbound, null, 2)
+    };
+  } catch (error) {
+    return makeFailure(`分享链接解析失败：${stringifyError(error as Error)}`, 'wireguard');
   }
 }
 
@@ -714,6 +782,55 @@ function parseUrlStyleShareLink(input: string, scheme: string): ParsedShareUrl {
     query: parseQuery(rawQuery),
     fragment
   };
+}
+
+function parseWireguardConfigDocument(input: string): WireguardConfigDocument {
+  const interfaceParams = new Map<string, string>();
+  const peerParams = new Map<string, string>();
+  let currentSection = '';
+  const lines = input.split('\n');
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index].trim();
+    if (line.length === 0 || line.startsWith('#') || line.startsWith(';')) {
+      continue;
+    }
+
+    const lower = line.toLowerCase();
+    if (lower === '[interface]') {
+      currentSection = 'interface';
+      continue;
+    }
+    if (lower === '[peer]') {
+      currentSection = 'peer';
+      continue;
+    }
+
+    const equalsIndex = line.indexOf('=');
+    if (equalsIndex <= 0 || currentSection.length === 0) {
+      continue;
+    }
+    const key = line.substring(0, equalsIndex).trim().toLowerCase();
+    const value = line.substring(equalsIndex + 1).trim();
+    if (key.length === 0 || value.length === 0) {
+      continue;
+    }
+
+    if (currentSection === 'interface') {
+      interfaceParams.set(key, value);
+    } else if (currentSection === 'peer') {
+      peerParams.set(key, value);
+    }
+  }
+
+  return {
+    interfaceParams,
+    peerParams
+  };
+}
+
+function mapValue(map: Map<string, string>, key: string): string {
+  return map.get(key) ?? '';
 }
 
 function parseHostPort(value: string): HostPort {
@@ -1429,4 +1546,3 @@ export function formatOutboundJsonToShareLink(outboundJson: string, name: string
     return '';
   }
 }
-
