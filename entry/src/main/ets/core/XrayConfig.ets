@@ -39,6 +39,7 @@ interface XrayMuxConfig {
 interface XraySniffingConfig {
   enabled: boolean;
   destOverride: Array<string>;
+  routeOnly?: boolean;
 }
 
 interface XrayFragmentConfig {
@@ -1914,10 +1915,14 @@ function buildTunSniffing(settings: AppSettings | undefined): XraySniffingConfig
   if (destOverride.length === 0) {
     return undefined;
   }
-  return {
+  const sniffing: XraySniffingConfig = {
     enabled: true,
     destOverride
   };
+  if (settings !== undefined && settings.routeOnlyEnabled) {
+    sniffing.routeOnly = true;
+  }
+  return sniffing;
 }
 
 function buildFakeDnsDomains(settings: AppSettings): Array<string> {
@@ -1976,7 +1981,7 @@ function buildRoutingRules(settings: AppSettings | undefined, proxyBalancerTag?:
     return rules;
   }
 
-  appendCustomRoutingRules(rules, settings.routingRules, proxyBalancerTag);
+  appendCustomRoutingRules(rules, settings.routingRules, settings.routeOnlyEnabled, proxyBalancerTag);
 
   if (settings.trafficMode === 'rules' && settings.routeOnlyEnabled) {
     const rule: XrayRoutingRule = {
@@ -1990,16 +1995,16 @@ function buildRoutingRules(settings: AppSettings | undefined, proxyBalancerTag?:
   return rules;
 }
 
-function appendCustomRoutingRules(rules: Array<XrayRoutingRule>, customRules: Array<RoutingRule>, proxyBalancerTag?: string): void {
+function appendCustomRoutingRules(rules: Array<XrayRoutingRule>, customRules: Array<RoutingRule>, allowProcessRouting: boolean, proxyBalancerTag?: string): void {
   for (let index = 0; index < customRules.length; index++) {
-    const rule = buildCustomRoutingRule(customRules[index], proxyBalancerTag);
+    const rule = buildCustomRoutingRule(customRules[index], allowProcessRouting, proxyBalancerTag);
     if (rule !== undefined) {
       rules.push(rule);
     }
   }
 }
 
-function buildCustomRoutingRule(item: RoutingRule, proxyBalancerTag?: string): XrayRoutingRule | undefined {
+function buildCustomRoutingRule(item: RoutingRule, allowProcessRouting: boolean, proxyBalancerTag?: string): XrayRoutingRule | undefined {
   if (!item.enabled) {
     return undefined;
   }
@@ -2018,7 +2023,7 @@ function buildCustomRoutingRule(item: RoutingRule, proxyBalancerTag?: string): X
     rule.ip = item.ip.slice();
     hasMatcher = true;
   }
-  if (item.process.length > 0) {
+  if (allowProcessRouting && item.process.length > 0) {
     rule.process = item.process.slice();
     hasMatcher = true;
   }

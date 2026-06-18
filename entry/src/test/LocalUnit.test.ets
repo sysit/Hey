@@ -425,6 +425,7 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"domainStrategy": "IPIfNonMatch"');
       expect(result.configJson).assertContain('"geosite:cn"');
       expect(result.configJson).assertContain('"sniffing"');
+      expect(result.configJson).assertContain('"routeOnly": true');
       expect(result.configJson).assertContain('"mux"');
       expect(result.configJson).assertContain('"9.9.9.9"');
     });
@@ -685,6 +686,53 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('domain:disabled.example')).assertEqual(-1);
       expect(result.configJson.indexOf('geosite:category-ads-all') < result.configJson.indexOf('domain:example.com')).assertTrue();
       expect(result.configJson.indexOf('domain:example.com') < result.configJson.indexOf('geosite:cn')).assertTrue();
+    });
+
+    it('gates process routing rules behind route only mode', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.routeOnlyEnabled = false;
+      settings.routingRules = [
+        {
+          id: 'mixed-process-rule',
+          remarks: 'Mixed process rule',
+          domain: ['domain:app.example'],
+          ip: [],
+          process: ['com.example.app'],
+          outboundTag: 'direct',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        },
+        {
+          id: 'process-only-rule',
+          remarks: 'Process only rule',
+          domain: [],
+          ip: [],
+          process: ['com.only.app'],
+          outboundTag: 'block',
+          port: '',
+          network: '',
+          protocol: [],
+          enabled: true,
+          locked: false
+        }
+      ];
+
+      const disabled = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(disabled.configJson).assertContain('"domain:app.example"');
+      expect(disabled.configJson.indexOf('"process"')).assertEqual(-1);
+      expect(disabled.configJson.indexOf('com.example.app')).assertEqual(-1);
+      expect(disabled.configJson.indexOf('com.only.app')).assertEqual(-1);
+      expect(disabled.configJson.indexOf('"routeOnly"')).assertEqual(-1);
+
+      settings.routeOnlyEnabled = true;
+      const enabled = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(enabled.configJson).assertContain('"routeOnly": true');
+      expect(enabled.configJson).assertContain('"process": [');
+      expect(enabled.configJson).assertContain('"com.example.app"');
+      expect(enabled.configJson).assertContain('"com.only.app"');
     });
 
     it('appends local http proxy inbound when enabled', 0, () => {
