@@ -4,6 +4,7 @@ import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore
 
 export interface SettingsDraft {
   language: AppLanguage;
+  speedEnabled: boolean;
   confirmRemove: boolean;
   startScanImmediate: boolean;
   sniffingEnabled: boolean;
@@ -62,6 +63,7 @@ export class SettingsController {
   toDraft(settings: AppSettings): SettingsDraft {
     return {
       language: settings.language,
+      speedEnabled: settings.speedEnabled,
       confirmRemove: settings.confirmRemove,
       startScanImmediate: settings.startScanImmediate,
       sniffingEnabled: settings.sniffingEnabled,
@@ -112,6 +114,7 @@ export class SettingsController {
   buildSettings(draft: SettingsDraft): AppSettings {
     return {
       language: draft.language,
+      speedEnabled: draft.speedEnabled,
       confirmRemove: draft.confirmRemove,
       startScanImmediate: draft.startScanImmediate,
       sniffingEnabled: draft.sniffingEnabled,

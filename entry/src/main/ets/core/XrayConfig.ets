@@ -952,27 +952,13 @@ function buildXrayConfigFromOutbounds(
     protocol: 'blackhole',
     settings: new EmptySettings()
   };
+  const speedEnabled = settings?.speedEnabled ?? false;
 
-  const metricsInbound: XrayInboundConfig = {
-    tag: METRICS_IN_TAG,
-    listen: METRICS_HOST,
-    port: METRICS_PORT,
-    protocol: 'dokodemo-door',
-    settings: new DokodemoInboundSettings()
-  };
-
-  const inbounds: Array<XrayInboundConfig> = [tunInbound, metricsInbound];
+  const inbounds: Array<XrayInboundConfig> = [tunInbound];
   const outbounds: Array<XrayOutbound> = proxyOutbounds.concat([directOutbound, blockOutbound]);
 
-  // Route the metrics inbound to the metrics handler ahead of any user/traffic
-  // rule so the local /debug/vars probe is never proxied or blocked.
   const proxyTarget = buildProxyRoutingTarget(balancer?.tag);
   const routingRules = buildRoutingRules(settings, balancer?.tag);
-  const metricsRule: XrayRoutingRule = {
-    type: 'field',
-    inboundTag: [METRICS_IN_TAG],
-    outboundTag: METRICS_OUT_TAG
-  };
 
   if (settings !== undefined && settings.appendHttpProxy) {
     const httpInboundTag = 'http-in';
@@ -1027,16 +1013,24 @@ function buildXrayConfigFromOutbounds(
     outbounds.push(dnsOutbound);
     routingRules.unshift(dnsRule);
   }
-  routingRules.unshift(metricsRule);
-
-  const policy: XrayPolicyConfig = {
-    system: {
-      statsInboundUplink: true,
-      statsInboundDownlink: true,
-      statsOutboundUplink: true,
-      statsOutboundDownlink: true
-    }
-  };
+  if (speedEnabled) {
+    const metricsInbound: XrayInboundConfig = {
+      tag: METRICS_IN_TAG,
+      listen: METRICS_HOST,
+      port: METRICS_PORT,
+      protocol: 'dokodemo-door',
+      settings: new DokodemoInboundSettings()
+    };
+    const metricsRule: XrayRoutingRule = {
+      type: 'field',
+      inboundTag: [METRICS_IN_TAG],
+      outboundTag: METRICS_OUT_TAG
+    };
+    inbounds.push(metricsInbound);
+    // Route the metrics inbound to the metrics handler ahead of any user/traffic
+    // rule so the local /debug/vars probe is never proxied or blocked.
+    routingRules.unshift(metricsRule);
+  }
 
   const config: XrayFullConfig = {
     log: {
@@ -1048,13 +1042,23 @@ function buildXrayConfigFromOutbounds(
     routing: {
       domainStrategy: settings?.routingDomainStrategy ?? DEFAULT_ROUTING_DOMAIN_STRATEGY,
       rules: routingRules
-    },
-    stats: new EmptySettings(),
-    metrics: {
-      tag: METRICS_OUT_TAG
-    },
-    policy
+    }
   };
+  if (speedEnabled) {
+    const policy: XrayPolicyConfig = {
+      system: {
+        statsInboundUplink: true,
+        statsInboundDownlink: true,
+        statsOutboundUplink: true,
+        statsOutboundDownlink: true
+      }
+    };
+    config.stats = new EmptySettings();
+    config.metrics = {
+      tag: METRICS_OUT_TAG
+    };
+    config.policy = policy;
+  }
   if (settings !== undefined && settings.localDnsEnabled && settings.fakeDnsEnabled) {
     config.fakedns = [new EmptySettings()];
   }
@@ -1079,7 +1083,7 @@ function buildXrayConfigFromOutbounds(
     socksPort: runtimeSocksPort,
     httpProxyHost: runtimeHttpProxyHost,
     httpProxyPort: runtimeHttpProxyPort,
-    metricsServer: METRICS_SERVER_URL
+    metricsServer: speedEnabled ? METRICS_SERVER_URL : undefined
   };
 }
 

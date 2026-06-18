@@ -95,7 +95,9 @@ export default function localUnitTest() {
       expect(localizeCoreMessage('en', '代理链至少需要两个 outbound。')).assertEqual('Proxy chain needs at least two outbounds.');
       expect(localizeCoreMessage('en', '代理链第 2 跳无效：outbound 缺少 settings 字段。')).assertEqual('Proxy chain hop 2 is invalid: outbound is missing the settings field.');
 
-      const result = buildRuntimeXrayConfig(validation.normalizedJson, buildSettingsFixture(), 'proxy-chain');
+      const speedSettings = buildSettingsFixture();
+      speedSettings.speedEnabled = true;
+      const result = buildRuntimeXrayConfig(validation.normalizedJson, speedSettings, 'proxy-chain');
       expect(result.configJson).assertContain('"tag": "proxy"');
       expect(result.configJson).assertContain('"tag": "proxy-chain-1"');
       expect(result.configJson).assertContain('"dialerProxy": "proxy-chain-1"');
@@ -346,6 +348,7 @@ export default function localUnitTest() {
     it('applies app settings when generating xray config', 0, () => {
       const settings: AppSettings = {
         language: 'zh',
+        speedEnabled: false,
         confirmRemove: false,
         startScanImmediate: false,
         sniffingEnabled: true,
@@ -399,6 +402,24 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"sniffing"');
       expect(result.configJson).assertContain('"mux"');
       expect(result.configJson).assertContain('"9.9.9.9"');
+    });
+
+    it('controls speed metrics with the speed display setting', 0, () => {
+      const settings = buildSettingsFixture();
+      const disabled = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(disabled.metricsServer === undefined).assertTrue();
+      expect(disabled.configJson.indexOf('"metrics"') < 0).assertTrue();
+      expect(disabled.configJson.indexOf('"stats"') < 0).assertTrue();
+      expect(disabled.configJson.indexOf('"policy"') < 0).assertTrue();
+      expect(disabled.configJson.indexOf('"tag": "metrics_in"') < 0).assertTrue();
+
+      settings.speedEnabled = true;
+      const enabled = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
+      expect(enabled.metricsServer !== undefined).assertTrue();
+      expect(enabled.configJson).assertContain('"metrics"');
+      expect(enabled.configJson).assertContain('"stats"');
+      expect(enabled.configJson).assertContain('"policy"');
+      expect(enabled.configJson).assertContain('"tag": "metrics_in"');
     });
 
     it('applies local dns and fakedns settings to generated xray config', 0, () => {
@@ -718,9 +739,11 @@ export default function localUnitTest() {
       settings.logLevel = 'error';
       settings.dnsHosts = 'dns.google:8.8.8.8,cloudflare-dns.com:1.1.1.1';
       settings.realPingConcurrency = 32;
+      settings.speedEnabled = true;
       settings.confirmRemove = true;
       settings.startScanImmediate = true;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
+      expect(draft.speedEnabled).assertTrue();
       expect(draft.confirmRemove).assertTrue();
       expect(draft.startScanImmediate).assertTrue();
       expect(draft.preferIpv6).assertTrue();
@@ -746,6 +769,7 @@ export default function localUnitTest() {
       expect(draft.dnsHosts).assertEqual('dns.google:8.8.8.8,cloudflare-dns.com:1.1.1.1');
       expect(draft.realPingConcurrency).assertEqual('32');
       const rebuilt = SETTINGS_CONTROLLER.buildSettings(draft);
+      expect(rebuilt.speedEnabled).assertTrue();
       expect(rebuilt.confirmRemove).assertTrue();
       expect(rebuilt.startScanImmediate).assertTrue();
       expect(rebuilt.preferIpv6).assertTrue();
@@ -1120,6 +1144,7 @@ export default function localUnitTest() {
 function buildSettingsFixture(): AppSettings {
   return {
     language: 'zh',
+    speedEnabled: false,
     confirmRemove: false,
     startScanImmediate: false,
     sniffingEnabled: true,

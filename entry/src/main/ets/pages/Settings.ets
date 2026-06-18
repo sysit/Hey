@@ -26,6 +26,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Component
 struct SettingsPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @State private settingSpeedEnabled: boolean = false;
   @State private settingConfirmRemove: boolean = false;
   @State private settingStartScanImmediate: boolean = false;
   @State private settingSniffing: boolean = true;
@@ -91,6 +92,8 @@ struct SettingsPage {
           SectionHeader({ title: this.t('settings.language.section') })
           Column() {
             this.LanguageToggle()
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.speedEnabled'), this.settingSpeedEnabled, 'speedEnabled')
             this.RowDivider()
             this.SettingToggle(this.t('settings.confirmRemove'), this.settingConfirmRemove, 'confirmRemove')
             this.RowDivider()
@@ -346,6 +349,9 @@ struct SettingsPage {
       case 'sniffing':
         this.settingSniffing = !this.settingSniffing;
         break;
+      case 'speedEnabled':
+        this.settingSpeedEnabled = !this.settingSpeedEnabled;
+        break;
       case 'confirmRemove':
         this.settingConfirmRemove = !this.settingConfirmRemove;
         break;
@@ -487,6 +493,7 @@ struct SettingsPage {
   private buildDraft(): SettingsDraft {
     return {
       language: this.language,
+      speedEnabled: this.settingSpeedEnabled,
       confirmRemove: this.settingConfirmRemove,
       startScanImmediate: this.settingStartScanImmediate,
       sniffingEnabled: this.settingSniffing,
@@ -536,6 +543,7 @@ struct SettingsPage {
 
   private applyDraft(draft: SettingsDraft): void {
     this.language = draft.language;
+    this.settingSpeedEnabled = draft.speedEnabled;
     this.settingConfirmRemove = draft.confirmRemove;
     this.settingStartScanImmediate = draft.startScanImmediate;
     this.settingSniffing = draft.sniffingEnabled;

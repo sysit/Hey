@@ -9,6 +9,7 @@ export struct RuntimeStatusPanel {
   uploadValue: string = '';
   downloadLabel: string = '';
   downloadValue: string = '';
+  showTraffic: boolean = true;
   xrayActive: boolean = false;
   tunActive: boolean = false;
   lastMessage: string = '';
@@ -17,8 +18,10 @@ export struct RuntimeStatusPanel {
     Column({ space: Space.md }) {
       Row({ space: Space.sm }) {
         MetricTile({ label: this.durationLabel, value: this.durationValue })
-        MetricTile({ label: this.uploadLabel, value: this.uploadValue })
-        MetricTile({ label: this.downloadLabel, value: this.downloadValue })
+        if (this.showTraffic) {
+          MetricTile({ label: this.uploadLabel, value: this.uploadValue })
+          MetricTile({ label: this.downloadLabel, value: this.downloadValue })
+        }
       }
       .width('100%')
 

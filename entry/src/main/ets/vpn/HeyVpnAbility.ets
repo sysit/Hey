@@ -113,7 +113,12 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       }
       this.emitInfo('Xray started.', xrayResult.message);
 
-      this.startStatsTimer();
+      if (settings.speedEnabled) {
+        this.startStatsTimer();
+      } else {
+        this.stopStatsTimer();
+        this.emitInfo('Speed stats disabled by settings.');
+      }
       this.emitInfo('Native VPN bridge started.', `session=${this.sessionId}`);
     } catch (error) {
       this.emitError('VPN start failed.', this.errorMessage(error));

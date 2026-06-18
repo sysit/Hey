@@ -19,6 +19,7 @@ const SETTINGS_KEY: string = 'app_settings';
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   language: DEFAULT_LANGUAGE,
+  speedEnabled: false,
   confirmRemove: false,
   startScanImmediate: false,
   sniffingEnabled: true,
@@ -100,6 +101,7 @@ export class SettingsStore {
     const base = SettingsStore.copy(DEFAULT_APP_SETTINGS);
     return {
       language: normalizeLanguage(raw.language),
+      speedEnabled: SettingsStore.boolValue(raw.speedEnabled, base.speedEnabled),
       confirmRemove: SettingsStore.boolValue(raw.confirmRemove, base.confirmRemove),
       startScanImmediate: SettingsStore.boolValue(raw.startScanImmediate, base.startScanImmediate),
       sniffingEnabled: SettingsStore.boolValue(raw.sniffingEnabled, base.sniffingEnabled),

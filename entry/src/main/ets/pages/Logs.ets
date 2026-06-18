@@ -29,6 +29,7 @@ struct LogsPage {
   @State private elapsedText: string = '00:00';
   @State private logs: Array<string> = [];
   @State private stats: RuntimeStats = EMPTY_STATS;
+  @State private speedEnabled: boolean = false;
 
   aboutToAppear(): void {
     this.loadState();
@@ -62,6 +63,7 @@ struct LogsPage {
             uploadValue: formatBytes(this.stats.uploadBytes),
             downloadLabel: this.t('runtime.download'),
             downloadValue: formatBytes(this.stats.downloadBytes),
+            showTraffic: this.speedEnabled,
             xrayActive: this.stats.xrayRunning,
             tunActive: this.stats.tunRunning,
             lastMessage: this.localizeCoreMessage(this.stats.lastMessage)
@@ -89,7 +91,9 @@ struct LogsPage {
 
   private async loadState(): Promise<void> {
     const context = getContext(this) as common.Context;
-    this.language = (await SETTINGS_CONTROLLER.load(context)).language;
+    const settings = await SETTINGS_CONTROLLER.load(context);
+    this.language = settings.language;
+    this.speedEnabled = settings.speedEnabled;
     await this.refreshRuntime();
   }
 

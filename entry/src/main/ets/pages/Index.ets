@@ -66,6 +66,7 @@ struct Index {
   @State private connectionOperationRunning: boolean = false;
   @State private elapsedText: string = '00:00';
   @State private stats: RuntimeStats = EMPTY_STATS;
+  @State private speedEnabled: boolean = false;
 
   aboutToAppear(): void {
     this.loadInitialState();
@@ -361,10 +362,12 @@ struct Index {
   private StatsCard() {
     Row() {
       this.StatCell(this.t('home.duration'), this.isRunning() ? this.elapsedText : '--', AppColor.textPrimary)
-      Divider().vertical(true).height(28).color(AppColor.divider)
-      this.StatCell(this.t('home.upload'), this.formatBytes(this.stats.uploadBytes), AppColor.brand)
-      Divider().vertical(true).height(28).color(AppColor.divider)
-      this.StatCell(this.t('home.download'), this.formatBytes(this.stats.downloadBytes), AppColor.success)
+      if (this.speedEnabled) {
+        Divider().vertical(true).height(28).color(AppColor.divider)
+        this.StatCell(this.t('home.upload'), this.formatBytes(this.stats.uploadBytes), AppColor.brand)
+        Divider().vertical(true).height(28).color(AppColor.divider)
+        this.StatCell(this.t('home.download'), this.formatBytes(this.stats.downloadBytes), AppColor.success)
+      }
     }
     .width('100%')
     .padding({ top: Space.md, bottom: Space.md })
@@ -853,6 +856,7 @@ struct Index {
       const context = getContext(this) as common.Context;
       this.currentSettings = await SETTINGS_CONTROLLER.load(context);
       this.language = this.currentSettings.language;
+      this.speedEnabled = this.currentSettings.speedEnabled;
     } catch (error) {
       this.lastError = this.f1('error.loadSettings', 'error', JSON.stringify(error));
       SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
