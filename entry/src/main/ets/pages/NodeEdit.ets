@@ -241,6 +241,7 @@ interface FormHysteria2Server {
   obfsPassword?: string;
   portHopping?: string;
   portHoppingInterval?: string;
+  pinSHA256?: string;
   bandwidthDown?: string;
   bandwidthUp?: string;
 }
@@ -390,6 +391,7 @@ struct NodeEditPage {
   @State private hy2ObfsPassword: string = '';
   @State private hy2PortHopping: string = '';
   @State private hy2PortHoppingInterval: string = '';
+  @State private hy2PinSha256: string = '';
   @State private hy2BandwidthDown: string = '';
   @State private hy2BandwidthUp: string = '';
 
@@ -550,6 +552,9 @@ struct NodeEditPage {
                 })
                 this.EditorRow('端口跳跃间隔 (mportHopInt - 可选)', this.hy2PortHoppingInterval, '秒，例如 30 或 10-60', (value: string) => {
                   this.hy2PortHoppingInterval = value;
+                })
+                this.EditorRow('证书钉住 SHA256 (pinSHA256 - 可选)', this.hy2PinSha256, 'Hysteria2 pinSHA256', (value: string) => {
+                  this.hy2PinSha256 = value;
                 })
                 this.EditorRow('下载带宽 (Bandwidth Down - 可选)', this.hy2BandwidthDown, '例如 100 mbps', (value: string) => {
                   this.hy2BandwidthDown = value;
@@ -904,6 +909,7 @@ struct NodeEditPage {
           obfsPassword: this.hy2ObfsPassword,
           portHopping: this.hy2PortHopping,
           portHoppingInterval: this.hy2PortHoppingInterval,
+          pinSHA256: this.hy2PinSha256,
           bandwidthDown: this.hy2BandwidthDown,
           bandwidthUp: this.hy2BandwidthUp
         });

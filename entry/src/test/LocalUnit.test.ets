@@ -294,6 +294,7 @@ export default function localUnitTest() {
         obfsPassword: 'obfs-secret',
         portHopping: '20000-50000',
         portHoppingInterval: '10-60',
+        pinSHA256: 'hy2-pinned-sha256',
         bandwidthDown: '100 mbps',
         bandwidthUp: '20 mbps'
       });
@@ -301,6 +302,7 @@ export default function localUnitTest() {
       expect(hysteria2.outboundJson).assertContain('"protocol": "hysteria2"');
       expect(hysteria2.outboundJson).assertContain('"portHopping": "20000-50000"');
       expect(hysteria2.outboundJson).assertContain('"portHoppingInterval": "10-60"');
+      expect(hysteria2.outboundJson).assertContain('"pinSHA256": "hy2-pinned-sha256"');
       expect(hysteria2.outboundJson).assertContain('"obfsPassword": "obfs-secret"');
       expect(validateOutboundJson(hysteria2.outboundJson).valid).assertTrue();
       expect(buildManualHysteria2Outbound({
@@ -314,6 +316,7 @@ export default function localUnitTest() {
         obfsPassword: '',
         portHopping: '',
         portHoppingInterval: '',
+        pinSHA256: '',
         bandwidthDown: '',
         bandwidthUp: ''
       }).success).assertFalse();
@@ -1538,15 +1541,17 @@ export default function localUnitTest() {
       expect(wireguard.outboundJson).assertContain('"protocol": "wireguard"');
       expect(wireguard.outboundJson).assertContain('"endpoint": "example.com:51820"');
 
-      const hysteria2 = parseShareLinkToOutboundJson('hysteria2://auth@example.com:443?sni=hy.example&insecure=1&obfs-password=obfs&mport=20000-50000&mportHopInt=10-60#hy2-demo');
+      const hysteria2 = parseShareLinkToOutboundJson('hysteria2://auth@example.com:443?sni=hy.example&insecure=1&obfs-password=obfs&mport=20000-50000&mportHopInt=10-60&pinSHA256=hy2-pinned-sha256#hy2-demo');
       expect(hysteria2.success).assertTrue();
       expect(hysteria2.outboundJson).assertContain('"protocol": "hysteria2"');
       expect(hysteria2.outboundJson).assertContain('"obfsPassword": "obfs"');
       expect(hysteria2.outboundJson).assertContain('"portHopping": "20000-50000"');
       expect(hysteria2.outboundJson).assertContain('"portHoppingInterval": "10-60"');
+      expect(hysteria2.outboundJson).assertContain('"pinSHA256": "hy2-pinned-sha256"');
       const exportedHy2 = formatOutboundJsonToShareLink(hysteria2.outboundJson, 'hy2-demo');
       expect(exportedHy2).assertContain('mport=20000-50000');
       expect(exportedHy2).assertContain('mportHopInt=35');
+      expect(exportedHy2).assertContain('pinSHA256=hy2-pinned-sha256');
     });
 
     it('parses base64 subscription content into selectable nodes', 0, () => {
