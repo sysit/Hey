@@ -16,6 +16,9 @@
         "name": "ohos.permission.INTERNET"
       },
       {
+        "name": "ohos.permission.GET_BUNDLE_INFO"
+      },
+      {
         "name": "ohos.permission.RECEIVER_STARTUP_COMPLETED"
       }
     ],

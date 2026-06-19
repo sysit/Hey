@@ -9,7 +9,7 @@ import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../m
 import { ANDROID_PACKAGE_NAME_LIST_URL, clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, resolveAutoProxyPackageListContent, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
-import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeOutboundInput, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
+import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, UNIDENTIFIED_PROCESS_PACKAGE, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeFullConfigRoutingProcesses, normalizeOutboundInput, normalizeRoutingRuleProcesses, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
 import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
 import { SUPPORTED_SHARE_LINK_SCHEMES, buildUnsupportedShareLinkMessage, formatOutboundJsonToShareLink, isSupportedShareLink, parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
@@ -361,6 +361,15 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"metrics"')).assertEqual(-1);
       expect(result.configJson.indexOf('"http-in"')).assertEqual(-1);
       expect(result.httpProxyPort === undefined).assertTrue();
+
+      const fullWithProcess = '{"inbounds":[],"outbounds":[{"tag":"direct","protocol":"freedom","settings":{}}],"routing":{"rules":[{"type":"field","process":["com.example.app"],"outboundTag":"direct"},{"type":"field","process":["com.missing.app"],"outboundTag":"direct"}]}}';
+      const normalizedFull = normalizeFullConfigRoutingProcesses(
+        fullWithProcess,
+        (packageName: string): string | undefined => packageName === 'com.example.app' ? '10123' : undefined
+      );
+      expect(normalizedFull).assertContain('"10123"');
+      expect(normalizedFull.indexOf('com.example.app')).assertEqual(-1);
+      expect(normalizedFull).assertContain('com.missing.app');
     });
 
     it('resolves editable json config node names', 0, () => {
@@ -814,7 +823,7 @@ export default function localUnitTest() {
           remarks: 'Mixed process rule',
           domain: ['domain:app.example'],
           ip: [],
-          process: ['com.example.app'],
+          process: ['com.example.app', UNIDENTIFIED_PROCESS_PACKAGE],
           outboundTag: 'direct',
           port: '',
           network: '',
@@ -827,7 +836,7 @@ export default function localUnitTest() {
           remarks: 'Process only rule',
           domain: [],
           ip: [],
-          process: ['com.only.app'],
+          process: [UNIDENTIFIED_PROCESS_PACKAGE],
           outboundTag: 'block',
           port: '',
           network: '',
@@ -841,15 +850,23 @@ export default function localUnitTest() {
       expect(disabled.configJson).assertContain('"domain:app.example"');
       expect(disabled.configJson.indexOf('"process"')).assertEqual(-1);
       expect(disabled.configJson.indexOf('com.example.app')).assertEqual(-1);
-      expect(disabled.configJson.indexOf('com.only.app')).assertEqual(-1);
+      expect(disabled.configJson.indexOf('"-1"')).assertEqual(-1);
       expect(disabled.configJson.indexOf('"routeOnly"')).assertEqual(-1);
 
       settings.routeOnlyEnabled = true;
       const enabled = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
       expect(enabled.configJson).assertContain('"routeOnly": true');
       expect(enabled.configJson).assertContain('"process": [');
-      expect(enabled.configJson).assertContain('"com.example.app"');
-      expect(enabled.configJson).assertContain('"com.only.app"');
+      expect(enabled.configJson).assertContain('"-1"');
+      expect(enabled.configJson.indexOf('com.example.app')).assertEqual(-1);
+
+      const resolvedProcesses = normalizeRoutingRuleProcesses(
+        ['com.example.app', 'com.missing.app', UNIDENTIFIED_PROCESS_PACKAGE],
+        (packageName: string): string | undefined => packageName === 'com.example.app' ? '10123' : undefined
+      );
+      expect(resolvedProcesses.length).assertEqual(2);
+      expect(resolvedProcesses[0]).assertEqual('10123');
+      expect(resolvedProcesses[1]).assertEqual('-1');
     });
 
     it('keeps route only sniffing when protocol sniffing is disabled', 0, () => {

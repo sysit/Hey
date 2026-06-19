@@ -1,3 +1,4 @@
+import { bundleManager } from '@kit.AbilityKit';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
 
@@ -136,6 +137,8 @@ interface XrayRoutingConfig {
   rules: Array<XrayRoutingRule>;
   balancers?: Array<XrayBalancerConfig>;
 }
+
+export type RoutingProcessUidResolver = (packageName: string) => string | undefined;
 
 interface XrayMetricsConfig {
   tag: string;
@@ -294,6 +297,8 @@ const GEOIP_PRIVATE_RULE: string = 'geoip:private';
 const GEOIP_ONLY_CN_PRIVATE_DAT: string = 'geoip-only-cn-private.dat';
 const GEOIP_CN_ROUTING_EXT: string = 'ext:' + GEOIP_ONLY_CN_PRIVATE_DAT + ':cn';
 const GEOIP_PRIVATE_ROUTING_EXT: string = 'ext:' + GEOIP_ONLY_CN_PRIVATE_DAT + ':private';
+export const UNIDENTIFIED_PROCESS_PACKAGE: string = '__unknown_app__';
+const UNIDENTIFIED_PROCESS_UID: string = '-1';
 const DNS_BLOCK_HOST: string = '127.0.0.1';
 const DEFAULT_DNS_HOSTS: Record<string, string | Array<string>> = {
   'domain:googleapis.cn': 'googleapis.com',
@@ -306,6 +311,7 @@ const DEFAULT_DNS_HOSTS: Record<string, string | Array<string>> = {
   'dns.quad9.net': ['9.9.9.9', '149.112.112.112', '2620:fe::fe', '2620:fe::9'],
   'common.dot.dns.yandex.net': ['77.88.8.8', '77.88.8.1', '2a02:6b8::feed:0ff', '2a02:6b8:0:1::feed:0ff']
 };
+const PROCESS_UID_CACHE: Record<string, string> = {};
 
 function isSupportedProtocol(protocol: string): boolean {
   return SUPPORTED_PROTOCOLS.indexOf(protocol.toLowerCase()) >= 0;
@@ -848,7 +854,7 @@ export function buildRuntimeXrayConfig(configJson: string, settings?: AppSetting
 
   if (validation.configType === 'full') {
     return {
-      configJson: validation.normalizedJson
+      configJson: normalizeFullConfigRoutingProcesses(validation.normalizedJson)
     };
   }
   if (validation.configType === 'proxy-chain') {
@@ -859,6 +865,29 @@ export function buildRuntimeXrayConfig(configJson: string, settings?: AppSetting
   }
 
   return buildXrayConfigInternal(validation.normalizedJson, settings);
+}
+
+export function normalizeFullConfigRoutingProcesses(configJson: string, uidResolver: RoutingProcessUidResolver = resolveProcessUid): string {
+  try {
+    const config = parseFullConfig(configJson);
+    const routing = config.routing;
+    if (routing === undefined || routing === null || !Array.isArray(routing.rules)) {
+      return configJson;
+    }
+    for (let index = 0; index < routing.rules.length; index++) {
+      const rule = routing.rules[index];
+      if (rule.process === undefined || !Array.isArray(rule.process)) {
+        continue;
+      }
+      const uids = normalizeRoutingRuleProcesses(rule.process, uidResolver);
+      if (uids.length > 0) {
+        rule.process = uids;
+      }
+    }
+    return JSON.stringify(config, null, 2);
+  } catch (error) {
+    return configJson;
+  }
 }
 
 export function collectOutboundDomainPreResolveHosts(configJson: string, settings?: AppSettings, configType?: XrayConfigType): Array<string> {
@@ -2124,8 +2153,11 @@ function buildCustomRoutingRule(item: RoutingRule, allowProcessRouting: boolean,
     hasMatcher = true;
   }
   if (allowProcessRouting && item.process.length > 0) {
-    rule.process = item.process.slice();
-    hasMatcher = true;
+    const processList = normalizeRoutingRuleProcesses(item.process);
+    if (processList.length > 0) {
+      rule.process = processList;
+      hasMatcher = true;
+    }
   }
   if (item.port.trim().length > 0) {
     rule.port = item.port.trim();
@@ -2156,6 +2188,47 @@ function normalizeRoutingRuleIps(ipList: Array<string>): Array<string> {
     }
   }
   return result;
+}
+
+export function normalizeRoutingRuleProcesses(processList: Array<string>, uidResolver: RoutingProcessUidResolver = resolveProcessUid): Array<string> {
+  const result = new Array<string>();
+  for (let index = 0; index < processList.length; index++) {
+    const packageName = processList[index].trim();
+    if (packageName.length === 0) {
+      continue;
+    }
+    if (packageName === UNIDENTIFIED_PROCESS_PACKAGE) {
+      result.push(UNIDENTIFIED_PROCESS_UID);
+      continue;
+    }
+    const uid = uidResolver(packageName);
+    if (uid !== undefined && isProcessUid(uid)) {
+      result.push(uid);
+    }
+  }
+  return result;
+}
+
+function resolveProcessUid(packageName: string): string | undefined {
+  const cached = PROCESS_UID_CACHE[packageName];
+  if (cached !== undefined) {
+    return cached;
+  }
+  try {
+    const info = bundleManager.getBundleInfoSync(
+      packageName,
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION
+    );
+    const uid = info.appInfo.uid.toString();
+    PROCESS_UID_CACHE[packageName] = uid;
+    return uid;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function isProcessUid(value: string): boolean {
+  return /^-?\d+$/.test(value.trim());
 }
 
 function normalizeRoutingTarget(value: string, proxyBalancerTag?: string): XrayRoutingTarget {
