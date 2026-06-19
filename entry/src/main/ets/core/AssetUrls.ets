@@ -4,12 +4,31 @@ export interface ScannedAssetUrl {
   url: string;
 }
 
+export interface AssetNameEntry {
+  id: string;
+  name: string;
+}
+
 export function normalizeScannedAssetUrl(value: string): ScannedAssetUrl {
   const url = value.trim();
   if (!isHttpAssetUrl(url)) {
     return { valid: false, name: '', url: '' };
   }
   return { valid: true, name: deriveAssetNameFromUrl(url), url };
+}
+
+export function hasDuplicateAssetName(assets: Array<AssetNameEntry>, name: string, editingId: string = ''): boolean {
+  const candidate = name.trim();
+  if (candidate.length === 0) {
+    return false;
+  }
+  for (let index = 0; index < assets.length; index++) {
+    const asset = assets[index];
+    if (asset.id !== editingId && asset.name.trim() === candidate) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function deriveAssetNameFromUrl(url: string): string {

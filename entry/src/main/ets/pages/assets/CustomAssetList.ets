@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
+import { hasDuplicateAssetName } from '../../core/AssetUrls';
 import { AppLanguage } from '../../core/Profile';
 import { translate } from '../../core/I18n';
 import { ASSETS_CONTROLLER } from '../../features/assets/AssetsController';
@@ -289,6 +290,11 @@ export struct CustomAssetList {
 
     if (trimmedName.length === 0) {
       promptAction.showToast({ message: this.t('assets.urlNameEmpty') });
+      return;
+    }
+
+    if (hasDuplicateAssetName(this.customAssets, trimmedName, this.editId)) {
+      promptAction.showToast({ message: this.t('assets.urlNameDuplicate') });
       return;
     }
 
