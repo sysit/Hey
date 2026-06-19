@@ -1677,15 +1677,14 @@ function formatHysteria2(outbound: XrayOutbound, name: string): string {
   }
 
   const queryParams = new Map<string, string>();
+  queryParams.set('security', 'tls');
   if (server.sni) {
     queryParams.set('sni', server.sni);
   }
   if (server.alpn) {
     queryParams.set('alpn', server.alpn);
   }
-  if (server.insecure) {
-    queryParams.set('insecure', '1');
-  }
+  queryParams.set('insecure', server.insecure ? '1' : '0');
   if (server.obfsPassword) {
     queryParams.set('obfs', 'salamander');
     queryParams.set('obfs-password', server.obfsPassword);

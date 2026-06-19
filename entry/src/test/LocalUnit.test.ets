@@ -2300,12 +2300,23 @@ export default function localUnitTest() {
       expect(hysteria2.outboundJson).assertContain('"pinSHA256": "hy2-pinned-sha256"');
       const exportedHy2 = formatOutboundJsonToShareLink(hysteria2.outboundJson, 'hy2-demo');
       expect(exportedHy2).assertContain('hysteria2://auth%40word%2Fwith%3F@example.com:443');
+      expect(exportedHy2).assertContain('security=tls');
+      expect(exportedHy2).assertContain('insecure=1');
       expect(exportedHy2).assertContain('mport=20000-50000');
       expect(exportedHy2).assertContain('mportHopInt=35');
       expect(exportedHy2).assertContain('pinSHA256=hy2-pinned-sha256');
       const roundTripHy2 = parseShareLinkToOutboundJson(exportedHy2);
       expect(roundTripHy2.success).assertTrue();
       expect(roundTripHy2.outboundJson).assertContain('"password": "auth@word/with?"');
+
+      const secureHy2 = parseShareLinkToOutboundJson('hysteria2://secret@example.com:443?sni=secure.hy#hy2-secure');
+      expect(secureHy2.success).assertTrue();
+      const exportedSecureHy2 = formatOutboundJsonToShareLink(secureHy2.outboundJson, 'hy2-secure');
+      expect(exportedSecureHy2).assertContain('security=tls');
+      expect(exportedSecureHy2).assertContain('insecure=0');
+      const roundTripSecureHy2 = parseShareLinkToOutboundJson(exportedSecureHy2);
+      expect(roundTripSecureHy2.success).assertTrue();
+      expect(roundTripSecureHy2.outboundJson).assertContain('"insecure": false');
     });
 
     it('parses base64 subscription content into selectable nodes', 0, () => {
