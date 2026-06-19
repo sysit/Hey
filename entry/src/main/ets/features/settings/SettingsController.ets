@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { AppLanguage, AppRuntimeMode, AppSettings, normalizeAppRuntimeMode, normalizeOutboundDomainResolveMethod, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, OutboundDomainResolveMethod, RoutingRule } from '../../core/Profile';
+import { AppLanguage, AppRuntimeMode, AppSettings, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeOutboundDomainResolveMethod, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, OutboundDomainResolveMethod, RoutingRule } from '../../core/Profile';
 import { normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic } from '../../core/V2rayNgOptions';
 import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore';
 
@@ -27,6 +27,9 @@ export interface SettingsDraft {
   localSocksUdpEnabled: boolean;
   localSocksUsername: string;
   localSocksPassword: string;
+  useHevTun: boolean;
+  hevTunLogLevel: string;
+  hevTunRwTimeout: string;
   muxEnabled: boolean;
   muxConcurrency: string;
   muxXudpConcurrency: string;
@@ -95,6 +98,9 @@ export class SettingsController {
       localSocksUdpEnabled: settings.localSocksUdpEnabled,
       localSocksUsername: settings.localSocksUsername,
       localSocksPassword: settings.localSocksPassword,
+      useHevTun: settings.useHevTun,
+      hevTunLogLevel: settings.hevTunLogLevel,
+      hevTunRwTimeout: settings.hevTunRwTimeout,
       muxEnabled: settings.muxEnabled,
       muxConcurrency: settings.muxConcurrency.toString(),
       muxXudpConcurrency: settings.muxXudpConcurrency.toString(),
@@ -131,7 +137,8 @@ export class SettingsController {
   }
 
   buildSettings(draft: SettingsDraft): AppSettings {
-    const localSocksEnabled = draft.localSocksEnabled;
+    const useHevTun = draft.useHevTun;
+    const localSocksEnabled = draft.localSocksEnabled || useHevTun;
     return {
       language: draft.language,
       uiModeNight: normalizeUiModeNight(draft.uiModeNight, DEFAULT_APP_SETTINGS.uiModeNight),
@@ -156,6 +163,9 @@ export class SettingsController {
       localSocksUdpEnabled: draft.localSocksUdpEnabled,
       localSocksUsername: draft.localSocksUsername.trim(),
       localSocksPassword: draft.localSocksPassword.trim(),
+      useHevTun,
+      hevTunLogLevel: normalizeHevTunLogLevel(draft.hevTunLogLevel, DEFAULT_APP_SETTINGS.hevTunLogLevel),
+      hevTunRwTimeout: normalizeHevTunRwTimeout(draft.hevTunRwTimeout, DEFAULT_APP_SETTINGS.hevTunRwTimeout),
       muxEnabled: draft.muxEnabled,
       muxConcurrency: this.muxConcurrencyValue(draft.muxConcurrency, DEFAULT_APP_SETTINGS.muxConcurrency),
       muxXudpConcurrency: this.muxConcurrencyValue(draft.muxXudpConcurrency, DEFAULT_APP_SETTINGS.muxXudpConcurrency),

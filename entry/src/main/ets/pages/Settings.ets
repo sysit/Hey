@@ -7,9 +7,13 @@ import {
   APP_MODE_VPN,
   AppLanguage,
   DEFAULT_DELAY_TEST_URL,
+  DEFAULT_HEV_TUN_LOG_LEVEL,
+  DEFAULT_HEV_TUN_RW_TIMEOUT,
   DEFAULT_IP_API_URL,
   DEFAULT_VPN_MTU,
+  HEV_TUN_LOG_LEVEL_OPTIONS,
   normalizeAppRuntimeMode,
+  normalizeHevTunLogLevel,
   OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
   OUTBOUND_DOMAIN_RESOLVE_NONE,
   OUTBOUND_DOMAIN_RESOLVE_REPLACE,
@@ -61,6 +65,9 @@ struct SettingsPage {
   @State private settingLocalSocksUdp: boolean = true;
   @State private settingLocalSocksUsername: string = '';
   @State private settingLocalSocksPassword: string = '';
+  @State private settingUseHevTun: boolean = true;
+  @State private settingHevTunLogLevel: string = DEFAULT_HEV_TUN_LOG_LEVEL;
+  @State private settingHevTunRwTimeout: string = DEFAULT_HEV_TUN_RW_TIMEOUT;
   @State private settingMux: boolean = false;
   @State private settingMuxConcurrency: string = '8';
   @State private settingMuxXudpConcurrency: string = '8';
@@ -183,6 +190,14 @@ struct SettingsPage {
             this.SettingInput(this.t('settings.localSocksUsername'), this.settingLocalSocksUsername, 'localSocksUsername')
             this.RowDivider()
             this.SettingInput(this.t('settings.localSocksPassword'), this.settingLocalSocksPassword, 'localSocksPassword')
+            this.RowDivider()
+            this.SettingToggle(this.t('settings.useHevTun'), this.settingUseHevTun, 'useHevTun')
+            if (this.settingUseHevTun) {
+              this.RowDivider()
+              this.SettingOption(this.t('settings.hevTunLogLevel'), this.hevTunLogLevelLabel(), 'hevTunLogLevel')
+              this.RowDivider()
+              this.SettingInput(this.t('settings.hevTunRwTimeout'), this.settingHevTunRwTimeout, 'hevTunRwTimeout')
+            }
             this.RowDivider()
             this.SettingToggle(this.t('settings.ipv6Enabled'), this.settingIpv6Enabled, 'ipv6Enabled')
             this.RowDivider()
@@ -444,9 +459,15 @@ struct SettingsPage {
         this.settingAppendHttpProxy = this.settingLocalSocks ? !this.settingAppendHttpProxy : false;
         break;
       case 'localSocks':
-        this.settingLocalSocks = !this.settingLocalSocks;
+        this.settingLocalSocks = this.settingUseHevTun ? true : !this.settingLocalSocks;
         if (!this.settingLocalSocks) {
           this.settingAppendHttpProxy = false;
+        }
+        break;
+      case 'useHevTun':
+        this.settingUseHevTun = !this.settingUseHevTun;
+        if (this.settingUseHevTun) {
+          this.settingLocalSocks = true;
         }
         break;
       case 'localSocksDynamicPort':
@@ -493,6 +514,9 @@ struct SettingsPage {
         break;
       case 'localSocksPassword':
         this.settingLocalSocksPassword = value;
+        break;
+      case 'hevTunRwTimeout':
+        this.settingHevTunRwTimeout = value;
         break;
       case 'remoteDns':
         this.settingRemoteDns = value;
@@ -594,6 +618,9 @@ struct SettingsPage {
       localSocksUdpEnabled: this.settingLocalSocksUdp,
       localSocksUsername: this.settingLocalSocksUsername,
       localSocksPassword: this.settingLocalSocksPassword,
+      useHevTun: this.settingUseHevTun,
+      hevTunLogLevel: this.settingHevTunLogLevel,
+      hevTunRwTimeout: this.settingHevTunRwTimeout,
       muxEnabled: this.settingMux,
       muxConcurrency: this.settingMuxConcurrency,
       muxXudpConcurrency: this.settingMuxXudpConcurrency,
@@ -653,6 +680,9 @@ struct SettingsPage {
     this.settingLocalSocksUdp = draft.localSocksUdpEnabled;
     this.settingLocalSocksUsername = draft.localSocksUsername;
     this.settingLocalSocksPassword = draft.localSocksPassword;
+    this.settingUseHevTun = draft.useHevTun;
+    this.settingHevTunLogLevel = draft.hevTunLogLevel;
+    this.settingHevTunRwTimeout = draft.hevTunRwTimeout;
     this.settingMux = draft.muxEnabled;
     this.settingMuxConcurrency = draft.muxConcurrency;
     this.settingMuxXudpConcurrency = draft.muxXudpConcurrency;
@@ -727,6 +757,10 @@ struct SettingsPage {
     }
     if (action === 'logLevel') {
       this.showLogLevelMenu();
+      return;
+    }
+    if (action === 'hevTunLogLevel') {
+      this.showHevTunLogLevelMenu();
       return;
     }
     if (action === 'outboundDomainResolveMethod') {
@@ -868,6 +902,27 @@ struct SettingsPage {
     });
   }
 
+  private showHevTunLogLevelMenu(): void {
+    const values: string[] = HEV_TUN_LOG_LEVEL_OPTIONS.slice();
+    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button, promptAction.Button] = [
+      { text: this.t('settings.hevTunLogLevel.error'), color: AppColor.brand } as promptAction.Button,
+      { text: this.t('settings.hevTunLogLevel.warn'), color: AppColor.brand } as promptAction.Button,
+      { text: this.t('settings.hevTunLogLevel.info'), color: AppColor.brand } as promptAction.Button,
+      { text: this.t('settings.hevTunLogLevel.debug'), color: AppColor.brand } as promptAction.Button
+    ];
+
+    promptAction.showActionMenu({
+      title: this.t('settings.hevTunLogLevel'),
+      buttons
+    }).then((result) => {
+      if (result.index >= 0 && result.index < values.length) {
+        this.settingHevTunLogLevel = values[result.index];
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.hevTunLogLevel')));
+        this.persistSettings(false);
+      }
+    });
+  }
+
   private showOutboundDomainResolveMethodMenu(): void {
     const values: OutboundDomainResolveMethod[] = [
       OUTBOUND_DOMAIN_RESOLVE_NONE,
@@ -980,6 +1035,20 @@ struct SettingsPage {
       return this.t('settings.logLevel.none');
     }
     return this.t('settings.logLevel.warning');
+  }
+
+  private hevTunLogLevelLabel(): string {
+    const logLevel = normalizeHevTunLogLevel(this.settingHevTunLogLevel);
+    if (logLevel === 'error') {
+      return this.t('settings.hevTunLogLevel.error');
+    }
+    if (logLevel === 'info') {
+      return this.t('settings.hevTunLogLevel.info');
+    }
+    if (logLevel === 'debug') {
+      return this.t('settings.hevTunLogLevel.debug');
+    }
+    return this.t('settings.hevTunLogLevel.warn');
   }
 
   private outboundDomainResolveMethodLabel(): string {

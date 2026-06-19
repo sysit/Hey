@@ -4,13 +4,13 @@ export type IconButtonHandler = () => void;
 
 @Component
 export struct IconButton {
-  icon: Resource = $r('app.media.ic_more_vert');
-  iconSize: number = 24;
-  buttonSize: number = 44;
-  iconColor: ResourceColor = AppColor.textPrimary;
-  buttonBackground: ResourceColor = Color.Transparent;
-  radius: number = 22;
-  isEnabled: boolean = true;
+  @Prop icon: Resource = $r('app.media.ic_more_vert');
+  @Prop iconSize: number = 24;
+  @Prop buttonSize: number = 44;
+  @Prop iconColor: ResourceColor = AppColor.textPrimary;
+  @Prop buttonBackground: ResourceColor = Color.Transparent;
+  @Prop radius: number = 22;
+  @Prop isEnabled: boolean = true;
   onAction: IconButtonHandler = () => {};
 
   build() {

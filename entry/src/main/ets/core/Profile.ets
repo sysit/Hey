@@ -119,8 +119,21 @@ export const UI_MODE_NIGHT_SYSTEM: AppUiModeNight = '0';
 export const UI_MODE_NIGHT_LIGHT: AppUiModeNight = '1';
 export const UI_MODE_NIGHT_DARK: AppUiModeNight = '2';
 export type AppRuntimeMode = 'VPN' | 'Proxy only';
+export type HevTunLogLevel = 'error' | 'warn' | 'info' | 'debug';
 export const APP_MODE_VPN: AppRuntimeMode = 'VPN';
 export const APP_MODE_PROXY_ONLY: AppRuntimeMode = 'Proxy only';
+export const HEV_TUN_LOG_LEVEL_ERROR: HevTunLogLevel = 'error';
+export const HEV_TUN_LOG_LEVEL_WARN: HevTunLogLevel = 'warn';
+export const HEV_TUN_LOG_LEVEL_INFO: HevTunLogLevel = 'info';
+export const HEV_TUN_LOG_LEVEL_DEBUG: HevTunLogLevel = 'debug';
+export const DEFAULT_HEV_TUN_LOG_LEVEL: HevTunLogLevel = HEV_TUN_LOG_LEVEL_WARN;
+export const DEFAULT_HEV_TUN_RW_TIMEOUT: string = '300,60';
+export const HEV_TUN_LOG_LEVEL_OPTIONS: Array<HevTunLogLevel> = [
+  HEV_TUN_LOG_LEVEL_ERROR,
+  HEV_TUN_LOG_LEVEL_WARN,
+  HEV_TUN_LOG_LEVEL_INFO,
+  HEV_TUN_LOG_LEVEL_DEBUG
+];
 export type OutboundDomainResolveMethod = '0' | '1' | '2';
 export const OUTBOUND_DOMAIN_RESOLVE_NONE: OutboundDomainResolveMethod = '0';
 export const OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS: OutboundDomainResolveMethod = '1';
@@ -200,6 +213,41 @@ export function normalizeAppRuntimeMode(value: string | undefined, fallback: App
   return fallback === APP_MODE_PROXY_ONLY ? APP_MODE_PROXY_ONLY : APP_MODE_VPN;
 }
 
+export function normalizeHevTunLogLevel(
+  value: string | undefined,
+  fallback: HevTunLogLevel = DEFAULT_HEV_TUN_LOG_LEVEL
+): HevTunLogLevel {
+  switch (value) {
+    case HEV_TUN_LOG_LEVEL_ERROR:
+    case HEV_TUN_LOG_LEVEL_WARN:
+    case HEV_TUN_LOG_LEVEL_INFO:
+    case HEV_TUN_LOG_LEVEL_DEBUG:
+      return value;
+    default:
+      return fallback;
+  }
+}
+
+export function normalizeHevTunRwTimeout(
+  value: string | undefined,
+  fallback: string = DEFAULT_HEV_TUN_RW_TIMEOUT
+): string {
+  const text = (value ?? '').trim();
+  if (text.length === 0) {
+    return fallback;
+  }
+  const parts = text.split(',');
+  if (parts.length !== 2) {
+    return fallback;
+  }
+  const tcpTimeout = Number(parts[0].trim());
+  const udpTimeout = Number(parts[1].trim());
+  if (!Number.isInteger(tcpTimeout) || !Number.isInteger(udpTimeout) || tcpTimeout <= 0 || udpTimeout <= 0) {
+    return fallback;
+  }
+  return `${tcpTimeout},${udpTimeout}`;
+}
+
 export function normalizeOutboundDomainResolveMethod(
   value: string | undefined,
   fallback: OutboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS
@@ -264,6 +312,9 @@ export interface AppSettings {
   localSocksUdpEnabled: boolean;
   localSocksUsername: string;
   localSocksPassword: string;
+  useHevTun: boolean;
+  hevTunLogLevel: HevTunLogLevel;
+  hevTunRwTimeout: string;
   muxEnabled: boolean;
   muxConcurrency: number;
   muxXudpConcurrency: number;

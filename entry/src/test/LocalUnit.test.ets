@@ -11,7 +11,7 @@ import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntim
 import { parseManualOutboundEditState } from '../main/ets/core/ManualOutboundEditState';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { ANDROID_PACKAGE_NAME_LIST_URL, clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, resolveAutoProxyPackageListContent, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
-import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
+import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_HEV_TUN_LOG_LEVEL, DEFAULT_HEV_TUN_RW_TIMEOUT, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { BUILTIN_GEO_DATA_FILE_NAMES, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, GEOIP_ONLY_CN_PRIVATE_URL, GEO_FILE_SOURCES, V2RAYNG_GEO_FILE_SOURCE_REPOS, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, UNIDENTIFIED_PROCESS_PACKAGE, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeFullConfigRoutingProcesses, normalizeOutboundInput, normalizeRoutingRuleProcesses, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
@@ -599,6 +599,9 @@ export default function localUnitTest() {
         localSocksUdpEnabled: true,
         localSocksUsername: '',
         localSocksPassword: '',
+        useHevTun: false,
+        hevTunLogLevel: DEFAULT_HEV_TUN_LOG_LEVEL,
+        hevTunRwTimeout: DEFAULT_HEV_TUN_RW_TIMEOUT,
         muxEnabled: true,
         muxConcurrency: 4,
         muxXudpConcurrency: 4,
@@ -1158,6 +1161,9 @@ export default function localUnitTest() {
     it('enables local socks proxy by default like v2rayNG', 0, () => {
       expect(DEFAULT_APP_SETTINGS.localSocksEnabled).assertTrue();
       expect(DEFAULT_APP_SETTINGS.localSocksPort).assertEqual(10808);
+      expect(DEFAULT_APP_SETTINGS.useHevTun).assertTrue();
+      expect(DEFAULT_APP_SETTINGS.hevTunLogLevel).assertEqual(DEFAULT_HEV_TUN_LOG_LEVEL);
+      expect(DEFAULT_APP_SETTINGS.hevTunRwTimeout).assertEqual(DEFAULT_HEV_TUN_RW_TIMEOUT);
       expect(LOCAL_SOCKS_PROXY_PORT).assertEqual(10808);
       const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, DEFAULT_APP_SETTINGS);
       expect(result.configJson).assertContain('"tag": "socks-in"');
@@ -1623,6 +1629,9 @@ export default function localUnitTest() {
       settings.localSocksUdpEnabled = false;
       settings.localSocksUsername = 'socks-user';
       settings.localSocksPassword = 'socks-pass';
+      settings.useHevTun = true;
+      settings.hevTunLogLevel = 'info';
+      settings.hevTunRwTimeout = '120,30';
       settings.vpnInterfaceAddressIndex = 5;
       settings.vpnBypassLan = '2';
       settings.vpnMtu = 1420;
@@ -1668,6 +1677,9 @@ export default function localUnitTest() {
       expect(draft.localSocksUdpEnabled).assertFalse();
       expect(draft.localSocksUsername).assertEqual('socks-user');
       expect(draft.localSocksPassword).assertEqual('socks-pass');
+      expect(draft.useHevTun).assertTrue();
+      expect(draft.hevTunLogLevel).assertEqual('info');
+      expect(draft.hevTunRwTimeout).assertEqual('120,30');
       expect(draft.vpnInterfaceAddressIndex).assertEqual(5);
       expect(draft.vpnBypassLan).assertEqual('2');
       expect(draft.vpnMtu).assertEqual('1420');
@@ -1705,6 +1717,9 @@ export default function localUnitTest() {
       expect(rebuilt.localSocksUdpEnabled).assertFalse();
       expect(rebuilt.localSocksUsername).assertEqual('socks-user');
       expect(rebuilt.localSocksPassword).assertEqual('socks-pass');
+      expect(rebuilt.useHevTun).assertTrue();
+      expect(rebuilt.hevTunLogLevel).assertEqual('info');
+      expect(rebuilt.hevTunRwTimeout).assertEqual('120,30');
       expect(rebuilt.vpnInterfaceAddressIndex).assertEqual(5);
       expect(rebuilt.vpnBypassLan).assertEqual('2');
       expect(rebuilt.vpnMtu).assertEqual(1420);
@@ -1766,6 +1781,14 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).logLevel).assertEqual('none');
       draft.logLevel = 'verbose';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).logLevel).assertEqual('warning');
+      draft.hevTunLogLevel = 'debug';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).hevTunLogLevel).assertEqual('debug');
+      draft.hevTunLogLevel = 'trace';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).hevTunLogLevel).assertEqual(DEFAULT_HEV_TUN_LOG_LEVEL);
+      draft.hevTunRwTimeout = ' 120 , 30 ';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).hevTunRwTimeout).assertEqual('120,30');
+      draft.hevTunRwTimeout = 'bad';
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).hevTunRwTimeout).assertEqual(DEFAULT_HEV_TUN_RW_TIMEOUT);
       draft.outboundDomainResolveMethod = 'bad' as OutboundDomainResolveMethod;
       expect(SETTINGS_CONTROLLER.buildSettings(draft).outboundDomainResolveMethod).assertEqual(OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS);
       draft.routingDomainStrategy = 'bad';
@@ -1780,8 +1803,14 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).realPingConcurrency).assertEqual(16);
       draft.uiModeNight = 'bad';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).uiModeNight).assertEqual('0');
+      draft.useHevTun = true;
       draft.localSocksEnabled = false;
       draft.appendHttpProxy = true;
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).localSocksEnabled).assertTrue();
+      draft.useHevTun = false;
+      draft.localSocksEnabled = false;
+      draft.appendHttpProxy = true;
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).localSocksEnabled).assertFalse();
       expect(SETTINGS_CONTROLLER.buildSettings(draft).appendHttpProxy).assertFalse();
     });
 
@@ -1794,6 +1823,12 @@ export default function localUnitTest() {
       expect(normalizeRoutingDomainStrategy('IPIfNonMatch')).assertEqual('IPIfNonMatch');
       expect(normalizeRoutingDomainStrategy('IPOnDemand')).assertEqual('IPOnDemand');
       expect(normalizeRoutingDomainStrategy('bad')).assertEqual('AsIs');
+      expect(normalizeHevTunLogLevel(undefined)).assertEqual(DEFAULT_HEV_TUN_LOG_LEVEL);
+      expect(normalizeHevTunLogLevel('info')).assertEqual('info');
+      expect(normalizeHevTunLogLevel('trace')).assertEqual(DEFAULT_HEV_TUN_LOG_LEVEL);
+      expect(normalizeHevTunRwTimeout(undefined)).assertEqual(DEFAULT_HEV_TUN_RW_TIMEOUT);
+      expect(normalizeHevTunRwTimeout(' 10 , 20 ')).assertEqual('10,20');
+      expect(normalizeHevTunRwTimeout('10')).assertEqual(DEFAULT_HEV_TUN_RW_TIMEOUT);
       expect(resolveDelayTestUrl(undefined)).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('')).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('  https://probe.example/ping  ')).assertEqual('https://probe.example/ping');
@@ -3045,6 +3080,9 @@ function buildSettingsFixture(): AppSettings {
     localSocksUdpEnabled: true,
     localSocksUsername: '',
     localSocksPassword: '',
+    useHevTun: false,
+    hevTunLogLevel: DEFAULT_HEV_TUN_LOG_LEVEL,
+    hevTunRwTimeout: DEFAULT_HEV_TUN_RW_TIMEOUT,
     muxEnabled: false,
     muxConcurrency: 8,
     muxXudpConcurrency: 8,

@@ -2,8 +2,8 @@ import { AppColor, FontSz, Space } from '../theme/Theme';
 
 @Component
 export struct SectionHeader {
-  title: string = '';
-  detail: string = '';
+  @Prop title: string = '';
+  @Prop detail: string = '';
 
   build() {
     Column({ space: 2 }) {

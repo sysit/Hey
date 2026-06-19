@@ -8,12 +8,12 @@ export type LanguageSelectHandler = (language: AppLanguage) => void;
 
 @Component
 export struct SettingToggleRow {
-  title: string = '';
-  settingKey: string = '';
-  isEnabled: boolean = false;
+  @Prop title: string = '';
+  @Prop settingKey: string = '';
+  @Prop isEnabled: boolean = false;
   action: string = '';
-  onLabel: string = '';
-  offLabel: string = '';
+  @Prop onLabel: string = '';
+  @Prop offLabel: string = '';
   onToggle: ToggleSettingHandler = (_action: string) => {};
 
   build() {
@@ -51,12 +51,12 @@ export struct SettingToggleRow {
 
 @Component
 export struct LanguageToggleRow {
-  title: string = '';
-  settingKey: string = '';
-  autoLabel: string = '';
-  zhLabel: string = '';
-  enLabel: string = '';
-  language: AppLanguage = DEFAULT_LANGUAGE;
+  @Prop title: string = '';
+  @Prop settingKey: string = '';
+  @Prop autoLabel: string = '';
+  @Prop zhLabel: string = '';
+  @Prop enLabel: string = '';
+  @Prop language: AppLanguage = DEFAULT_LANGUAGE;
   onChange: LanguageSelectHandler = (_language: AppLanguage) => {};
 
   build() {
@@ -106,9 +106,9 @@ export struct LanguageToggleRow {
 
 @Component
 export struct SettingInputRow {
-  title: string = '';
-  settingKey: string = '';
-  value: string = '';
+  @Prop title: string = '';
+  @Prop settingKey: string = '';
+  @Prop value: string = '';
   action: string = '';
   onChange: TextSettingHandler = (_action: string, _value: string) => {};
 

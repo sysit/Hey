@@ -6,12 +6,16 @@ import {
   AppSettings,
   APP_MODE_VPN,
   DEFAULT_DELAY_TEST_URL,
+  DEFAULT_HEV_TUN_LOG_LEVEL,
+  DEFAULT_HEV_TUN_RW_TIMEOUT,
   DEFAULT_IP_API_URL,
   DEFAULT_VPN_BYPASS_LAN,
   DEFAULT_VPN_INTERFACE_ADDRESS_INDEX,
   DEFAULT_VPN_MTU,
   OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
   normalizeAppRuntimeMode,
+  normalizeHevTunLogLevel,
+  normalizeHevTunRwTimeout,
   normalizeOutboundDomainResolveMethod,
   normalizeRealPingConcurrency,
   normalizeRoutingDomainStrategy,
@@ -50,6 +54,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   localSocksUdpEnabled: true,
   localSocksUsername: '',
   localSocksPassword: '',
+  useHevTun: true,
+  hevTunLogLevel: DEFAULT_HEV_TUN_LOG_LEVEL,
+  hevTunRwTimeout: DEFAULT_HEV_TUN_RW_TIMEOUT,
   muxEnabled: false,
   muxConcurrency: 8,
   muxXudpConcurrency: 8,
@@ -116,7 +123,8 @@ export class SettingsStore {
 
   private static normalize(raw: AppSettings): AppSettings {
     const base = SettingsStore.copy(DEFAULT_APP_SETTINGS);
-    const localSocksEnabled = SettingsStore.boolValue(raw.localSocksEnabled, base.localSocksEnabled);
+    const useHevTun = SettingsStore.boolValue(raw.useHevTun, base.useHevTun);
+    const localSocksEnabled = SettingsStore.boolValue(raw.localSocksEnabled, base.localSocksEnabled) || useHevTun;
     return {
       language: normalizeLanguage(raw.language),
       uiModeNight: normalizeUiModeNight(raw.uiModeNight, base.uiModeNight),
@@ -141,6 +149,9 @@ export class SettingsStore {
       localSocksUdpEnabled: SettingsStore.boolValue(raw.localSocksUdpEnabled, base.localSocksUdpEnabled),
       localSocksUsername: SettingsStore.stringValue(raw.localSocksUsername, base.localSocksUsername),
       localSocksPassword: SettingsStore.stringValue(raw.localSocksPassword, base.localSocksPassword),
+      useHevTun,
+      hevTunLogLevel: normalizeHevTunLogLevel(SettingsStore.stringValue(raw.hevTunLogLevel, base.hevTunLogLevel), base.hevTunLogLevel),
+      hevTunRwTimeout: normalizeHevTunRwTimeout(SettingsStore.stringValue(raw.hevTunRwTimeout, base.hevTunRwTimeout), base.hevTunRwTimeout),
       muxEnabled: SettingsStore.boolValue(raw.muxEnabled, base.muxEnabled),
       muxConcurrency: SettingsStore.numberValue(raw.muxConcurrency, base.muxConcurrency),
       muxXudpConcurrency: SettingsStore.numberValue(raw.muxXudpConcurrency, base.muxXudpConcurrency),
