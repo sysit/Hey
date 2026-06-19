@@ -225,6 +225,7 @@
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 证书 pin 完成；`pinSHA256` 可从分享链接导入导出，并可在 NodeEdit 手动填写写入 outbound |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 bandwidth/obfs/port-hop 运行配置完成；启动配置生成 `finalmask.quicParams` brutal 带宽、`udpHop` 和 `salamander` mask |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 runtime core 形状完成；启动配置按 v2rayNG 归一为 Xray `protocol=hysteria`、`hysteriaSettings.auth`、TLS/pin 与 finalmask |
+| 2026-06-19 | 协议点检 | ✅ 普通手动节点编辑回填完成；节点详情可重新打开手动协议节点，NodeEdit 回填字段并原位更新 VLESS/VMess/Trojan/Shadowsocks/SOCKS/HTTP/WireGuard/Hysteria2 |
 | 2026-06-19 | 协议点检 | ✅ WireGuard reserved 默认值完成；分享链接、`.conf` 导入和手动 builder 缺省写入 `[0,0,0]`，导出保留 `reserved=0,0,0` |
 | 2026-06-19 | 协议点检 | ✅ WireGuard MTU 默认值完成；分享链接和 `.conf` 导入缺省 `mtu` 时按 v2rayNG 写入 `1420`，导出保留 `mtu=1420` |
 | 2026-06-19 | 协议点检 | ✅ TLS/Reality ALPN 选项完成；NodeEdit 按 v2rayNG `streamsecurity_alpn` 限定 ALPN，Hysteria2 手动与运行配置缺省/非法 ALPN 兜底 `h3` |

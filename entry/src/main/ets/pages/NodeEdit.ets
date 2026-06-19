@@ -2,6 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { buildKcpFinalMask } from '../core/KcpTransport';
+import { isManualEditProtocol, ManualOutboundEditState, normalizeManualEditProtocol, parseManualOutboundEditState } from '../core/ManualOutboundEditState';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
@@ -361,6 +362,11 @@ interface FormOutbound {
   streamSettings?: FormStreamSettings;
 }
 
+interface NodeEditParams {
+  protocol?: string;
+  nodeId?: string;
+}
+
 @Entry
 @Component
 struct NodeEditPage {
@@ -419,14 +425,20 @@ struct NodeEditPage {
   @State private hy2BandwidthDown: string = '';
   @State private hy2BandwidthUp: string = '';
 
+  @State private editNodeId: string = '';
+  @State private selectedNodeId: string = '';
   @State private isBusy: boolean = false;
   @State private lastError: string = '';
 
   aboutToAppear(): void {
-    const params = router.getParams() as Record<string, Object>;
-    this.protocol = (params?.protocol as string) ?? 'vless';
-    this.applyProtocolDefaults(this.protocol);
-    this.loadState();
+    const params = router.getParams() as NodeEditParams;
+    this.editNodeId = params?.nodeId ?? '';
+    const requestedProtocol = normalizeManualEditProtocol(params?.protocol ?? 'vless');
+    if (this.editNodeId.length === 0) {
+      this.protocol = isManualEditProtocol(requestedProtocol) ? requestedProtocol : 'vless';
+      this.applyProtocolDefaults(this.protocol);
+    }
+    this.loadState(requestedProtocol);
   }
 
   build() {
@@ -767,7 +779,7 @@ struct NodeEditPage {
                   .color(AppColor.onBrand)
                   .margin({ right: Space.sm })
               }
-              Text('保存节点配置')
+              Text(this.editNodeId.length > 0 ? '更新节点配置' : '保存节点配置')
                 .fontSize(FontSz.headline)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.isSaveEnabled() ? AppColor.onBrand : AppColor.textTertiary)
@@ -820,9 +832,34 @@ struct NodeEditPage {
     return this.serverHost.trim().length > 0 && this.serverPort.trim().length > 0 && !this.isBusy;
   }
 
-  private async loadState(): Promise<void> {
+  private async loadState(requestedProtocol: string): Promise<void> {
     const context = getContext(this) as common.Context;
     this.language = (await SETTINGS_CONTROLLER.load(context)).language;
+    if (this.editNodeId.length === 0) {
+      return;
+    }
+
+    const state = await NODES_CONTROLLER.load(context, this.language);
+    this.selectedNodeId = state.selectedNodeId;
+    const found = NODES_CONTROLLER.findNode(state.nodes, this.editNodeId);
+    if (found === null ||
+      found.sourceUrl.trim().length > 0 ||
+      found.rawLink.trim().length > 0 ||
+      ((found.configType ?? 'outbound') !== 'outbound')) {
+      this.lastError = translate(this.language, 'error.editManualNodeUnsupported');
+      this.protocol = isManualEditProtocol(requestedProtocol) ? requestedProtocol : 'vless';
+      this.applyProtocolDefaults(this.protocol);
+      return;
+    }
+
+    const editState = parseManualOutboundEditState(found.outboundJson, found.name, found.protocol);
+    if (!editState.valid) {
+      this.lastError = editState.message;
+      this.protocol = isManualEditProtocol(requestedProtocol) ? requestedProtocol : 'vless';
+      this.applyProtocolDefaults(this.protocol);
+      return;
+    }
+    this.applyManualEditState(editState);
   }
 
   private async saveManualNode(): Promise<void> {
@@ -1131,15 +1168,27 @@ struct NodeEditPage {
         return;
       }
 
-      const saved = await NODES_CONTROLLER.saveProfile(context, validation.normalizedJson, this.language, validation.configType);
-      if (saved.profile === null) {
-        this.lastError = saved.lastError;
-        return;
-      }
+      if (this.editNodeId.length > 0) {
+        const updated = await NODES_CONTROLLER.updateManualNode(context, this.editNodeId, this.nodeName, validation.normalizedJson, this.language, validation.configType);
+        if (!updated.success) {
+          this.lastError = updated.lastError;
+          return;
+        }
+        if (updated.selected || this.editNodeId === this.selectedNodeId) {
+          markRuntimeSettingsRestartNeeded();
+        }
+        promptAction.showToast({ message: '节点更新成功' });
+      } else {
+        const saved = await NODES_CONTROLLER.saveProfile(context, validation.normalizedJson, this.language, validation.configType);
+        if (saved.profile === null) {
+          this.lastError = saved.lastError;
+          return;
+        }
 
-      await SubscriptionStore.addManualNode(context, this.nodeName, validation.normalizedJson, validation.configType);
-      markRuntimeSettingsRestartNeeded();
-      promptAction.showToast({ message: '节点保存成功' });
+        await SubscriptionStore.addManualNode(context, this.nodeName, validation.normalizedJson, validation.configType);
+        markRuntimeSettingsRestartNeeded();
+        promptAction.showToast({ message: '节点保存成功' });
+      }
       router.back();
     } catch (error) {
       this.lastError = '保存失败：' + JSON.stringify(error);
@@ -1224,5 +1273,51 @@ struct NodeEditPage {
       this.tlsSecurity = 'none';
       this.tlsAlpn = 'h3';
     }
+  }
+
+  private applyManualEditState(state: ManualOutboundEditState): void {
+    this.protocol = state.protocol;
+    this.nodeName = state.nodeName;
+    this.serverHost = state.serverHost;
+    this.serverPort = state.serverPort;
+    this.userIdOrPassword = state.userIdOrPassword;
+    this.proxyUser = state.proxyUser;
+    this.proxyPass = state.proxyPass;
+    this.securityOrMethod = state.securityOrMethod;
+    this.vmessAlterId = state.vmessAlterId;
+    this.vlessFlow = state.vlessFlow;
+    this.transportType = state.transportType;
+    this.transportHost = state.transportHost;
+    this.transportPath = state.transportPath;
+    this.transportFinalMask = state.transportFinalMask;
+    this.transportTcpHeaderType = state.transportTcpHeaderType;
+    this.transportKcpHeaderType = state.transportKcpHeaderType;
+    this.transportKcpMtu = state.transportKcpMtu;
+    this.transportKcpTti = state.transportKcpTti;
+    this.transportGrpcMode = state.transportGrpcMode;
+    this.transportXhttpMode = state.transportXhttpMode;
+    this.transportXhttpExtra = state.transportXhttpExtra;
+    this.tlsSecurity = state.tlsSecurity;
+    this.tlsSni = state.tlsSni;
+    this.tlsAlpn = state.tlsAlpn;
+    this.tlsAllowInsecure = state.tlsAllowInsecure;
+    this.tlsFingerprint = state.tlsFingerprint;
+    this.tlsEchConfigList = state.tlsEchConfigList;
+    this.tlsPinnedPeerCertSha256 = state.tlsPinnedPeerCertSha256;
+    this.realityPublicKey = state.realityPublicKey;
+    this.realityShortId = state.realityShortId;
+    this.realitySpiderX = state.realitySpiderX;
+    this.realityMldsa65Verify = state.realityMldsa65Verify;
+    this.wgPublicKey = state.wgPublicKey;
+    this.wgPreSharedKey = state.wgPreSharedKey;
+    this.wgReserved = state.wgReserved;
+    this.wgLocalAddress = state.wgLocalAddress;
+    this.wgMtu = state.wgMtu;
+    this.hy2ObfsPassword = state.hy2ObfsPassword;
+    this.hy2PortHopping = state.hy2PortHopping;
+    this.hy2PortHoppingInterval = state.hy2PortHoppingInterval;
+    this.hy2PinSha256 = state.hy2PinSha256;
+    this.hy2BandwidthDown = state.hy2BandwidthDown;
+    this.hy2BandwidthUp = state.hy2BandwidthUp;
   }
 }

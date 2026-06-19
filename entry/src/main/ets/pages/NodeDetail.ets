@@ -6,6 +6,7 @@ import { image } from '@kit.ImageKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, AppSettings, ProxyNode, SubscriptionGroup } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
+import { isManualEditProtocol, normalizeManualEditProtocol } from '../core/ManualOutboundEditState';
 import { formatOutboundJsonToShareLink } from '../core/ShareLinkParser';
 import { buildNodeFullConfigModel, NodeFullConfigModel } from '../features/nodes/NodeOperations';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
@@ -108,6 +109,22 @@ struct NodeDetailPage {
               .margin({ left: Space.lg, right: Space.lg })
               .onClick(() => {
                 this.openJsonEditor();
+              })
+          }
+
+          if (this.canEditManualNode()) {
+            Button(this.t('node.detail.editManual'))
+              .height(44)
+              .width('100%')
+              .enabled(this.node.id.length > 0 && !SHARED_RUNTIME_CONTROLLER.isBusy())
+              .backgroundColor(AppColor.surfaceAlt)
+              .fontColor(AppColor.textPrimary)
+              .fontSize(FontSz.callout)
+              .fontWeight(FontWeight.Medium)
+              .borderRadius(Radius.pill)
+              .margin({ left: Space.lg, right: Space.lg })
+              .onClick(() => {
+                this.openManualEditor();
               })
           }
 
@@ -435,6 +452,15 @@ struct NodeDetailPage {
       (configType === 'proxy-chain' || configType === 'policy-group');
   }
 
+  private canEditManualNode(): boolean {
+    const configType = this.node.configType ?? 'outbound';
+    return this.node.id.length > 0 &&
+      this.node.sourceUrl.trim().length === 0 &&
+      this.node.rawLink.trim().length === 0 &&
+      configType === 'outbound' &&
+      isManualEditProtocol(this.node.protocol);
+  }
+
   private openJsonEditor(): void {
     router.pushUrl({
       url: AppRoute.JSON_IMPORT,
@@ -450,6 +476,16 @@ struct NodeDetailPage {
       params: {
         nodeId: this.node.id,
         mode: this.node.configType ?? this.node.protocol
+      }
+    });
+  }
+
+  private openManualEditor(): void {
+    router.pushUrl({
+      url: AppRoute.NODE_EDIT,
+      params: {
+        nodeId: this.node.id,
+        protocol: normalizeManualEditProtocol(this.node.protocol)
       }
     });
   }

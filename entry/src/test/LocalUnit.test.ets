@@ -8,6 +8,7 @@ import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLa
 import { resolveImportedNodeName } from '../main/ets/core/ImportedNodeNames';
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
+import { parseManualOutboundEditState } from '../main/ets/core/ManualOutboundEditState';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { ANDROID_PACKAGE_NAME_LIST_URL, clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, resolveAutoProxyPackageListContent, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
@@ -450,6 +451,71 @@ export default function localUnitTest() {
       });
       expect(defaultAlpnHysteria2.success).assertTrue();
       expect(defaultAlpnHysteria2.outboundJson).assertContain('"alpn": "h3"');
+    });
+
+    it('parses manual outbound configs back into NodeEdit state', 0, () => {
+      const vless = parseManualOutboundEditState(
+        '{"protocol":"vless","tag":"Manual VLESS","settings":{"vnext":[{"address":"edit.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision-udp443"}]}]},"streamSettings":{"network":"xhttp","security":"reality","xhttpSettings":{"path":"/x","host":"cdn.example.com","mode":"packet-up","extra":{"headers":{"x-test":"1"}}},"realitySettings":{"serverName":"reality.example.com","publicKey":"pub","shortId":"abcd","spiderX":"/bot","mldsa65Verify":"pqv","fingerprint":"randomized","echConfigList":"ech","pinnedPeerCertSha256":"pcs"},"finalmask":{"tcp":[{"type":"custom"}]}}}',
+        'Node Name',
+        'vless'
+      );
+      expect(vless.valid).assertTrue();
+      expect(vless.protocol).assertEqual('vless');
+      expect(vless.nodeName).assertEqual('Node Name');
+      expect(vless.serverHost).assertEqual('edit.example.com');
+      expect(vless.vlessFlow).assertEqual('xtls-rprx-vision-udp443');
+      expect(vless.transportType).assertEqual('xhttp');
+      expect(vless.transportXhttpMode).assertEqual('packet-up');
+      expect(vless.transportXhttpExtra).assertContain('"x-test": "1"');
+      expect(vless.tlsSecurity).assertEqual('reality');
+      expect(vless.realitySpiderX).assertEqual('/bot');
+      expect(vless.realityMldsa65Verify).assertEqual('pqv');
+      expect(vless.tlsFingerprint).assertEqual('randomized');
+      expect(vless.tlsEchConfigList).assertEqual('ech');
+      expect(vless.tlsPinnedPeerCertSha256).assertEqual('pcs');
+      expect(vless.transportFinalMask).assertContain('"custom"');
+
+      const kcp = parseManualOutboundEditState(
+        '{"protocol":"vmess","tag":"KCP","settings":{"vnext":[{"address":"kcp.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"kcp","kcpSettings":{"mtu":1200,"tti":30},"finalmask":{"udp":[{"type":"header-dns","settings":{"domain":"dns.example.com"}},{"type":"mkcp-aes128gcm","settings":{"password":"seed"}}]}}}',
+        '',
+        'vmess'
+      );
+      expect(kcp.valid).assertTrue();
+      expect(kcp.protocol).assertEqual('vmess');
+      expect(kcp.transportType).assertEqual('kcp');
+      expect(kcp.transportKcpHeaderType).assertEqual('dns');
+      expect(kcp.transportHost).assertEqual('dns.example.com');
+      expect(kcp.transportPath).assertEqual('seed');
+      expect(kcp.transportKcpMtu).assertEqual('1200');
+      expect(kcp.transportKcpTti).assertEqual('30');
+
+      const wireguard = parseManualOutboundEditState(
+        '{"protocol":"wireguard","tag":"WG","settings":{"secretKey":"private","address":["172.16.0.2/32","fd00::2/128"],"reserved":[1,2,3],"mtu":1420,"peers":[{"publicKey":"public","preSharedKey":"shared","endpoint":"[2001:db8::1]:51820"}]}}',
+        '',
+        'wireguard'
+      );
+      expect(wireguard.valid).assertTrue();
+      expect(wireguard.protocol).assertEqual('wireguard');
+      expect(wireguard.serverHost).assertEqual('2001:db8::1');
+      expect(wireguard.serverPort).assertEqual('51820');
+      expect(wireguard.wgPublicKey).assertEqual('public');
+      expect(wireguard.wgPreSharedKey).assertEqual('shared');
+      expect(wireguard.wgReserved).assertEqual('1,2,3');
+      expect(wireguard.wgLocalAddress).assertEqual('172.16.0.2/32,fd00::2/128');
+
+      const hysteria2 = parseManualOutboundEditState(
+        '{"protocol":"hysteria2","tag":"HY2","settings":{"servers":[{"address":"hy.example.com","port":443,"password":"secret","sni":"sni.example.com","alpn":"h3","insecure":true,"obfsPassword":"obfs","portHopping":"20000-50000","portHoppingInterval":"10-60","pinSHA256":"pin","bandwidthDown":"100 mbps","bandwidthUp":"20 mbps"}]}}',
+        '',
+        'hysteria2'
+      );
+      expect(hysteria2.valid).assertTrue();
+      expect(hysteria2.protocol).assertEqual('hysteria2');
+      expect(hysteria2.tlsSni).assertEqual('sni.example.com');
+      expect(hysteria2.tlsAllowInsecure).assertTrue();
+      expect(hysteria2.hy2ObfsPassword).assertEqual('obfs');
+      expect(hysteria2.hy2PortHoppingInterval).assertEqual('10-60');
+      expect(hysteria2.hy2PinSha256).assertEqual('pin');
+      expect(hysteria2.hy2BandwidthDown).assertEqual('100 mbps');
     });
 
     it('builds runtime config from full custom config without wrapping', 0, () => {

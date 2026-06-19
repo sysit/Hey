@@ -303,6 +303,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ HTTPUpgrade / XHTTP 传输参数：`httpupgrade` host/path 导入导出保留，NodeEdit 可选择；XHTTP `mode/extra` 可手动填写并导入导出保留（2026-06-19）
 - ✅ gRPC 传输模式：`mode=multi` 可导入导出为 `grpcSettings.multiMode`，NodeEdit 手动编辑可在 v2rayNG `gun/multi` 两种模式间选择（2026-06-19）
 - ✅ KCP 传输参数：`type=kcp` 的 `headerType`/`seed`/`mtu`/`tti` 可导入导出，运行 outbound 生成 v2rayNG 风格 `kcpSettings` + `finalmask.udp`，NodeEdit 可选择 KCP header/seed/MTU/TTI（2026-06-19）
+- ✅ 普通手动节点原位编辑：节点详情可按 v2rayNG `ServerActivity` 重新打开手动 VLESS/VMess/Trojan/Shadowsocks/SOCKS/HTTP/WireGuard/Hysteria2 节点，NodeEdit 会从已有 outbound 回填基础、认证、传输、TLS/Reality、WG/HY2 专属字段，保存时原位更新节点；编辑当前节点会标记运行配置待重启（2026-06-19）
 - ✅ SOCKS 分享认证：导出时按 v2rayNG 使用去 padding 的 `base64(user:pass)` 作为 userInfo，无认证节点导出 `base64(":") = Og`，导入导出 round-trip 保留认证信息（2026-06-19）
 - ✅ Shadowsocks/SOCKS base64 padding：分享导出按 v2rayNG 去掉 userInfo base64 末尾 `=`，并对 Shadowsocks base64 userInfo 做 URI 编码（2026-06-19）
 - ✅ SOCKS scheme 别名：按 v2rayNG 支持 `socks4://` / `socks5://` 导入，统一归一为 Xray `socks` outbound；导出仍使用 `socks://` 主 scheme（2026-06-19）
@@ -521,6 +522,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 `pinSHA256` 完成（分享链接导入/导出保留 HY2 专属证书 pin，NodeEdit 手动编辑可填写并写入 outbound；补手动 builder 与 share round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 bandwidth/obfs/port-hop 运行配置完成（手动/订阅 HY2 节点启动前生成 `finalmask.quicParams` brutal 带宽、`udpHop` 和 `salamander` mask；补 runtime config 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 runtime core 形状完成（启动配置按 v2rayNG 将 `hysteria2` 节点归一为 Xray `protocol=hysteria`、`settings.address/port/version` 与 `streamSettings.hysteriaSettings.auth`，并保留 TLS/pin/finalmask） |
+| 2026-06-19 | 协议点检 | ✅ 普通手动节点编辑回填完成（节点详情入口 + NodeEdit 回填/原位更新 VLESS/VMess/Trojan/Shadowsocks/SOCKS/HTTP/WireGuard/Hysteria2；编辑当前节点标记运行配置待重启；补回填解析单测） |
 | 2026-06-19 | 协议点检 | ✅ WireGuard reserved 默认值完成（分享链接、`.conf` 导入和手动 builder 缺省写入 `[0,0,0]`，导出分享链接保留 `reserved=0,0,0`；补默认值单测） |
 | 2026-06-19 | 协议点检 | ✅ WireGuard MTU 默认值完成（分享链接和 `.conf` 导入缺省 `mtu` 时按 v2rayNG 写入 `1420`，导出分享链接保留 `mtu=1420`；补默认值单测） |
 | 2026-06-19 | 协议点检 | ✅ Mux 协议适用范围完成（全局 Mux 跳过 v2rayNG 禁用协议与 XHTTP，VLESS flow 节点使用 `concurrency=-1`；补运行配置单测） |
