@@ -18,6 +18,20 @@ export const V2RAYNG_UTLS_FINGERPRINT_OPTIONS: Array<string> = [
   'randomized'
 ];
 
+export const V2RAYNG_SS_SECURITY_OPTIONS: Array<string> = [
+  'aes-256-gcm',
+  'aes-128-gcm',
+  'chacha20-poly1305',
+  'chacha20-ietf-poly1305',
+  'xchacha20-poly1305',
+  'xchacha20-ietf-poly1305',
+  'none',
+  'plain',
+  '2022-blake3-aes-128-gcm',
+  '2022-blake3-aes-256-gcm',
+  '2022-blake3-chacha20-poly1305'
+];
+
 export const V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS: Array<string> = [
   'tcp',
   'kcp',

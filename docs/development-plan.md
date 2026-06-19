@@ -306,6 +306,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ SOCKS scheme 别名：按 v2rayNG 支持 `socks4://` / `socks5://` 导入，统一归一为 Xray `socks` outbound；导出仍使用 `socks://` 主 scheme（2026-06-19）
 - ✅ Shadowsocks legacy 尾斜杠兼容：整段 base64 旧格式导入允许 v2rayNG 正则支持的可选末尾 `/`，并覆盖 method 小写化与密码中冒号解析（2026-06-19）
 - ✅ Shadowsocks plugin 导出对齐：SIP002 `obfs=http` plugin 可导入为 TCP HTTP 伪装，但分享导出按 v2rayNG 不回写 `plugin` 查询参数（2026-06-19）
+- ✅ Shadowsocks 手动 method 选项：NodeEdit 按 v2rayNG `ss_securitys` 补齐 `chacha20-poly1305`、`xchacha20-*`、`none`、`plain` 与 2022-blake3 全列表（2026-06-19）
 - ✅ Hysteria2 端口跳跃（`mport`/`mportHopInt`）、`security=tls`、显式 `insecure=1/0`、`obfs`、证书 pin（`pinSHA256`）与带宽：分享链接解析和手动编辑器均已写入 outbound，导出 `mportHopInt` 时按 v2rayNG 规则规范化为不少于 5 秒的单值间隔，运行配置会生成 v2rayNG/Xray core 形状的 `protocol=hysteria`、`hysteriaSettings.auth`、TLS 设置、`finalmask.quicParams.brutalUp/brutalDown`、`udpHop` 与 `salamander` mask（2026-06-19；实连仍待真机/内核验证）
 - ✅ WireGuard `.conf` 文件整段解析（2026-06-18 已完成：`[Interface]`/`[Peer]` 文本或文件导入转为 Xray wireguard outbound）
 - ✅ WireGuard reserved/MTU 默认值：分享链接、`.conf` 导入和手动 outbound 生成在缺省时写入 v2rayNG 默认 `reserved=0,0,0` 与 `mtu=1420`，导出分享链接保留默认值（2026-06-19）
@@ -504,6 +505,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ SOCKS scheme 别名完成（`socks4://` / `socks5://` 订阅和手动分享导入归一为 `socks` outbound，导出使用 `socks://`；补解析/订阅单测） |
 | 2026-06-19 | 协议点检 | ✅ Shadowsocks legacy 尾斜杠兼容完成（整段 base64 旧格式允许 v2rayNG 的 `host:port/` 写法，并补 method 小写化/密码冒号单测） |
 | 2026-06-19 | 协议点检 | ✅ Shadowsocks plugin 导出对齐完成（SIP002 `obfs=http` plugin 可导入为 TCP HTTP 伪装，导出按 v2rayNG 不回写 `plugin` 查询参数） |
+| 2026-06-19 | 协议点检 | ✅ Shadowsocks 手动 method 选项完成（NodeEdit method picker 按 v2rayNG `ss_securitys` 补齐完整算法列表；补选项防漂移单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 端口跳跃间隔完成（分享链接 `mportHopInt` 导入为 `portHoppingInterval`，导出时按 v2rayNG 规则规范化，NodeEdit 可填写端口跳跃间隔；补手动 builder 与 share round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 TLS/insecure 导出完成（分享链接导出按 v2rayNG 显式写入 `security=tls` 与 `insecure=1/0`；补 true/false round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 `pinSHA256` 完成（分享链接导入/导出保留 HY2 专属证书 pin，NodeEdit 手动编辑可填写并写入 outbound；补手动 builder 与 share round-trip 单测） |

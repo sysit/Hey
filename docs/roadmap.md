@@ -211,6 +211,7 @@
 | 2026-06-19 | 协议点检 | ✅ SOCKS scheme 别名完成；`socks4://` / `socks5://` 分享和订阅导入归一为 `socks` outbound，导出继续使用 `socks://` |
 | 2026-06-19 | 协议点检 | ✅ Shadowsocks legacy 尾斜杠兼容完成；整段 base64 旧格式允许 `host:port/`，同时保留 method 小写化与密码冒号解析 |
 | 2026-06-19 | 协议点检 | ✅ Shadowsocks plugin 导出对齐完成；SIP002 `obfs=http` plugin 可导入为 TCP HTTP 伪装，导出按 v2rayNG 不回写 `plugin` 查询参数 |
+| 2026-06-19 | 协议点检 | ✅ Shadowsocks 手动 method 选项完成；NodeEdit 按 v2rayNG `ss_securitys` 补齐 `chacha20`/`xchacha20`/`none`/`plain` 与 2022-blake3 全列表 |
 | 2026-06-19 | 阶段 5 | ✅ 资源 URL 二维码导入完成；Assets 页新增 v2rayNG `add_qrcode` 等价入口，扫码 URL 后预填自定义资源添加表单 |
 | 2026-06-19 | 阶段 5 | ✅ 自定义资源名称唯一性校验完成；新增/编辑/扫码预填/本地导入均按 v2rayNG asset remarks 语义拒绝重复名称 |
 | 2026-06-19 | 阶段 5 | ✅ 本地文件资源编辑入口对齐完成；本地导入资源保留覆盖导入/删除，不再进入编辑表单，对齐 v2rayNG `url == "file"` 行为 |
