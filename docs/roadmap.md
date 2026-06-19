@@ -20,7 +20,7 @@
 | 设置页 | 🟡 94% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理按 v2rayNG 默认开启，静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、fake DNS、DNS hosts、出站域名预解析方式（含启动前 live DNS 预解析）、速度显示、常驻速度通知、当前连接信息测试网址、语言跟随系统、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线 |
 | 扫码导入 | ✅ 82% | 粘贴导入和 ScanKit 相机扫码已接线，剪贴板读取已声明并运行时请求 Harmony `READ_PASTEBOARD` 权限；`startScanImmediate` 开启时进入扫码页自动拉起相机，待真机相机权限/机型回归 |
 | 导出 / 分享 | ✅ 86% | 文本/文件导出、节点二维码、订阅链接二维码与系统分享面板已完成；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情已支持 v2rayNG `shareFullContent2Clipboard` 等价的完整运行配置复制；后续主要是真机分享目标兼容回归 |
-| 平台集成 | 🟡 52% | Want / URL Scheme 深链导入已完成；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；常驻速度通知已接 Harmony NotificationKit；2×2 桌面服务卡片基础入口已接 FormExtensionAbility/FormLink，并已通过保存 formId + updateForm 同步运行态，待真机通知权限、卡片添加/点击与系统刷新回归 |
+| 平台集成 | 🟡 53% | Want / URL Scheme 深链导入已完成；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；Logcat 页已支持搜索、复制全部、分享全部、单条复制与清空；常驻速度通知已接 Harmony NotificationKit；2×2 桌面服务卡片基础入口已接 FormExtensionAbility/FormLink，并已通过保存 formId + updateForm 同步运行态，待真机通知权限、卡片添加/点击与系统刷新回归 |
 
 ### Native 桥接现状
 

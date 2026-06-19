@@ -26,6 +26,7 @@ import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calcu
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
 import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
+import { filterLogItems, formatLogcatText } from '../main/ets/features/logs/LogOperations';
 import { buildNodeExportModel, buildNodeFullConfigModel, dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
@@ -1609,6 +1610,20 @@ export default function localUnitTest() {
       expect(subscriptionWant.parameters?.['ohos.extra.param.key.contentTitle']?.toString()).assertEqual('Sub A');
       expect(subscriptionWant.parameters?.['ohos.extra.param.key.shareAbstract']?.toString()).assertEqual('https://sub.example/list');
       expect(subscriptionWant.parameters?.['ohos.extra.param.key.shareUrl']?.toString()).assertEqual('https://sub.example/list');
+    });
+
+    it('filters and formats logcat entries like v2rayNG log actions', 0, () => {
+      const items = [
+        '09-01 10:00:00.000 I/HeyVpn: started',
+        '09-01 10:00:01.000 E/AndroidRuntime: crash',
+        '09-01 10:00:02.000 I/GoLog: outbound ready'
+      ];
+      expect(filterLogItems(items, '').length).assertEqual(3);
+      expect(filterLogItems(items, 'AndroidRuntime')[0]).assertContain('crash');
+      expect(filterLogItems(items, 'missing').length).assertEqual(0);
+      expect(formatLogcatText(filterLogItems(items, 'I/'))).assertEqual(
+        '09-01 10:00:00.000 I/HeyVpn: started\n09-01 10:00:02.000 I/GoLog: outbound ready'
+      );
     });
 
     it('builds and validates app backup payloads', 0, () => {

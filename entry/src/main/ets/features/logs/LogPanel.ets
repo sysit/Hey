@@ -1,17 +1,45 @@
 import { AppColor, FontSz, Radius, Space } from '../../theme/Theme';
 
 export type ClearLogHandler = () => void;
+export type LogActionHandler = () => void;
+export type CopyLogItemHandler = (item: string) => void;
 
 @Component
 export struct RuntimeLogPanel {
   clearLabel: string = '';
+  copyLabel: string = '';
+  shareLabel: string = '';
   items: Array<string> = [];
+  emptyLabel: string = '';
   onClear: ClearLogHandler = () => {};
+  onCopy: LogActionHandler = () => {};
+  onShare: LogActionHandler = () => {};
+  onCopyItem: CopyLogItemHandler = (_item: string) => {};
 
   build() {
     Column({ space: Space.md }) {
-      Row() {
+      Row({ space: Space.sm }) {
         Blank()
+        Button(this.copyLabel)
+          .height(30)
+          .fontSize(FontSz.footnote)
+          .backgroundColor(AppColor.surfaceAlt)
+          .fontColor(AppColor.textSecondary)
+          .borderRadius(Radius.sm)
+          .padding({ left: Space.md, right: Space.md })
+          .onClick(() => {
+            this.onCopy();
+          })
+        Button(this.shareLabel)
+          .height(30)
+          .fontSize(FontSz.footnote)
+          .backgroundColor(AppColor.surfaceAlt)
+          .fontColor(AppColor.textSecondary)
+          .borderRadius(Radius.sm)
+          .padding({ left: Space.md, right: Space.md })
+          .onClick(() => {
+            this.onShare();
+          })
         Button(this.clearLabel)
           .height(30)
           .fontSize(FontSz.footnote)
@@ -26,12 +54,22 @@ export struct RuntimeLogPanel {
       .width('100%')
 
       Column({ space: Space.sm }) {
-        ForEach(this.items, (item: string, index: number) => {
-          Text(item)
+        if (this.items.length === 0) {
+          Text(this.emptyLabel)
             .fontSize(FontSz.footnote)
-            .fontColor(index === 0 ? AppColor.textPrimary : AppColor.textTertiary)
+            .fontColor(AppColor.textTertiary)
             .width('100%')
-        }, (item: string, index: number) => `${index}-${item}`)
+        } else {
+          ForEach(this.items, (item: string, index: number) => {
+            Text(item)
+              .fontSize(FontSz.footnote)
+              .fontColor(index === 0 ? AppColor.textPrimary : AppColor.textTertiary)
+              .width('100%')
+              .onClick(() => {
+                this.onCopyItem(item);
+              })
+          }, (item: string, index: number) => `${index}-${item}`)
+        }
       }
       .width('100%')
       .padding(Space.md)

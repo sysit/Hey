@@ -445,6 +445,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | M4 | ✅ 订阅链接二维码/分享完成（订阅详情页生成订阅 URL QR，支持复制与系统分享；订阅分组左滑分享走 Harmony `sendData`，失败回退剪贴板；补分享 Want 单测） |
 | 2026-06-19 | M4 | ✅ 批量导出非自定义配置完成（Export/Nodes 批量导出按 v2rayNG `shareNonCustomConfigsToClipboard` 语义跳过 full custom、proxy-chain、policy-group 与无效 JSON，只统计实际导出的可分享普通节点；补导出模型单测） |
 | 2026-06-19 | M4 | ✅ 单节点完整配置复制完成（节点详情新增“复制完整配置”，按 v2rayNG `shareFullContent2Clipboard` 语义生成普通/full custom/proxy-chain/policy-group 的完整运行 Xray config 后写入剪贴板；动态策略组会按最新订阅成员展开；补 full config 生成单测） |
+| 2026-06-19 | M4 | ✅ Logcat 操作对齐完成（Logs 页支持 v2rayNG Logcat 的搜索过滤、复制全部、分享全部、单条日志复制与清空；分享走 Harmony `sendData` 并保留剪贴板回退；补日志过滤/格式化单测） |
 | 2026-06-19 | 协议点检 | ✅ `flow`/uTLS 指纹选项完成（NodeEdit 手动编辑补齐 `xtls-rprx-vision-udp443` 与 `ios/android/randomized` 指纹选项，分享链接导入导出保留这些值；补选项和 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ VMess QR TLS insecure 完成（旧版 VMess JSON `insecure=1` 导入为 `tlsSettings.allowInsecure`，导出后再导入仍保留；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ URL-style TLS allowInsecure 导出完成（VLESS/Trojan 等 TLS 分享导出同时写 `insecure` 与 `allowInsecure`，true/false 均按 v2rayNG `1/0` 输出；补 round-trip 单测） |
