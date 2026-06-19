@@ -1,5 +1,6 @@
-import { ProxyNode } from '../../core/Profile';
-import { normalizeConfigInput } from '../../core/XrayConfig';
+import { AppSettings, ProxyNode, SubscriptionGroup } from '../../core/Profile';
+import { resolveDynamicPolicyGroupConfigJson } from '../../core/AdvancedOutboundBuilder';
+import { buildRuntimeXrayConfig, normalizeConfigInput } from '../../core/XrayConfig';
 import { formatOutboundJsonToShareLink } from '../../core/ShareLinkParser';
 
 export type NodeSortKey = 'delay' | 'name' | 'protocol';
@@ -15,6 +16,12 @@ export interface NodeExportModel {
   title: string;
   content: string;
   count: number;
+}
+
+export interface NodeFullConfigModel {
+  success: boolean;
+  content: string;
+  message: string;
 }
 
 export function filterNodes(nodes: Array<ProxyNode>, query: string): Array<ProxyNode> {
@@ -136,6 +143,39 @@ function exportNodeTexts(nodes: Array<ProxyNode>): Array<string> {
     }
   }
   return lines;
+}
+
+export function buildNodeFullConfigModel(
+  node: ProxyNode,
+  settings: AppSettings,
+  groups: Array<SubscriptionGroup> = []
+): NodeFullConfigModel {
+  const validation = normalizeConfigInput(node.outboundJson, node.configType);
+  if (!validation.valid) {
+    return {
+      success: false,
+      content: '',
+      message: validation.message
+    };
+  }
+
+  try {
+    const configJson = validation.configType === 'policy-group' ?
+      resolveDynamicPolicyGroupConfigJson(validation.normalizedJson, groups) : validation.normalizedJson;
+    const generated = buildRuntimeXrayConfig(configJson, settings, validation.configType);
+    return {
+      success: true,
+      content: generated.configJson,
+      message: ''
+    };
+  } catch (error) {
+    const failed = error as Error;
+    return {
+      success: false,
+      content: '',
+      message: failed.message ?? JSON.stringify(error)
+    };
+  }
 }
 
 function exportNodeText(node: ProxyNode): string {

@@ -4,12 +4,14 @@ import { pasteboard } from '@kit.BasicServicesKit';
 import { generateBarcode, scanCore } from '@kit.ScanKit';
 import { image } from '@kit.ImageKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
-import { AppLanguage, ProxyNode } from '../core/Profile';
+import { AppLanguage, AppSettings, ProxyNode, SubscriptionGroup } from '../core/Profile';
 import { formatOutboundJsonToShareLink } from '../core/ShareLinkParser';
+import { buildNodeFullConfigModel, NodeFullConfigModel } from '../features/nodes/NodeOperations';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { shareText, TextShareResult } from '../services/SystemShare';
+import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { AppRoute } from '../shell/AppRoute';
@@ -40,6 +42,8 @@ struct NodeDetailPage {
   @State private nodeId: string = '';
   @State private node: ProxyNode = EMPTY_NODE;
   @State private selectedNodeId: string = '';
+  @State private settings: AppSettings = DEFAULT_APP_SETTINGS;
+  @State private subscriptionGroups: Array<SubscriptionGroup> = [];
   @State private lastError: string = '';
   @State private qrImage: image.PixelMap | undefined = undefined;
 
@@ -105,6 +109,20 @@ struct NodeDetailPage {
                 this.openJsonEditor();
               })
           }
+
+          Button(this.t('node.detail.copyFullConfig'))
+            .height(44)
+            .width('100%')
+            .enabled(this.node.id.length > 0)
+            .backgroundColor(AppColor.surfaceAlt)
+            .fontColor(AppColor.textPrimary)
+            .fontSize(FontSz.callout)
+            .fontWeight(FontWeight.Medium)
+            .borderRadius(Radius.pill)
+            .margin({ left: Space.lg, right: Space.lg })
+            .onClick(() => {
+              this.copyFullConfig();
+            })
 
           if (this.lastError.length > 0) {
             Text(this.lastError)
@@ -268,9 +286,11 @@ struct NodeDetailPage {
       this.nodeId = params.nodeId;
     }
     const context = getContext(this) as common.Context;
-    this.language = (await SETTINGS_CONTROLLER.load(context)).language;
+    this.settings = await SETTINGS_CONTROLLER.load(context);
+    this.language = this.settings.language;
     const state = await NODES_CONTROLLER.load(context, this.language);
     this.selectedNodeId = state.selectedNodeId;
+    this.subscriptionGroups = state.subscriptionGroups;
     const found = NODES_CONTROLLER.findNode(state.nodes, this.nodeId);
     this.node = found !== null ? found : EMPTY_NODE;
     await this.generateQr();
@@ -315,6 +335,24 @@ struct NodeDetailPage {
       promptAction.showToast({ message: this.t('prompt.copiedToClipboard') });
     } catch (error) {
       promptAction.showToast({ message: this.t('prompt.copiedToClipboard') });
+    }
+  }
+
+  private copyFullConfig(): void {
+    const result: NodeFullConfigModel = buildNodeFullConfigModel(this.node, this.settings, this.subscriptionGroups);
+    if (!result.success || result.content.trim().length === 0) {
+      const message = result.message.length > 0 ? result.message : this.t('node.detail.fullConfigEmpty');
+      promptAction.showToast({ message: this.f1('node.detail.fullConfigFailed', 'error', message) });
+      return;
+    }
+
+    try {
+      const systemPasteboard = pasteboard.getSystemPasteboard();
+      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, result.content);
+      systemPasteboard.setDataSync(pasteData);
+      promptAction.showToast({ message: this.t('node.detail.fullConfigCopied') });
+    } catch (error) {
+      promptAction.showToast({ message: this.f1('node.detail.fullConfigFailed', 'error', JSON.stringify(error)) });
     }
   }
 

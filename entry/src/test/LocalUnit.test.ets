@@ -26,7 +26,7 @@ import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calcu
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
 import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
-import { buildNodeExportModel, dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
+import { buildNodeExportModel, buildNodeFullConfigModel, dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
@@ -1730,6 +1730,46 @@ export default function localUnitTest() {
       const model = buildNodeExportModel('Nodes', exportTargets);
       expect(model.content).assertEqual(exported);
       expect(model.count).assertEqual(nodes.length);
+    });
+
+    it('builds v2rayNG-style full config content for node detail copy', 0, () => {
+      const nodes = buildNodeFixture();
+      const ordinary = buildNodeFullConfigModel(nodes[2], buildSettingsFixture());
+      expect(ordinary.success).assertTrue();
+      expect(ordinary.content).assertContain('"protocol": "tun"');
+      expect(ordinary.content).assertContain('"protocol": "vless"');
+
+      const fullConfigNode = copyNode(nodes[2], 'full-config-copy');
+      fullConfigNode.protocol = 'custom';
+      fullConfigNode.rawLink = '';
+      fullConfigNode.configType = 'full';
+      fullConfigNode.outboundJson = FULL_XRAY_CONFIG;
+      const full = buildNodeFullConfigModel(fullConfigNode, buildSettingsFixture());
+      expect(full.success).assertTrue();
+      expect(full.content).assertContain('"remarks": "Custom full config"');
+      expect(full.content).assertContain('"protocol": "freedom"');
+
+      const sourceGroup = buildSubscriptionGroupFixture('sub-a', 'A');
+      sourceGroup.nodes = buildAdvancedNodeFixture();
+      const dynamic = buildPolicyGroupConfigFromSubscription('Latest Dynamic', 'leastPing', 'sub-a', 'trojan', [sourceGroup]);
+      expect(dynamic.success).assertTrue();
+      const dynamicNode = copyNode(nodes[2], 'dynamic-policy-copy');
+      dynamicNode.protocol = 'policy-group';
+      dynamicNode.rawLink = '';
+      dynamicNode.configType = 'policy-group';
+      dynamicNode.outboundJson = dynamic.configJson;
+      const latestGroup = buildSubscriptionGroupFixture('sub-a', 'A');
+      latestGroup.nodes = [buildAdvancedNodeFixture()[1]];
+      const copied = buildNodeFullConfigModel(dynamicNode, buildSettingsFixture(), [latestGroup]);
+      expect(copied.success).assertTrue();
+      expect(copied.content).assertContain('"proxy-policy-group-1"');
+      expect(copied.content).assertContain('"protocol": "trojan"');
+      expect(copied.content.indexOf('"protocol": "vless"')).assertEqual(-1);
+
+      const invalid = copyNode(nodes[2], 'invalid-full-copy');
+      invalid.rawLink = '';
+      invalid.outboundJson = '{';
+      expect(buildNodeFullConfigModel(invalid, buildSettingsFixture()).success).assertFalse();
     });
 
     it('imports vless reality share link as outbound json', 0, () => {
