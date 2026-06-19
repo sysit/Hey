@@ -440,6 +440,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-20 | M3 | ✅ 订阅 URL 内嵌 Basic Auth 对齐 v2rayNG（抓取请求从 `user:pass@host` 解码 userInfo 并写入 `Authorization` 头；补请求头构建单测） |
 | 2026-06-20 | M3 | ✅ 订阅刷新选中节点保留完成（新增订阅节点身份匹配 helper，更新/更新全部按 v2rayNG 备注/server/port/password 多级匹配旧选中节点，匹配失败回退首个新节点；补纯函数单测） |
 | 2026-06-18 | M3 | ✅ 本地 HTTP 代理共享开关生效（`proxySharingEnabled` 开启时 `http-in.listen=0.0.0.0`，默认仍为 `127.0.0.1`，补配置生成单测） |
+| 2026-06-20 | M4 | ✅ Proxy sharing 启动警告对齐完成（成功启动且允许来自局域网连接时，按 v2rayNG 追加可信网络提醒并弹出 toast；补纯函数单测） |
 | 2026-06-18 | M0 补点 | ✅ VPN 接口 DNS 不再写死，`settings.vpnDns` 会规范化后写入 Harmony `VpnConfig.dnsAddresses` |
 | 2026-06-20 | M0 补点 | ✅ VPN DNS 默认值对齐 v2rayNG，空/未设置时 Harmony `VpnConfig.dnsAddresses` 只回退 `AppConfig.DNS_VPN = 1.1.1.1`，显式多 DNS 仍按用户输入去重保留 |
 | 2026-06-18 | M4 | ✅ 系统分享面板接入（批量导出文本 + 单节点分享链接走 `ohos.want.action.sendData`，失败回退剪贴板，并补分享 Want 单测） |

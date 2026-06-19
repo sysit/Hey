@@ -8,6 +8,7 @@ import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { consumeRuntimeSettingsRestartDecision, markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { resolveImportedNodeName } from '../core/ImportedNodeNames';
+import { shouldShowProxySharingStartWarning } from '../core/ProxySharingWarning';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
 import { convertNativeShareTextToOutbounds } from '../services/NativeShareConverter';
 import { CONTROL_CARD_MANAGER } from '../services/ControlCardManager';
@@ -1187,6 +1188,7 @@ struct Index {
       this.status = ConnectionStatus.STARTING;
       const state = await SHARED_RUNTIME_CONTROLLER.start(context, saved.profile, this.currentSettings, this.language);
       this.applyRuntimeState(state);
+      this.showProxySharingStartWarning(state.status);
       return state.status === ConnectionStatus.RUNNING;
     } catch (error) {
       this.status = ConnectionStatus.ERROR;
@@ -1194,6 +1196,15 @@ struct Index {
       SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
       return false;
     }
+  }
+
+  private showProxySharingStartWarning(status: ConnectionStatus): void {
+    if (!shouldShowProxySharingStartWarning(this.currentSettings, status)) {
+      return;
+    }
+    const message = this.t('log.proxySharingWarning');
+    SHARED_RUNTIME_CONTROLLER.appendLog(message);
+    promptAction.showToast({ message });
   }
 
   private async stopConnection(): Promise<void> {

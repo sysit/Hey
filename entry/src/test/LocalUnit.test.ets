@@ -13,6 +13,7 @@ import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntim
 import { parseManualOutboundEditState } from '../main/ets/core/ManualOutboundEditState';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { ANDROID_PACKAGE_NAME_LIST_URL, clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, resolveAutoProxyPackageListContent, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
+import { shouldShowProxySharingStartWarning } from '../main/ets/core/ProxySharingWarning';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_HEV_TUN_LOG_LEVEL, DEFAULT_HEV_TUN_RW_TIMEOUT, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { BUILTIN_GEO_DATA_FILE_NAMES, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, GEOIP_ONLY_CN_PRIVATE_URL, GEO_FILE_SOURCES, V2RAYNG_GEO_FILE_SOURCE_REPOS, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, UNIDENTIFIED_PROCESS_PACKAGE, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, canUseProcessRouting, collectOutboundDomainPreResolveHosts, normalizeFullConfigRoutingProcesses, normalizeOutboundInput, normalizeRoutingRuleProcesses, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
@@ -1902,6 +1903,17 @@ export default function localUnitTest() {
       expect(resolveDelayTestUrl(undefined)).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('')).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('  https://probe.example/ping  ')).assertEqual('https://probe.example/ping');
+    });
+
+    it('warns on successful start when proxy sharing is enabled like v2rayNG', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.proxySharingEnabled = false;
+      expect(shouldShowProxySharingStartWarning(settings, ConnectionStatus.RUNNING)).assertFalse();
+
+      settings.proxySharingEnabled = true;
+      expect(shouldShowProxySharingStartWarning(settings, ConnectionStatus.STARTING)).assertFalse();
+      expect(shouldShowProxySharingStartWarning(settings, ConnectionStatus.ERROR)).assertFalse();
+      expect(shouldShowProxySharingStartWarning(settings, ConnectionStatus.RUNNING)).assertTrue();
     });
 
     it('handles v2rayng style per-app package list actions', 0, () => {
