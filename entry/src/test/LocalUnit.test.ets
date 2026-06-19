@@ -10,7 +10,7 @@ import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntim
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { ANDROID_PACKAGE_NAME_LIST_URL, clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, resolveAutoProxyPackageListContent, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
-import { BUILTIN_GEO_DATA_FILE_NAMES, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, GEOIP_ONLY_CN_PRIVATE_URL, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
+import { BUILTIN_GEO_DATA_FILE_NAMES, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, GEOIP_ONLY_CN_PRIVATE_URL, GEO_FILE_SOURCES, V2RAYNG_GEO_FILE_SOURCE_REPOS, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, UNIDENTIFIED_PROCESS_PACKAGE, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, collectOutboundDomainPreResolveHosts, normalizeFullConfigRoutingProcesses, normalizeOutboundInput, normalizeRoutingRuleProcesses, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { parseDeepLink } from '../main/ets/core/DeepLink';
 import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
@@ -1377,6 +1377,13 @@ export default function localUnitTest() {
       expect(buildBuiltinGeoAssetUrl('https://example.com/release/', 'geosite.dat')).assertEqual('https://example.com/release/geosite.dat');
       expect(buildBuiltinGeoAssetUrl('https://example.com/release', 'geoip.dat')).assertEqual('https://example.com/release/geoip.dat');
       expect(buildBuiltinGeoAssetUrl('https://example.com/release/', GEOIP_ONLY_CN_PRIVATE_FILE_NAME)).assertEqual(GEOIP_ONLY_CN_PRIVATE_URL);
+      expect(V2RAYNG_GEO_FILE_SOURCE_REPOS.length).assertEqual(3);
+      expect(GEO_FILE_SOURCES.length >= V2RAYNG_GEO_FILE_SOURCE_REPOS.length).assertTrue();
+      expect(GEO_FILE_SOURCES[0].name).assertEqual('Loyalsoldier/v2ray-rules-dat');
+      expect(GEO_FILE_SOURCES[1].name).assertEqual('runetfreedom/russia-v2ray-rules-dat');
+      expect(GEO_FILE_SOURCES[1].url).assertEqual('https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/');
+      expect(GEO_FILE_SOURCES[2].name).assertEqual('Chocolate4U/Iran-v2ray-rules');
+      expect(buildBuiltinGeoAssetUrl(GEO_FILE_SOURCES[2].url, 'geosite.dat')).assertEqual('https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geosite.dat');
 
       const count = parseGeoCountData('{"categoryCount":2,"ruleCount":345,"codes":[{"code":"cn","ruleCount":100}]}');
       expect(count?.categoryCount).assertEqual(2);

@@ -7,7 +7,7 @@ import fs from '@ohos.file.fs';
 import { AppLanguage } from '../../core/Profile';
 import { translate } from '../../core/I18n';
 import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData } from '../../core/AppBackup';
-import { BUILTIN_GEO_DATA_FILE_NAMES, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../../core/GeoAssets';
+import { BUILTIN_GEO_DATA_FILE_NAMES, GEO_FILE_SOURCES, GeoSource, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../../core/GeoAssets';
 import { validateWebDavConfig, WebDavConfigInput } from '../../core/WebDav';
 import { countNativeGeoData } from '../../native/HeyNative';
 import { ensureReadPasteboardPermission } from '../../utils/ClipboardPermission';
@@ -16,15 +16,7 @@ import { SHARED_RUNTIME_CONTROLLER } from '../runtime/RuntimeController';
 import { AssetStore, CustomAssetUrl } from '../../storage/AssetStore';
 import { WEBDAV_MANAGER } from '../../services/WebDavManager';
 
-export interface GeoSource {
-  name: string;
-  url: string;
-}
-
-export const GEO_SOURCES: Array<GeoSource> = [
-  { name: 'Loyalsoldier (GitHub)', url: 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/' },
-  { name: 'Loyalsoldier (JsDelivr)', url: 'https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/' }
-];
+export const GEO_SOURCES: Array<GeoSource> = GEO_FILE_SOURCES;
 
 export class AssetsController {
   

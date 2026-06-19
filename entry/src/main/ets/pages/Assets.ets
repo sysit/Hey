@@ -440,14 +440,14 @@ struct AssetsPage {
 
   // 切换下载源
   private changeSource(): void {
-    const buttons: [promptAction.Button, promptAction.Button] = [
-      { text: GEO_SOURCES[0].name, color: AppColor.brand } as promptAction.Button,
-      { text: GEO_SOURCES[1].name, color: AppColor.brand } as promptAction.Button
-    ];
+    const buttons = new Array<promptAction.Button>();
+    for (let index = 0; index < GEO_SOURCES.length; index++) {
+      buttons.push({ text: GEO_SOURCES[index].name, color: AppColor.brand } as promptAction.Button);
+    }
 
     promptAction.showActionMenu({
       title: this.t('assets.source.title'),
-      buttons: buttons
+      buttons: this.toActionMenuButtons(buttons)
     }).then(async (result) => {
       if (result.index >= 0 && result.index < GEO_SOURCES.length) {
         const selected = GEO_SOURCES[result.index];
@@ -461,6 +461,10 @@ struct AssetsPage {
         promptAction.showToast({ message: `下载源已切换为 ${selected.name}` });
       }
     });
+  }
+
+  private toActionMenuButtons(buttons: Array<promptAction.Button>): [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?] {
+    return buttons as [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?];
   }
 
   // 删除 Geo 资源
