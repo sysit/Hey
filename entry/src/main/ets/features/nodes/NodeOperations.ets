@@ -114,6 +114,20 @@ function isTestFailed(node: ProxyNode): boolean {
 }
 
 export function exportNodesText(nodes: Array<ProxyNode>): string {
+  return exportNodeTexts(nodes).join('\n');
+}
+
+export function buildNodeExportModel(title: string, nodes: Array<ProxyNode>): NodeExportModel {
+  const entries = exportNodeTexts(nodes);
+  const content = entries.join('\n');
+  return {
+    title,
+    content,
+    count: entries.length
+  };
+}
+
+function exportNodeTexts(nodes: Array<ProxyNode>): Array<string> {
   const lines = new Array<string>();
   for (let index = 0; index < nodes.length; index++) {
     const value = exportNodeText(nodes[index]);
@@ -121,18 +135,13 @@ export function exportNodesText(nodes: Array<ProxyNode>): string {
       lines.push(value);
     }
   }
-  return lines.join('\n');
-}
-
-export function buildNodeExportModel(title: string, nodes: Array<ProxyNode>): NodeExportModel {
-  return {
-    title,
-    content: exportNodesText(nodes),
-    count: nodes.length
-  };
+  return lines;
 }
 
 function exportNodeText(node: ProxyNode): string {
+  if (isCustomExportNode(node)) {
+    return '';
+  }
   const rawLink = node.rawLink.trim();
   if (rawLink.length > 0) {
     return rawLink;
@@ -142,10 +151,18 @@ function exportNodeText(node: ProxyNode): string {
     return link;
   }
   const validation = normalizeConfigInput(node.outboundJson, node.configType);
-  if (validation.valid) {
+  if (validation.valid && !isCustomConfigType(validation.configType)) {
     return validation.normalizedJson;
   }
-  return node.outboundJson.trim();
+  return '';
+}
+
+function isCustomExportNode(node: ProxyNode): boolean {
+  return isCustomConfigType(node.configType);
+}
+
+function isCustomConfigType(configType: string | undefined): boolean {
+  return configType === 'full' || configType === 'proxy-chain' || configType === 'policy-group';
 }
 
 function dedupeKey(node: ProxyNode): string {

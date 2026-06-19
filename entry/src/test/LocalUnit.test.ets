@@ -26,7 +26,7 @@ import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calcu
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
 import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
-import { dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
+import { buildNodeExportModel, dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
@@ -1694,7 +1694,7 @@ export default function localUnitTest() {
       expect(result.length).assertEqual(nodes.length);
     });
 
-    it('finds invalid nodes and exports raw links or outbound json', 0, () => {
+    it('finds invalid nodes and exports only v2rayNG shareable nodes', 0, () => {
       const nodes = buildNodeFixture();
       const invalid = copyNode(nodes[0], 'invalid');
       invalid.rawLink = '';
@@ -1707,10 +1707,29 @@ export default function localUnitTest() {
       fullConfigNode.configType = 'full';
       expect(findInvalidNodes(nodes.concat([invalid, fullConfigNode])).length).assertEqual(1);
 
-      const exported = exportNodesText(nodes.concat([fullConfigNode]));
+      const proxyChainNode = copyNode(nodes[2], 'proxy-chain-config');
+      proxyChainNode.name = 'Proxy chain';
+      proxyChainNode.protocol = 'proxy-chain';
+      proxyChainNode.rawLink = '';
+      proxyChainNode.outboundJson = PROXY_CHAIN_CONFIG;
+      proxyChainNode.configType = 'proxy-chain';
+      const policyGroupNode = copyNode(nodes[2], 'policy-group-config');
+      policyGroupNode.name = 'Policy group';
+      policyGroupNode.protocol = 'policy-group';
+      policyGroupNode.rawLink = '';
+      policyGroupNode.outboundJson = POLICY_GROUP_CONFIG;
+      policyGroupNode.configType = 'policy-group';
+
+      const exportTargets = nodes.concat([invalid, fullConfigNode, proxyChainNode, policyGroupNode]);
+      const exported = exportNodesText(exportTargets);
       expect(exported).assertContain('vless://');
       expect(exported).assertContain('"protocol": "vless"');
-      expect(exported).assertContain('"remarks": "Custom full config"');
+      expect(exported.indexOf('"remarks": "Custom full config"')).assertEqual(-1);
+      expect(exported.indexOf('chain-demo')).assertEqual(-1);
+      expect(exported.indexOf('group-demo')).assertEqual(-1);
+      const model = buildNodeExportModel('Nodes', exportTargets);
+      expect(model.content).assertEqual(exported);
+      expect(model.count).assertEqual(nodes.length);
     });
 
     it('imports vless reality share link as outbound json', 0, () => {
