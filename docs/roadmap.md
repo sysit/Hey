@@ -142,7 +142,7 @@
 | 2026-06-18 | 阶段 1 | 🟡 Native 空闲端口接线完成；延迟测速与本地 SOCKS 动态端口优先用 `CGoGetFreePorts` 获取运行端口，失败回退静态端口，`.so` 已重建，待真机验证 |
 | 2026-06-18 | 阶段 1 | 🟡 Native 分享转换接线完成；导入失败后调用 `CGoConvertShareLinksToXrayJson` 解析 v2rayN 多行/base64 与 Clash.Meta YAML，并提取 outbounds 保存为手动节点，`.so` 已重建，待真机验证 |
 | 2026-06-19 | 阶段 1 | ✅ `libxray.so` 重建完成；补齐 OHOS 构建脚本的 Android API level stub 与 Go 1.23+ `-checklinkname=0`，新预构建库已导出 12 个 CGo 符号且均已接线 |
-| 2026-06-18 | 阶段 4 | ✅ WireGuard/Hysteria2 手动编辑器校验完成；NodeEdit 生成可校验 outbound，覆盖 WG IPv6 endpoint、reserved/MTU 与 HY2 obfs/mport/SNI/ALPN 单测 |
+| 2026-06-18 | 阶段 4 | ✅ WireGuard/Hysteria2 手动编辑器校验完成；NodeEdit 生成可校验 outbound，覆盖 WG IPv6 endpoint、reserved/MTU 与 HY2 obfs/mport/SNI/h3 默认 ALPN 单测 |
 | 2026-06-18 | 阶段 4 | ✅ 本地 SOCKS 代理设置完成；Settings 可配置启用、端口、UDP、用户名/密码认证，Xray 生成 `socks-in` 并随代理共享监听 LAN |
 | 2026-06-19 | 阶段 4 | ✅ 本地 SOCKS 默认开启与端口对齐 v2rayNG；`localSocksEnabled` 新默认值为 true，默认端口 10808，默认配置会生成 `socks-in`，关闭后仍可移除本地 SOCKS 入口 |
 | 2026-06-18 | 阶段 4 | ✅ 本地 SOCKS 动态端口完成；`localSocksDynamicPort` 开启后连接前通过 `CGoGetFreePorts` 写入运行端口，失败回退用户设置端口 |
@@ -226,6 +226,7 @@
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 runtime core 形状完成；启动配置按 v2rayNG 归一为 Xray `protocol=hysteria`、`hysteriaSettings.auth`、TLS/pin 与 finalmask |
 | 2026-06-19 | 协议点检 | ✅ WireGuard reserved 默认值完成；分享链接、`.conf` 导入和手动 builder 缺省写入 `[0,0,0]`，导出保留 `reserved=0,0,0` |
 | 2026-06-19 | 协议点检 | ✅ WireGuard MTU 默认值完成；分享链接和 `.conf` 导入缺省 `mtu` 时按 v2rayNG 写入 `1420`，导出保留 `mtu=1420` |
+| 2026-06-19 | 协议点检 | ✅ TLS/Reality ALPN 选项完成；NodeEdit 按 v2rayNG `streamsecurity_alpn` 限定 ALPN，Hysteria2 手动与运行配置缺省/非法 ALPN 兜底 `h3` |
 | 2026-06-19 | 协议点检 | ✅ Mux 协议适用范围完成；全局 Mux 跳过 v2rayNG 禁用协议与 XHTTP，VLESS flow 节点使用 `concurrency=-1` |
 | 2026-06-19 | 协议点检 | ✅ Mux XUDP UDP/443 策略枚举完成；Settings/存储/运行配置按 v2rayNG `mux_xudp_quic_value` 限定 `reject/allow/skip`，旧非法值兜底 `reject` |
 | 2026-06-19 | 协议点检 | ✅ Fragment finalmask 运行配置完成；TLS/Reality 生成 `finalmask.tcp/udp`，Reality 默认 `packets=1-3`，已有 finalmask 和代理链 dialerProxy 会跳过 |

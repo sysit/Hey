@@ -29,7 +29,7 @@ import { buildSubscriptionAutoUpdateSchedulePlan } from '../main/ets/core/Subscr
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
-import { V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic } from '../main/ets/core/V2rayNgOptions';
+import { V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_STREAM_ALPN, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpn, normalizeV2rayNgStreamAlpnWithFallback } from '../main/ets/core/V2rayNgOptions';
 import { filterLogItems, formatLogcatText } from '../main/ets/features/logs/LogOperations';
 import {
   applyDelayTestPostActionsToGroups,
@@ -377,6 +377,7 @@ export default function localUnitTest() {
       });
       expect(hysteria2.success).assertTrue();
       expect(hysteria2.outboundJson).assertContain('"protocol": "hysteria2"');
+      expect(hysteria2.outboundJson).assertContain('"alpn": "h3"');
       expect(hysteria2.outboundJson).assertContain('"portHopping": "20000-50000"');
       expect(hysteria2.outboundJson).assertContain('"portHoppingInterval": "10-60"');
       expect(hysteria2.outboundJson).assertContain('"pinSHA256": "hy2-pinned-sha256"');
@@ -399,6 +400,24 @@ export default function localUnitTest() {
         bandwidthDown: '',
         bandwidthUp: ''
       }).success).assertFalse();
+
+      const defaultAlpnHysteria2 = buildManualHysteria2Outbound({
+        tag: 'HY2',
+        host: 'hy2.example.com',
+        port: '443',
+        password: 'secret',
+        sni: '',
+        alpn: '',
+        allowInsecure: false,
+        obfsPassword: '',
+        portHopping: '',
+        portHoppingInterval: '',
+        pinSHA256: '',
+        bandwidthDown: '',
+        bandwidthUp: ''
+      });
+      expect(defaultAlpnHysteria2.success).assertTrue();
+      expect(defaultAlpnHysteria2.outboundJson).assertContain('"alpn": "h3"');
     });
 
     it('builds runtime config from full custom config without wrapping', 0, () => {
@@ -1182,6 +1201,19 @@ export default function localUnitTest() {
       expect(defaultSni.success).assertTrue();
       const defaultSniResult = buildXrayConfigWithSettings(defaultSni.outboundJson, buildSettingsFixture());
       expect(defaultSniResult.configJson).assertContain('"serverName": "fallback.hy2.example.com"');
+
+      const importedNoAlpnHy2 =
+        '{"protocol":"hysteria2","tag":"hy2-import","settings":{"servers":[{"address":"no-alpn.hy2.example.com","port":443,"password":"secret"}]}}';
+      const noAlpnResult = buildXrayConfigWithSettings(importedNoAlpnHy2, buildSettingsFixture());
+      expect(noAlpnResult.configJson).assertContain('"alpn"');
+      expect(noAlpnResult.configJson).assertContain('"h3"');
+
+      const importedInvalidAlpnHy2 =
+        '{"protocol":"hysteria2","tag":"hy2-import","settings":{"servers":[{"address":"bad-alpn.hy2.example.com","port":443,"password":"secret","alpn":"bad"}]}}';
+      const invalidAlpnResult = buildXrayConfigWithSettings(importedInvalidAlpnHy2, buildSettingsFixture());
+      expect(invalidAlpnResult.configJson).assertContain('"alpn"');
+      expect(invalidAlpnResult.configJson).assertContain('"h3"');
+      expect(invalidAlpnResult.configJson.indexOf('"bad"')).assertEqual(-1);
     });
 
     it('applies prefer ipv6 to outbound happy eyeballs', 0, () => {
@@ -2173,6 +2205,12 @@ export default function localUnitTest() {
       expect(V2RAYNG_KCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|srtp|utp|wechat-video|dtls|wireguard|dns');
       expect(V2RAYNG_XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
       expect(V2RAYNG_GRPC_MODE_OPTIONS.join('|')).assertEqual('gun|multi');
+      expect(V2RAYNG_DEFAULT_STREAM_ALPN).assertEqual('');
+      expect(V2RAYNG_STREAM_ALPN_OPTIONS.join('|')).assertEqual('|h3|h2|http/1.1|h3,h2,http/1.1|h3,h2|h2,http/1.1');
+      expect(normalizeV2rayNgStreamAlpn('h3,h2')).assertEqual('h3,h2');
+      expect(normalizeV2rayNgStreamAlpn('bad')).assertEqual('');
+      expect(normalizeV2rayNgStreamAlpnWithFallback('', 'h3')).assertEqual('h3');
+      expect(normalizeV2rayNgStreamAlpnWithFallback('bad', 'h3')).assertEqual('h3');
 
       const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision-udp443&security=reality&sni=www.example.com&fp=randomized&pbk=test-public-key&sid=abcd&type=tcp#udp443';
       const imported = parseShareLinkToOutboundJson(link);

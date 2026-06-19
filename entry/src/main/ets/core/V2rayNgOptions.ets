@@ -79,6 +79,40 @@ export const V2RAYNG_GRPC_MODE_OPTIONS: Array<string> = [
   'multi'
 ];
 
+export const V2RAYNG_STREAM_ALPN_OPTIONS: Array<string> = [
+  '',
+  'h3',
+  'h2',
+  'http/1.1',
+  'h3,h2,http/1.1',
+  'h3,h2',
+  'h2,http/1.1'
+];
+
+export const V2RAYNG_DEFAULT_STREAM_ALPN: string = '';
+
+export function normalizeV2rayNgStreamAlpn(value: string, fallback: string = V2RAYNG_DEFAULT_STREAM_ALPN): string {
+  const trimmed = value.trim();
+  if (V2RAYNG_STREAM_ALPN_OPTIONS.indexOf(trimmed) >= 0) {
+    return trimmed;
+  }
+  if (V2RAYNG_STREAM_ALPN_OPTIONS.indexOf(fallback) >= 0) {
+    return fallback;
+  }
+  return V2RAYNG_DEFAULT_STREAM_ALPN;
+}
+
+export function normalizeV2rayNgStreamAlpnWithFallback(value: string, fallback: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    if (V2RAYNG_STREAM_ALPN_OPTIONS.indexOf(fallback) >= 0) {
+      return fallback;
+    }
+    return V2RAYNG_DEFAULT_STREAM_ALPN;
+  }
+  return normalizeV2rayNgStreamAlpn(trimmed, fallback);
+}
+
 export const V2RAYNG_MUX_XUDP_QUIC_OPTIONS: Array<string> = [
   'reject',
   'allow',

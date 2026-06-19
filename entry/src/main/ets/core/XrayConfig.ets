@@ -1,7 +1,7 @@
 import { bundleManager } from '@kit.AbilityKit';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
-import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic } from './V2rayNgOptions';
+import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpnWithFallback } from './V2rayNgOptions';
 
 interface XrayOutbound {
   protocol?: string;
@@ -1496,7 +1496,7 @@ function buildHysteria2TlsSettings(server: XrayHysteria2Server): XrayHysteriaRun
     tlsSettings.serverName = serverName;
   }
 
-  const alpn = parseCsvStrings(server.alpn ?? '');
+  const alpn = parseCsvStrings(normalizeV2rayNgStreamAlpnWithFallback(server.alpn ?? '', 'h3'));
   if (alpn.length > 0) {
     tlsSettings.alpn = alpn;
   }

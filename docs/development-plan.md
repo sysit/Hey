@@ -287,6 +287,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ Reality 全参数（`spiderX`、`mldsa65Verify`/`pqv`）解析与下发：分享链接导入/导出、Clash.Meta 订阅解析和 NodeEdit Reality 表单均会保留后量子验签公钥（2026-06-18）
 - ✅ `flow`（`xtls-rprx-vision` / `xtls-rprx-vision-udp443`）字段：分享链接导入导出保留，NodeEdit 手动编辑选项对齐 v2rayNG（2026-06-19）
 - ✅ uTLS fingerprint（`fp`）：分享链接导入导出保留，NodeEdit 指纹选项对齐 v2rayNG `chrome/firefox/safari/ios/android/edge/360/qq/random/randomized`（2026-06-19）
+- ✅ TLS/Reality ALPN：NodeEdit 手动编辑按 v2rayNG `streamsecurity_alpn` 固定为 `none/h3/h2/http/1.1/h3,h2,http/1.1/h3,h2/h2,http/1.1`；Hysteria2 手动与运行配置缺省/非法 ALPN 兜底为 v2rayNG runtime 默认 `h3`（2026-06-19）
 - ✅ VMess QR TLS insecure：旧版 VMess JSON 分享里的 `insecure=1/0` 会导入为 `tlsSettings.allowInsecure`，导出时也按 v2rayNG 显式写回 `1/0`（2026-06-19）
 - ✅ VMess URL-style security 分层：标准 `vmess://uuid@host?...` URI 的 VMess user security 固定为 v2rayNG 默认 `auto`，查询参数 `security=tls/reality` 只作为传输层安全配置解析（2026-06-19）
 - ✅ VMess 手动 security 选项：NodeEdit 按 v2rayNG `securitys` 提供 `chacha20-poly1305/aes-128-gcm/auto/none/zero`，手动新建默认第 0 项 `chacha20-poly1305`（2026-06-19）
@@ -311,7 +312,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ Hysteria2 端口跳跃（`mport`/`mportHopInt`）、`security=tls`、显式 `insecure=1/0`、`obfs`、证书 pin（`pinSHA256`）与带宽：分享链接解析和手动编辑器均已写入 outbound，导出 `mportHopInt` 时按 v2rayNG 规则规范化为不少于 5 秒的单值间隔，运行配置会生成 v2rayNG/Xray core 形状的 `protocol=hysteria`、`hysteriaSettings.auth`、TLS 设置、`finalmask.quicParams.brutalUp/brutalDown`、`udpHop` 与 `salamander` mask（2026-06-19；实连仍待真机/内核验证）
 - ✅ WireGuard `.conf` 文件整段解析（2026-06-18 已完成：`[Interface]`/`[Peer]` 文本或文件导入转为 Xray wireguard outbound）
 - ✅ WireGuard reserved/MTU 默认值：分享链接、`.conf` 导入和手动 outbound 生成在缺省时写入 v2rayNG 默认 `reserved=0,0,0` 与 `mtu=1420`，导出分享链接保留默认值（2026-06-19）
-- ✅ WireGuard/Hysteria2 手动编辑器：NodeEdit 已生成可校验 outbound，WG 支持 secret/public/pre-shared/reserved/MTU/IPv6 endpoint，HY2 支持 SNI/ALPN/insecure/obfs/mport/mportHopInt/pinSHA256/bandwidth，且 HY2 bandwidth/obfs/port-hop 会在启动配置中转为 v2rayNG 风格 `finalmask`（2026-06-19）
+- ✅ WireGuard/Hysteria2 手动编辑器：NodeEdit 已生成可校验 outbound，WG 支持 secret/public/pre-shared/reserved/MTU/IPv6 endpoint，HY2 支持 SNI/insecure/obfs/mport/mportHopInt/pinSHA256/bandwidth，且 HY2 runtime ALPN 固定为 v2rayNG 默认 `h3`，bandwidth/obfs/port-hop 会在启动配置中转为 v2rayNG 风格 `finalmask`（2026-06-19）
 - ✅ SOCKS 端口/UDP/认证/动态端口：Settings 已可配置本地 SOCKS inbound，`localSocksEnabled` 按 v2rayNG `pref_enable_local_proxy` 默认开启，默认端口按 v2rayNG 为 `10808`，写入 `socks-in` 端口、UDP 与用户名/密码认证，并随代理共享监听 LAN；动态端口开启时连接前通过 `CGoGetFreePorts` 选择运行端口，失败回退用户设置端口（2026-06-19 补默认端口/开启语义）
 - ✅ Mux 协议适用范围：全局 Mux 只应用到 v2rayNG 允许的 VMess/VLESS 等出站，自动跳过 Shadowsocks/SOCKS/HTTP/Trojan/WireGuard/Hysteria2 与 XHTTP，并对 VLESS flow 节点写入 `concurrency=-1`（2026-06-19）
 - ✅ Mux XUDP UDP/443 策略枚举：Settings 按 v2rayNG `mux_xudp_quic_value` 固定为 `reject/allow/skip`，保存、存储归一化和运行配置均对旧非法值兜底到 `reject`（2026-06-19）
@@ -492,6 +493,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | M4 | ✅ Logcat 操作对齐完成（Logs 页支持 v2rayNG Logcat 的搜索过滤、复制全部、分享全部、单条日志复制与清空；分享走 Harmony `sendData` 并保留剪贴板回退；补日志过滤/格式化单测） |
 | 2026-06-19 | M3 | ✅ All 分组批处理对齐完成（Nodes 页单节点删除、删除全部、去重、删除无效配置按 v2rayNG 当前可见范围跨订阅分组执行；“删除无效配置”改为删除测速失败节点；测速后自动排序/删除失败节点按订阅分组保存；补 All 分组批处理纯函数单测） |
 | 2026-06-19 | 协议点检 | ✅ `flow`/uTLS 指纹选项完成（NodeEdit 手动编辑补齐 `xtls-rprx-vision-udp443` 与 `ios/android/randomized` 指纹选项，分享链接导入导出保留这些值；补选项和 round-trip 单测） |
+| 2026-06-19 | 协议点检 | ✅ TLS/Reality ALPN 选项完成（NodeEdit 手动编辑改为 v2rayNG `streamsecurity_alpn` picker；Hysteria2 手动生成与运行配置缺省/非法 ALPN 兜底 `h3`；补选项、手动生成与运行配置单测） |
 | 2026-06-19 | 协议点检 | ✅ VMess QR TLS insecure 完成（旧版 VMess JSON `insecure=1` 导入为 `tlsSettings.allowInsecure`，导出后再导入仍保留；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ VMess QR insecure 显式 false 导出完成（旧版 VMess JSON 导出在 TLS 且 `allowInsecure=false` 时按 v2rayNG 写入 `"insecure":"0"`；补解码形状单测） |
 | 2026-06-19 | 协议点检 | ✅ VMess URL-style security 分层完成（标准 URI 解析时 user security 固定为 `auto`，`security=tls` 仅进入 streamSettings；补解析单测） |

@@ -5,7 +5,7 @@ import { buildKcpFinalMask } from '../core/KcpTransport';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../core/V2rayNgOptions';
+import { V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgStreamAlpn } from '../core/V2rayNgOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -96,7 +96,7 @@ struct PickerRow {
         .width('100%')
 
       Row() {
-        Text(this.selectedValue.toUpperCase())
+        Text(this.displayOption(this.selectedValue).toUpperCase())
           .fontSize(FontSz.body)
           .fontColor(AppColor.textPrimary)
           .fontWeight(FontWeight.Medium)
@@ -118,7 +118,7 @@ struct PickerRow {
       .onClick(() => {
         const selectedIndex = this.options.indexOf(this.selectedValue) >= 0 ? this.options.indexOf(this.selectedValue) : 0;
         TextPickerDialog.show({
-          range: this.options,
+          range: this.displayOptions(),
           selected: selectedIndex,
           onAccept: (value: TextPickerResult) => {
             let idx = 0;
@@ -135,9 +135,9 @@ struct PickerRow {
               this.selectedValue = this.options[idx];
             } else if (value.value !== undefined) {
               if (typeof value.value === 'string') {
-                this.selectedValue = value.value;
+                this.selectedValue = this.optionForDisplay(value.value);
               } else if (Array.isArray(value.value)) {
-                this.selectedValue = value.value[0];
+                this.selectedValue = this.optionForDisplay(value.value[0]);
               }
             }
           }
@@ -145,6 +145,27 @@ struct PickerRow {
       })
     }
     .width('100%')
+  }
+
+  private displayOption(option: string): string {
+    return option.length > 0 ? option : 'none';
+  }
+
+  private displayOptions(): Array<string> {
+    const result = new Array<string>();
+    for (let index = 0; index < this.options.length; index++) {
+      result.push(this.displayOption(this.options[index]));
+    }
+    return result;
+  }
+
+  private optionForDisplay(value: string): string {
+    for (let index = 0; index < this.options.length; index++) {
+      if (this.displayOption(this.options[index]) === value) {
+        return this.options[index];
+      }
+    }
+    return value;
   }
 }
 
@@ -570,9 +591,6 @@ struct NodeEditPage {
                 this.EditorRow('SNI (Server Name Indication)', this.tlsSni, 'TLS 握手域名', (value: string) => {
                   this.tlsSni = value;
                 })
-                this.EditorRow('ALPN', this.tlsAlpn, '多个 ALPN 以逗号连接，默认 h2', (value: string) => {
-                  this.tlsAlpn = value;
-                })
                 ToggleRow({
                   label: '允许不安全证书 (Allow Insecure)',
                   isOn: $tlsAllowInsecure
@@ -661,8 +679,10 @@ struct NodeEditPage {
                     this.EditorRow('SNI (Server Name Indication)', this.tlsSni, 'TLS 握手域名', (value: string) => {
                       this.tlsSni = value;
                     })
-                    this.EditorRow('ALPN (可选)', this.tlsAlpn, '多个 ALPN 以逗号连接，如 h2,http/1.1', (value: string) => {
-                      this.tlsAlpn = value;
+                    PickerRow({
+                      label: 'ALPN',
+                      options: V2RAYNG_STREAM_ALPN_OPTIONS,
+                      selectedValue: $tlsAlpn
                     })
                     this.EditorRow('ECH 配置 (ech)', this.tlsEchConfigList, 'ECH config list', (value: string) => {
                       this.tlsEchConfigList = value;
@@ -956,8 +976,9 @@ struct NodeEditPage {
             if (this.tlsSni.trim().length > 0) {
               tlsConfig.serverName = this.tlsSni.trim();
             }
-            if (this.tlsAlpn.trim().length > 0) {
-              tlsConfig.alpn = this.tlsAlpn.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const normalizedAlpn = normalizeV2rayNgStreamAlpn(this.tlsAlpn);
+            if (normalizedAlpn.length > 0) {
+              tlsConfig.alpn = normalizedAlpn.split(',').map(s => s.trim()).filter(s => s.length > 0);
             }
             if (this.tlsFingerprint.trim().length > 0 && this.tlsFingerprint.trim() !== 'none') {
               tlsConfig.fingerprint = this.tlsFingerprint.trim();
@@ -1201,7 +1222,7 @@ struct NodeEditPage {
     } else if (protocol === 'hysteria2') {
       this.serverPort = '443';
       this.tlsSecurity = 'none';
-      this.tlsAlpn = 'h2';
+      this.tlsAlpn = 'h3';
     }
   }
 }

@@ -1,3 +1,5 @@
+import { normalizeV2rayNgStreamAlpnWithFallback } from './V2rayNgOptions';
+
 export interface ManualOutboundBuildResult {
   success: boolean;
   message: string;
@@ -134,7 +136,7 @@ export function buildManualHysteria2Outbound(input: ManualHysteria2Input): Manua
     insecure: input.allowInsecure
   };
   assignIfPresent(server, 'sni', input.sni);
-  assignIfPresent(server, 'alpn', input.alpn);
+  assignIfPresent(server, 'alpn', normalizeV2rayNgStreamAlpnWithFallback(input.alpn, 'h3'));
   assignIfPresent(server, 'obfsPassword', input.obfsPassword);
   assignIfPresent(server, 'portHopping', input.portHopping);
   assignIfPresent(server, 'portHoppingInterval', input.portHoppingInterval);
