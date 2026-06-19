@@ -1,4 +1,5 @@
 import { bundleManager } from '@kit.AbilityKit';
+import { V2RAYNG_DNS_DIRECT, V2RAYNG_DNS_PROXY, normalizeV2rayNgDnsServers } from './DnsAddresses';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
 import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from './V2rayNgOptions';
@@ -1823,10 +1824,10 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
     };
     return defaultDns;
   }
-  const remoteDns = parseCsvStrings(settings.remoteDns);
-  const domesticDns = parseCsvStrings(settings.domesticDns);
+  const remoteDns = normalizeV2rayNgDnsServers(settings.remoteDns, V2RAYNG_DNS_PROXY, true);
+  const domesticDns = normalizeV2rayNgDnsServers(settings.domesticDns, V2RAYNG_DNS_DIRECT, true);
   const servers: Array<string | XrayDnsServerConfig> = [];
-  addCsvValues(servers, settings.remoteDns);
+  addDnsServerValues(servers, remoteDns);
   addDnsProxyDomainServer(servers, remoteDns, collectDnsRuleDomains(settings, ['proxy', 'proxy-chain', 'policy-group']));
   addDomesticDnsServers(servers, domesticDns, collectDnsRuleDomains(settings, ['direct']));
   if (servers.length === 0) {
@@ -2583,16 +2584,6 @@ function appendDefaultProxyBalancerRule(rules: Array<XrayRoutingRule>, proxyBala
   });
 }
 
-function addCsvValues(target: Array<string | XrayDnsServerConfig>, value: string): void {
-  const parts = value.split(',');
-  for (let index = 0; index < parts.length; index++) {
-    const item = parts[index].trim();
-    if (item.length > 0 && target.indexOf(item) < 0) {
-      target.push(item);
-    }
-  }
-}
-
 function parseCsvStrings(value: string): Array<string> {
   const result = new Array<string>();
   const parts = value.split(',');
@@ -2606,6 +2597,15 @@ function addUniqueString(target: Array<string>, value: string): void {
   const item = value.trim();
   if (item.length > 0 && target.indexOf(item) < 0) {
     target.push(item);
+  }
+}
+
+function addDnsServerValues(target: Array<string | XrayDnsServerConfig>, values: Array<string>): void {
+  for (let index = 0; index < values.length; index++) {
+    const item = values[index];
+    if (item.length > 0 && target.indexOf(item) < 0) {
+      target.push(item);
+    }
   }
 }
 

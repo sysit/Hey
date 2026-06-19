@@ -1,5 +1,6 @@
 import { vpnExtension } from '@kit.NetworkKit';
 import Want from '@ohos.app.ability.Want';
+import { V2RAYNG_DNS_VPN, normalizeV2rayNgVpnDnsServers } from '../core/DnsAddresses';
 import {
   DEFAULT_VPN_MTU,
   normalizeVpnBypassLanMode,
@@ -19,7 +20,7 @@ export const VPN_MTU: number = DEFAULT_VPN_MTU;
 export const TUN_IPV4: string = resolveVpnInterfaceAddressConfig().ipv4Client;
 export const TUN_IPV6: string = resolveVpnInterfaceAddressConfig().ipv6Client;
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
-export const DEFAULT_VPN_DNS_ADDRESSES: string[] = ['1.1.1.1'];
+export const DEFAULT_VPN_DNS_ADDRESSES: string[] = [V2RAYNG_DNS_VPN];
 export const VPN_BYPASS_LAN_IPV4_ROUTES: string[] = [
   '0.0.0.0/5',
   '8.0.0.0/7',
@@ -182,23 +183,7 @@ export function resolveVpnBypassLan(
 }
 
 export function normalizeVpnDnsAddresses(vpnDns?: string): string[] {
-  if (vpnDns === undefined || vpnDns.trim().length === 0) {
-    return DEFAULT_VPN_DNS_ADDRESSES.slice();
-  }
-
-  const parts = vpnDns.split(',');
-  const result: string[] = [];
-  for (let index = 0; index < parts.length; index++) {
-    const address = parts[index].trim();
-    if (address.length > 0 && result.indexOf(address) < 0) {
-      result.push(address);
-    }
-  }
-
-  if (result.length === 0) {
-    return DEFAULT_VPN_DNS_ADDRESSES.slice();
-  }
-  return result;
+  return normalizeV2rayNgVpnDnsServers(vpnDns);
 }
 
 function buildVpnRoutes(bypassLan: boolean, ipv6Enabled: boolean): Array<vpnExtension.RouteInfo> {

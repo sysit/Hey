@@ -325,6 +325,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ Fragment packets 枚举：Settings 按 v2rayNG `fragment_packets` 固定为 `tlshello/1-2/1-3/1-5`，保存和运行配置均对旧非法值兜底到 `tlshello`（2026-06-19）
 - ✅ Core loglevel 枚举：Settings、存储归一化和 Xray 运行配置生成均按 v2rayNG `core_loglevel` 固定为 `debug/info/warning/error/none`，旧非法值兜底到 `warning`（2026-06-19）
 - ✅ 本地 DNS / FakeDNS 已生成 Xray `dns-out`、FakeDNS server 和 TUN 53 端口路由；remote/domestic DNS 已按 v2rayNG 规则生成 proxy/direct domain-bound servers、CN `expectIPs`、DNS 专用 proxy/direct 路由、block hosts 和内置 googleapis/Private DNS 默认 hosts（2026-06-19）
+- ✅ DNS 服务器过滤：remote/domestic DNS 仅保留 v2rayNG 允许的纯 IP、`https`/`tcp`/`quic` CoreDNS 地址和 `localhost`，过滤后为空回退默认；VPN DNS 仅保留纯 IP 并在空/无效时回退 `1.1.1.1`（2026-06-20）
 
 ---
 
@@ -462,6 +463,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M4 | ✅ 启动前 live DNS 预解析完成（连接启动前用 Harmony `connection.getAddressesByName` 解析 outbound 域名，合并到运行时 DNS hosts，不改持久化设置；普通节点、代理链、策略组均覆盖） |
 | 2026-06-19 | M4 | ✅ DNS 分流配置增强完成（remote/domestic DNS 按自定义 proxy/direct/block 规则生成 domain-bound servers、CN `expectIPs`、DNS 模块 proxy/direct 路由、block hosts 与多上游 parallel query；补配置生成单测） |
 | 2026-06-19 | M4 | ✅ DNS 默认 hosts 完成（内置 v2rayNG `googleapis.cn` 与 Android Private DNS 域名地址映射，用户 `dnsHosts` 后写覆盖默认值；补配置生成单测） |
+| 2026-06-20 | M4 | ✅ DNS 服务器过滤对齐 v2rayNG（remote/domestic 过滤为纯 IP/CoreDNS 地址并保留默认回退，VPN DNS 仅保留纯 IP；补 helper、配置生成与 VPN DNS 单测） |
 | 2026-06-18 | M4 | ✅ 真连接延迟测试并发设置完成（`realPingConcurrency` 按 v2rayNG 默认 16 与 1..128 范围保存，首页批量测速按配置并发测量、串行保存结果，并补 Settings 往返/归一化单测） |
 | 2026-06-19 | M4 | ✅ 首页真连接测速入口接线完成（Nodes 菜单新增“测试配置真连接”，走 `DelayTester.measureNodeOutbound`/native `CGoPing`，使用 Settings `delayTestUrl`；TCP 延迟菜单保留；补默认 URL 与策略组 probe URL 单测） |
 | 2026-06-19 | M4 | ✅ 真实延迟测速配置瘦身对齐 v2rayNG（`buildDelayTestConfig` 移除导入 outbound 自带 mux，保持测速路径不受 mux 影响；补配置生成单测） |

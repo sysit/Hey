@@ -2,6 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { buildPolicyGroupConfigFromNodes, buildPolicyGroupConfigFromSubscription, buildProxyChainConfigFromNodes, isAdvancedOutboundBuildableNode, normalizePolicyGroupBuilderStrategy, parseAdvancedOutboundEditState, resolveDynamicPolicyGroupConfigJson } from '../main/ets/core/AdvancedOutboundBuilder';
 import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData, parseAppBackupPayload } from '../main/ets/core/AppBackup';
 import { CONTROL_CARD_FORM_NAME, CONTROL_CARD_SCAN_URI, CONTROL_CARD_START_URI, CONTROL_CARD_STOP_URI, CONTROL_CARD_TOGGLE_URI, buildControlCardFormData } from '../main/ets/core/ControlCard';
+import { V2RAYNG_DNS_DIRECT, V2RAYNG_DNS_PROXY, isV2rayNgCoreDnsAddress, isV2rayNgPureIpAddress, normalizeV2rayNgDnsServers } from '../main/ets/core/DnsAddresses';
 import { AssetNameEntry, hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
 import { decodeBase64ToUtf8 } from '../main/ets/core/Encoding';
 import { buildV2rayNgH2HttpSettings, splitV2rayNgH2Hosts } from '../main/ets/core/H2Transport';
@@ -837,8 +838,8 @@ export default function localUnitTest() {
 
     it('adds v2rayng style dns domain servers and dns routing rules', 0, () => {
       const settings = buildSettingsFixture();
-      settings.remoteDns = '9.9.9.9,1.1.1.1';
-      settings.domesticDns = '223.5.5.5,119.29.29.29';
+      settings.remoteDns = 'bad.example,9.9.9.9,https://dns.google/dns-query,9.9.9.9';
+      settings.domesticDns = 'invalid.local,223.5.5.5,tcp://223.5.5.5';
       settings.routingRules = [
         {
           id: 'proxy-dns-domain',
@@ -884,7 +885,9 @@ export default function localUnitTest() {
       const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, settings);
       expect(result.configJson).assertContain('"tag": "dns"');
       expect(result.configJson).assertContain('"enableParallelQuery": true');
+      expect(result.configJson).assertContain('"https://dns.google/dns-query"');
       expect(result.configJson).assertContain('"address": "9.9.9.9"');
+      expect(result.configJson).assertContain('"tcp://223.5.5.5"');
       expect(result.configJson).assertContain('"domain:proxy.example"');
       expect(result.configJson).assertContain('"tag": "domestic-dns-0"');
       expect(result.configJson).assertContain('"domain:direct.example"');
@@ -892,8 +895,34 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"expectIPs"');
       expect(result.configJson).assertContain('"geoip:cn"');
       expect(result.configJson).assertContain('"domain:blocked.example": "127.0.0.1"');
+      expect(result.configJson.indexOf('bad.example')).assertEqual(-1);
+      expect(result.configJson.indexOf('invalid.local')).assertEqual(-1);
       expect(hasInboundOutboundRule(result.configJson, 'dns', 'proxy')).assertTrue();
       expect(hasInboundOutboundRule(result.configJson, 'domestic-dns-0', 'direct')).assertTrue();
+    });
+
+    it('filters dns server settings like v2rayNG', 0, () => {
+      expect(isV2rayNgPureIpAddress('1.1.1.1')).assertTrue();
+      expect(isV2rayNgPureIpAddress('[2606:4700:4700::1111]')).assertTrue();
+      expect(isV2rayNgPureIpAddress('dns.google')).assertFalse();
+      expect(isV2rayNgCoreDnsAddress('https://dns.google/dns-query')).assertTrue();
+      expect(isV2rayNgCoreDnsAddress('tcp://1.1.1.1')).assertTrue();
+      expect(isV2rayNgCoreDnsAddress('quic://dns.adguard.com')).assertTrue();
+      expect(isV2rayNgCoreDnsAddress('localhost')).assertTrue();
+      expect(isV2rayNgCoreDnsAddress('dns.google')).assertFalse();
+
+      const remote = normalizeV2rayNgDnsServers('bad.example, 9.9.9.9, https://dns.google/dns-query,9.9.9.9', V2RAYNG_DNS_PROXY);
+      expect(remote.length).assertEqual(2);
+      expect(remote[0]).assertEqual('9.9.9.9');
+      expect(remote[1]).assertEqual('https://dns.google/dns-query');
+
+      const domestic = normalizeV2rayNgDnsServers('bad.example', V2RAYNG_DNS_DIRECT);
+      expect(domestic.length).assertEqual(1);
+      expect(domestic[0]).assertEqual('223.5.5.5');
+
+      const vpn = normalizeV2rayNgDnsServers('https://dns.google/dns-query, 1.1.1.1', V2RAYNG_DNS_PROXY, false);
+      expect(vpn.length).assertEqual(1);
+      expect(vpn[0]).assertEqual('1.1.1.1');
     });
 
     it('adds v2rayng default dns hosts before user hosts', 0, () => {
@@ -1977,6 +2006,11 @@ export default function localUnitTest() {
       expect(explicit.length).assertEqual(2);
       expect(explicit[0]).assertEqual('9.9.9.9');
       expect(explicit[1]).assertEqual('1.1.1.1');
+
+      const filtered = normalizeVpnDnsAddresses('dns.google, https://dns.google/dns-query, [2606:4700:4700::1111],9.9.9.9');
+      expect(filtered.length).assertEqual(2);
+      expect(filtered[0]).assertEqual('[2606:4700:4700::1111]');
+      expect(filtered[1]).assertEqual('9.9.9.9');
 
       const config = createDefaultVpnConfig(false, false, [], '');
       const dnsAddresses = config.dnsAddresses ?? [];
