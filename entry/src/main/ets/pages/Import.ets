@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
+import { resolveImportedNodeName } from '../core/ImportedNodeNames';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
@@ -382,7 +383,7 @@ struct ImportPage {
           }
           await SubscriptionStore.addManualNode(
             context,
-            this.resolveNodeName(imported.profile.outboundJson, outbound.name),
+            resolveImportedNodeName(imported.profile.outboundJson, outbound.name),
             imported.profile.outboundJson,
             imported.profile.configType
           );
@@ -400,7 +401,7 @@ struct ImportPage {
         return;
       }
 
-      const nodeName = this.resolveNodeName(saved.profile.outboundJson, '链接导入');
+      const nodeName = resolveImportedNodeName(saved.profile.outboundJson, '链接导入');
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
       markRuntimeSettingsRestartNeeded();
       promptAction.showToast({ message: '节点解析成功' });
@@ -410,23 +411,6 @@ struct ImportPage {
     } finally {
       this.isBusy = false;
     }
-  }
-
-  private resolveNodeName(outboundJson: string, fallback: string): string {
-    let nodeName = fallback.trim().length > 0 ? fallback.trim() : '链接导入';
-    try {
-      const obj = JSON.parse(outboundJson) as Record<string, Object>;
-      if (obj.tag && typeof obj.tag === 'string' && obj.tag.trim().length > 0) {
-        nodeName = obj.tag.trim();
-      } else if (obj.remarks && typeof obj.remarks === 'string' && obj.remarks.trim().length > 0) {
-        nodeName = obj.remarks.trim();
-      } else if (obj.name && typeof obj.name === 'string' && obj.name.trim().length > 0) {
-        nodeName = obj.name.trim();
-      }
-    } catch (err) {
-      // Keep fallback.
-    }
-    return nodeName;
   }
 
   private t(key: string): string {

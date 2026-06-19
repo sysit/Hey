@@ -3,6 +3,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { scanBarcode, scanCore } from '@kit.ScanKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
+import { resolveImportedNodeName } from '../core/ImportedNodeNames';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
@@ -15,6 +16,7 @@ import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
 import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
+import { convertNativeShareTextToOutbounds } from '../services/NativeShareConverter';
 import { AppColor } from '../theme/Theme';
 
 @Entry
@@ -150,7 +152,7 @@ struct ScannerPage {
                 this.importBuffer = value;
               })
 
-            Text('支持粘贴 vmess://、vless://、ss://、socks5://、wireguard://、hysteria2://、hy2:// 等协议链接，或 http://、https:// 订阅地址。')
+            Text('支持粘贴 vmess://、vless://、ss://、socks5://、wireguard://、hysteria2://、hy2:// 等协议链接、v2rayN 多行/base64、Clash.Meta YAML，或 http://、https:// 订阅地址。')
               .fontSize(11)
               .fontColor(AppColor.textTertiary)
               .width('100%')
@@ -352,25 +354,46 @@ struct ScannerPage {
       // 解析节点
       const saved = await NODES_CONTROLLER.saveProfile(context, value, this.language);
       if (saved.profile === null) {
-        this.lastError = saved.lastError;
-        SHARED_RUNTIME_CONTROLLER.appendLog(saved.lastError);
+        const nativeResult = convertNativeShareTextToOutbounds(value);
+        if (!nativeResult.ok) {
+          this.lastError = nativeResult.message.length > 0 ? `${saved.lastError}\n${nativeResult.message}` : saved.lastError;
+          SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+          return;
+        }
+
+        let importedCount = 0;
+        let lastValidationError = '';
+        for (let index = 0; index < nativeResult.outbounds.length; index++) {
+          const outbound = nativeResult.outbounds[index];
+          const imported = await NODES_CONTROLLER.saveProfile(context, outbound.outboundJson, this.language, 'outbound');
+          if (imported.profile === null) {
+            lastValidationError = imported.lastError;
+            continue;
+          }
+          await SubscriptionStore.addManualNode(
+            context,
+            resolveImportedNodeName(imported.profile.outboundJson, outbound.name),
+            imported.profile.outboundJson,
+            imported.profile.configType
+          );
+          importedCount++;
+        }
+
+        if (importedCount === 0) {
+          this.lastError = lastValidationError.length > 0 ? lastValidationError : saved.lastError;
+          SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+          return;
+        }
+
+        markRuntimeSettingsRestartNeeded();
+        const successMessage = importedCount === 1 ? '节点导入成功' : `已导入 ${importedCount} 个节点`;
+        SHARED_RUNTIME_CONTROLLER.appendLog(successMessage);
+        promptAction.showToast({ message: successMessage });
+        router.back();
         return;
       }
 
-      let nodeName = '扫码导入';
-      try {
-        const obj = JSON.parse(saved.profile.outboundJson) as Record<string, Object>;
-        if (obj.tag && typeof obj.tag === 'string' && obj.tag.trim().length > 0) {
-          nodeName = obj.tag.trim();
-        } else if (obj.remarks && typeof obj.remarks === 'string' && obj.remarks.trim().length > 0) {
-          nodeName = obj.remarks.trim();
-        } else if (obj.name && typeof obj.name === 'string' && obj.name.trim().length > 0) {
-          nodeName = obj.name.trim();
-        }
-      } catch (err) {
-        // ignore
-      }
-
+      const nodeName = resolveImportedNodeName(saved.profile.outboundJson, '扫码导入');
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
       markRuntimeSettingsRestartNeeded();
       SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.profileSaved'));

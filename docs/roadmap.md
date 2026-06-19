@@ -18,7 +18,7 @@
 | Geo 资产管理 | ✅ 97% | 下载 / 自定义 URL / 本地 `.dat` 导入 / 资源 URL 二维码导入 / 自定义资源名称唯一性校验 / 本地文件资源隐藏编辑入口 / 剪贴板备份还原 / WebDAV ZIP 云备份还原已实现，恢复兼容旧 JSON 包；内置下载已包含 v2rayNG 强制更新的 `geoip-only-cn-private.dat`，用于支撑 `geoip:cn/private` ext 路由，下载源选择补齐 v2rayNG 的 Loyalsoldier / Russia / Iran 三组规则源；Geo 文件 native 计数/校验已接线，待重建 `.so` 真机验证 |
 | 分应用代理 | 🟡 82% | 开关、黑白名单、手动包名、应用枚举、批量全选/清除/反选、自动选中需代理应用、剪贴板导入导出和 VPN 应用映射已接线；自动选择会先拉取 v2rayNG `androidpackagenamelist` 远程列表，失败时回退内置列表，并保留 `com.google*` 强制匹配/WebView 排除；默认模式对齐 v2rayNG 为“代理选中的应用”，空列表仍阻断自身包名防回路；仍受平台可见性限制，待真机回归 |
 | 设置页 | 🟡 95% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理按 v2rayNG 默认开启，静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、fake DNS、DNS hosts、出站域名预解析方式（含启动前 live DNS 预解析）、速度显示、常驻速度通知、当前连接信息测试网址、语言跟随系统、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线；运行中保存设置/路由/分应用或切换当前节点后会按 v2rayNG `SettingsChangeManager` 语义返回首页自动重启服务 |
-| 扫码导入 | ✅ 82% | 粘贴导入和 ScanKit 相机扫码已接线，剪贴板读取已声明并运行时请求 Harmony `READ_PASTEBOARD` 权限；`startScanImmediate` 开启时进入扫码页自动拉起相机，待真机相机权限/机型回归 |
+| 扫码导入 | ✅ 84% | 粘贴导入和 ScanKit 相机扫码已接线，剪贴板读取已声明并运行时请求 Harmony `READ_PASTEBOARD` 权限；扫码页在单链接解析失败后会复用 native 转换兜底，可导入 v2rayN 多行/base64 与 Clash.Meta YAML 文本/二维码；`startScanImmediate` 开启时进入扫码页自动拉起相机，待真机相机权限/机型回归 |
 | 导出 / 分享 | ✅ 86% | 文本/文件导出、节点二维码、订阅链接二维码与系统分享面板已完成；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情已支持 v2rayNG `shareFullContent2Clipboard` 等价的完整运行配置复制；后续主要是真机分享目标兼容回归 |
 | 平台集成 | 🟡 53% | Want / URL Scheme 深链导入已完成，并按 v2rayNG 处理 `install-sub`/`install-config` 外层 fragment 名称兜底；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；Logcat 页已支持搜索、复制全部、分享全部、单条复制与清空；常驻速度通知已接 Harmony NotificationKit；2×2 桌面服务卡片基础入口已接 FormExtensionAbility/FormLink，并已通过保存 formId + updateForm 同步运行态，待真机通知权限、卡片添加/点击与系统刷新回归 |
 
@@ -52,7 +52,7 @@
 - `CGoTestXray` → 连接前配置预检，减少启动失败
 - `CGoXrayVersion` → About 页显示内核版本
 - ✅ `CGoReadGeoFiles` / `CGoCountGeoData` → geo 文件校验与计数（2026-06-18 代码接线，待重建/真机）
-- ✅ `CGoConvertShareLinksToXrayJson` / `CGOConvertXrayJsonToShareLinks` → 分享文本与 Xray JSON 互转；导入页已用 native 转换作为批量/base64/Clash YAML 兜底（2026-06-18 代码接线，待重建/真机）
+- ✅ `CGoConvertShareLinksToXrayJson` / `CGOConvertXrayJsonToShareLinks` → 分享文本与 Xray JSON 互转；导入页与扫码页已用 native 转换作为批量/base64/Clash YAML 兜底（2026-06-18/19 代码接线，待重建/真机）
 
 **产出**：统计准确 + 配置可预检。
 
@@ -225,3 +225,4 @@
 | 2026-06-19 | 协议点检 | ✅ Mux 协议适用范围完成；全局 Mux 跳过 v2rayNG 禁用协议与 XHTTP，VLESS flow 节点使用 `concurrency=-1` |
 | 2026-06-19 | 协议点检 | ✅ Fragment finalmask 运行配置完成；TLS/Reality 生成 `finalmask.tcp/udp`，Reality 默认 `packets=1-3`，已有 finalmask 和代理链 dialerProxy 会跳过 |
 | 2026-06-19 | 协议点检 | ✅ 本地 SOCKS 默认端口完成；`pref_socks_port` 默认对齐 v2rayNG 为 10808，Harmony HTTP inbound 兼容端口避让到 10809 |
+| 2026-06-19 | 阶段 4 | ✅ 扫码 native 分享兜底完成；Scanner 在单链接解析失败后复用 `CGoConvertShareLinksToXrayJson` 转换结果，批量保存 outbounds 并标记运行配置待重启 |

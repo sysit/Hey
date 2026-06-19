@@ -5,6 +5,7 @@ import { CONTROL_CARD_FORM_NAME, CONTROL_CARD_SCAN_URI, CONTROL_CARD_START_URI, 
 import { hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
 import { decodeBase64ToUtf8 } from '../main/ets/core/Encoding';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLanguage, resolveSystemLanguage, translate } from '../main/ets/core/I18n';
+import { resolveImportedNodeName } from '../main/ets/core/ImportedNodeNames';
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
@@ -94,6 +95,16 @@ export default function localUnitTest() {
       const running = decideRuntimeSettingsRestart(true, true, false);
       expect(running.shouldRestart).assertTrue();
       expect(running.keepPending).assertFalse();
+    });
+  });
+
+  describe('importedNodeNames', () => {
+    it('resolves imported node names with shared priority', 0, () => {
+      expect(resolveImportedNodeName('{"tag":"  Primary  ","remarks":"Remark","name":"Name"}', 'Fallback')).assertEqual('Primary');
+      expect(resolveImportedNodeName('{"remarks":"  Remark  ","name":"Name"}', 'Fallback')).assertEqual('Remark');
+      expect(resolveImportedNodeName('{"name":"  Name  "}', 'Fallback')).assertEqual('Name');
+      expect(resolveImportedNodeName('{"protocol":"vless"}', '  Scan Fallback  ')).assertEqual('Scan Fallback');
+      expect(resolveImportedNodeName('{', '')).assertEqual('链接导入');
     });
   });
 

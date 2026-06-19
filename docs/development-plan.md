@@ -92,7 +92,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 **进展（2026-06-18 续）**：`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks` 接线完成：
 - 构建：version-script 继续导出两个分享转换符号
 - Native：`napi_init.cpp` 新增 `convertShareLinksToXrayJson`/`convertXrayJsonToShareLinks`，符号缺失时优雅降级
-- 消费：导入页在内置单节点解析失败后调用 native 转换，支持 v2rayN 多行/base64 与 Clash.Meta YAML，提取返回配置中的 outbounds 保存为手动节点
+- 消费：导入页和扫码页在内置单节点解析失败后调用 native 转换，支持 v2rayN 多行/base64 与 Clash.Meta YAML，提取返回配置中的 outbounds 保存为手动节点
 
 **仍需**：用更新后的脚本重建 `libxray.so`（当前 `.so` 未导出这些新增符号），真机复测流量/预检/版本/Geo 计数/动态测速端口/动态本地 SOCKS 端口/native 分享转换，并确认新增 metrics inbound 不影响已验证的连接路径。
 
@@ -235,6 +235,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
   不提供编辑表单入口，对齐 v2rayNG `url == "file"` 行为
 - ✅ **剪贴板导入权限**：对应 v2rayNG 剪贴板导入配置/规则集路径，Harmony manifest 已声明
   `ohos.permission.READ_PASTEBOARD` 并在读取前统一请求，覆盖扫码页粘贴、JSON 导入、订阅粘贴、路由规则导入、分应用/备份恢复等读取入口
+- ✅ **扫码 native 分享兜底**：Scanner 在内置单节点解析失败后复用
+  `CGoConvertShareLinksToXrayJson` 转换结果，支持 v2rayN 多行/base64 与 Clash.Meta YAML 文本/二维码批量保存为手动节点
 - 🟡 **桌面服务卡片 / 快捷方式**：一键启停、扫码（对应 QSTile/Widget/Shortcuts）；
   Harmony `ControlCardAbility` 已注册 2×2 ArkTS 服务卡片，卡片通过 `FormLink`
   跳转 `hey://toggle` / `hey://start` / `hey://stop` / `hey://scan`
@@ -422,6 +424,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M1 | 🟡 Geo 文件校验/计数接线完成（`CGoReadGeoFiles`/`CGoCountGeoData` 导出 + native wrapper + Assets 页显示分类数/规则数）；待重建 `.so` + 真机复测 |
 | 2026-06-18 | M1 | 🟡 Native 空闲端口接线完成（`CGoGetFreePorts` 导出 + native wrapper + 延迟测速/本地 SOCKS 动态端口，失败回退静态端口）；待重建 `.so` + 真机复测 |
 | 2026-06-18 | M1 | 🟡 Native 分享转换接线完成（`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks` 导出 + native wrapper + 导入页批量/base64/Clash YAML 兜底）；待重建 `.so` + 真机复测 |
+| 2026-06-19 | M4 | ✅ 扫码 native 分享兜底完成（Scanner 在单链接解析失败后复用 native 分享转换，批量保存 outbounds 为手动节点并标记运行配置待重启；补共享命名单测） |
 | 2026-06-18 | M4 | ✅ WireGuard/Hysteria2 手动编辑器校验完成（抽出 `ManualOutboundBuilder`，NodeEdit 复用，补 WG/HY2 outbound 生成单测）；运行态仍待真机/内核复测 |
 | 2026-06-18 | M4 | ✅ 本地 SOCKS 代理设置完成（`localSocksEnabled`/端口/UDP/用户名/密码 + `socks-in` 生成 + LAN 共享监听 + 单测） |
 | 2026-06-19 | M4 | ✅ 本地 SOCKS 默认开启与端口对齐 v2rayNG（`pref_enable_local_proxy` 默认 true；默认 SOCKS 端口 10808；默认设置生成 `socks-in`，关闭时不生成；补配置生成单测） |
