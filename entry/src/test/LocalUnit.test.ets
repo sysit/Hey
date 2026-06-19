@@ -505,6 +505,19 @@ export default function localUnitTest() {
       expect(unpinned.configJson).assertContain('"allowInsecure": true');
     });
 
+    it('fills missing TLS serverName from transport or server domain like v2rayNG', 0, () => {
+      const settings = buildSettingsFixture();
+      const wsHostOutbound =
+        '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"origin.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]},"streamSettings":{"network":"ws","security":"tls","wsSettings":{"host":"cdn.example.com","path":"/ws"},"tlsSettings":{"allowInsecure":false}}}';
+      const wsResult = buildXrayConfigWithSettings(wsHostOutbound, settings);
+      expect(wsResult.configJson).assertContain('"serverName": "cdn.example.com"');
+
+      const tcpIpHostOutbound =
+        '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"server.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tcpSettings":{"header":{"type":"http","request":{"headers":{"Host":["1.1.1.1"]},"path":["/"]}}},"tlsSettings":{"allowInsecure":false}}}';
+      const fallbackResult = buildXrayConfigWithSettings(tcpIpHostOutbound, settings);
+      expect(fallbackResult.configJson).assertContain('"serverName": "server.example.com"');
+    });
+
     it('applies mux only to v2rayNG supported outbound protocols', 0, () => {
       const settings = buildSettingsFixture();
       settings.muxEnabled = true;

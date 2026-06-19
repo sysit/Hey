@@ -1053,6 +1053,7 @@ function cloneOutbound(outbound: XrayOutbound): XrayOutbound {
 }
 
 function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSettings | undefined): void {
+  applyTlsServerNameFallbackParity(outbound);
   applyPinnedCertificateAllowInsecureParity(outbound);
   applyWireguardIpv6Setting(outbound, settings);
   applyHysteria2FinalMaskSettings(outbound);
@@ -1077,6 +1078,137 @@ function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSetti
     sockopt['domainStrategy'] = 'UseIP';
     sockopt['happyEyeballs'] = happyEyeballs;
   }
+}
+
+function applyTlsServerNameFallbackParity(outbound: XrayOutbound): void {
+  if (outbound.streamSettings === undefined) {
+    return;
+  }
+  const streamSettings = outbound.streamSettings as Record<string, Object | string | number | boolean | undefined>;
+  const security = typeof streamSettings['security'] === 'string' ? (streamSettings['security'] as string).toLowerCase() : '';
+  const settingsKey = security === 'tls' ? 'tlsSettings' : security === 'reality' ? 'realitySettings' : '';
+  if (settingsKey.length === 0 || !isRecord(streamSettings[settingsKey])) {
+    return;
+  }
+  const tlsSettings = streamSettings[settingsKey] as Record<string, Object | string | number | boolean | undefined>;
+  const currentServerName = tlsSettings['serverName'];
+  if (typeof currentServerName === 'string' && currentServerName.trim().length > 0) {
+    return;
+  }
+  const fallback = resolveTlsServerNameFallback(outbound, streamSettings);
+  if (fallback.length > 0) {
+    tlsSettings['serverName'] = fallback;
+  }
+}
+
+function resolveTlsServerNameFallback(
+  outbound: XrayOutbound,
+  streamSettings: Record<string, Object | string | number | boolean | undefined>
+): string {
+  const transportServerName = resolveTransportServerNameCandidate(streamSettings);
+  if (isDomainNameCandidate(transportServerName)) {
+    return transportServerName.trim();
+  }
+  const outboundHost = outboundServerHost(outbound);
+  if (isDomainNameCandidate(outboundHost)) {
+    return stripHostBrackets(outboundHost.trim());
+  }
+  return transportServerName.trim();
+}
+
+function resolveTransportServerNameCandidate(
+  streamSettings: Record<string, Object | string | number | boolean | undefined>
+): string {
+  const network = typeof streamSettings['network'] === 'string' ? (streamSettings['network'] as string).toLowerCase() : 'tcp';
+  if (network === 'ws') {
+    return stringRecordValue(streamSettings['wsSettings'], 'host');
+  }
+  if (network === 'httpupgrade') {
+    return stringRecordValue(streamSettings['httpupgradeSettings'], 'host');
+  }
+  if (network === 'xhttp') {
+    return stringRecordValue(streamSettings['xhttpSettings'], 'host');
+  }
+  if (network === 'h2' || network === 'http') {
+    return firstHostValue(stringOrArrayRecordValue(streamSettings['httpSettings'], 'host'));
+  }
+  if (network === 'grpc') {
+    return stringRecordValue(streamSettings['grpcSettings'], 'authority');
+  }
+  if (network === 'tcp') {
+    return resolveTcpHttpHeaderHost(streamSettings['tcpSettings']);
+  }
+  return '';
+}
+
+function resolveTcpHttpHeaderHost(value: Object | string | number | boolean | undefined): string {
+  if (!isRecord(value)) {
+    return '';
+  }
+  const tcpSettings = value as Record<string, Object | string | number | boolean | undefined>;
+  if (!isRecord(tcpSettings['header'])) {
+    return '';
+  }
+  const header = tcpSettings['header'] as Record<string, Object | string | number | boolean | undefined>;
+  if (!isRecord(header['request'])) {
+    return '';
+  }
+  const request = header['request'] as Record<string, Object | string | number | boolean | undefined>;
+  if (!isRecord(request['headers'])) {
+    return '';
+  }
+  const headers = request['headers'] as Record<string, Object | string | number | boolean | undefined>;
+  return firstHostValue(headers['Host'] ?? headers['host']);
+}
+
+function stringRecordValue(value: Object | string | number | boolean | undefined, key: string): string {
+  if (!isRecord(value)) {
+    return '';
+  }
+  const record = value as Record<string, Object | string | number | boolean | undefined>;
+  const item = record[key];
+  return typeof item === 'string' ? item.trim() : '';
+}
+
+function stringOrArrayRecordValue(value: Object | string | number | boolean | undefined, key: string): Object | string | number | boolean | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, Object | string | number | boolean | undefined>;
+  return record[key];
+}
+
+function firstHostValue(value: Object | string | number | boolean | undefined): string {
+  if (typeof value === 'string') {
+    return firstCsvHostValue(value);
+  }
+  if (!Array.isArray(value)) {
+    return '';
+  }
+  const values = value as Array<Object | string | number | boolean>;
+  for (let index = 0; index < values.length; index++) {
+    const item: Object | string | number | boolean = values[index];
+    if (typeof item === 'string' && item.trim().length > 0) {
+      return item.trim();
+    }
+  }
+  return '';
+}
+
+function firstCsvHostValue(value: string): string {
+  const parts = value.split(',');
+  for (let index = 0; index < parts.length; index++) {
+    const item = parts[index].trim();
+    if (item.length > 0) {
+      return item;
+    }
+  }
+  return '';
+}
+
+function isDomainNameCandidate(value: string): boolean {
+  const host = stripHostBrackets(value.trim());
+  return host.length > 0 && !isIpLiteral(host) && /^[A-Za-z0-9.-]+$/.test(host);
 }
 
 function applyPinnedCertificateAllowInsecureParity(outbound: XrayOutbound): void {
