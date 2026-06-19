@@ -1,7 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
-import { hasDuplicateAssetName } from '../../core/AssetUrls';
+import { hasDuplicateAssetName, isEditableCustomAssetUrl } from '../../core/AssetUrls';
 import { AppLanguage } from '../../core/Profile';
 import { translate } from '../../core/I18n';
 import { ASSETS_CONTROLLER } from '../../features/assets/AssetsController';
@@ -168,7 +168,9 @@ export struct CustomAssetList {
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
     .onClick(() => {
-      this.openEditDialog(item);
+      if (isEditableCustomAssetUrl(item.url)) {
+        this.openEditDialog(item);
+      }
     })
   }
 
@@ -184,9 +186,11 @@ export struct CustomAssetList {
           this.downloadCustomAsset(item.name, item.url);
         })
       }
-      this.SwipeButton($r('app.media.ic_edit'), this.t('action.edit'), AppColor.textSecondary, () => {
-        this.openEditDialog(item);
-      })
+      if (isEditableCustomAssetUrl(item.url)) {
+        this.SwipeButton($r('app.media.ic_edit'), this.t('action.edit'), AppColor.textSecondary, () => {
+          this.openEditDialog(item);
+        })
+      }
       this.SwipeButton($r('app.media.ic_delete'), this.t('action.delete'), AppColor.danger, () => {
         this.deleteCustomAsset(item);
       })

@@ -31,6 +31,11 @@ export function hasDuplicateAssetName(assets: Array<AssetNameEntry>, name: strin
   return false;
 }
 
+export function isEditableCustomAssetUrl(url: string): boolean {
+  const normalized = url.trim().toLowerCase();
+  return normalized !== 'file' && !normalized.startsWith('local://');
+}
+
 export function deriveAssetNameFromUrl(url: string): string {
   let clean = url.trim();
   const queryIndex = clean.indexOf('?');

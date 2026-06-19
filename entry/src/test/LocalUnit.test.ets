@@ -2,7 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { buildPolicyGroupConfigFromNodes, buildPolicyGroupConfigFromSubscription, buildProxyChainConfigFromNodes, isAdvancedOutboundBuildableNode, normalizePolicyGroupBuilderStrategy, resolveDynamicPolicyGroupConfigJson } from '../main/ets/core/AdvancedOutboundBuilder';
 import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData, parseAppBackupPayload } from '../main/ets/core/AppBackup';
 import { CONTROL_CARD_FORM_NAME, CONTROL_CARD_SCAN_URI, CONTROL_CARD_START_URI, CONTROL_CARD_STOP_URI, CONTROL_CARD_TOGGLE_URI, buildControlCardFormData } from '../main/ets/core/ControlCard';
-import { hasDuplicateAssetName, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
+import { hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLanguage, resolveSystemLanguage, translate } from '../main/ets/core/I18n';
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
@@ -1301,6 +1301,14 @@ export default function localUnitTest() {
       expect(hasDuplicateAssetName(assets, 'geosite', 'asset-a')).assertFalse();
       expect(hasDuplicateAssetName(assets, 'geoip', 'asset-a')).assertTrue();
       expect(hasDuplicateAssetName(assets, '')).assertFalse();
+    });
+
+    it('hides local file asset editing like v2rayNG', 0, () => {
+      expect(isEditableCustomAssetUrl('file')).assertFalse();
+      expect(isEditableCustomAssetUrl(' file ')).assertFalse();
+      expect(isEditableCustomAssetUrl('local://import')).assertFalse();
+      expect(isEditableCustomAssetUrl('https://example.com/geosite.dat')).assertTrue();
+      expect(isEditableCustomAssetUrl('http://example.com/geoip.dat')).assertTrue();
     });
 
     it('round-trips vpn settings through settings draft', 0, () => {
