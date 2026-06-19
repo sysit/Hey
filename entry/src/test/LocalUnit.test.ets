@@ -34,7 +34,7 @@ import { findMatchedSubscriptionNode, resolveRetainedSelectedNodeId } from '../m
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
-import { V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_STREAM_ALPN, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpn, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from '../main/ets/core/V2rayNgOptions';
+import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_STREAM_ALPN, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpn, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from '../main/ets/core/V2rayNgOptions';
 import { filterLogItems, formatLogcatText } from '../main/ets/features/logs/LogOperations';
 import {
   applyDelayTestPostActionsToGroups,
@@ -459,7 +459,7 @@ export default function localUnitTest() {
 
     it('parses manual outbound configs back into NodeEdit state', 0, () => {
       const vless = parseManualOutboundEditState(
-        '{"protocol":"vless","tag":"Manual VLESS","settings":{"vnext":[{"address":"edit.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision-udp443"}]}]},"streamSettings":{"network":"xhttp","security":"reality","xhttpSettings":{"path":"/x","host":"cdn.example.com","mode":"packet-up","extra":{"headers":{"x-test":"1"}}},"realitySettings":{"serverName":"reality.example.com","publicKey":"pub","shortId":"abcd","spiderX":"/bot","mldsa65Verify":"pqv","fingerprint":"randomized","echConfigList":"ech","pinnedPeerCertSha256":"pcs"},"finalmask":{"tcp":[{"type":"custom"}]}}}',
+        '{"protocol":"vless","tag":"Manual VLESS","browserDialerMode":"WebView","settings":{"vnext":[{"address":"edit.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision-udp443"}]}]},"streamSettings":{"network":"xhttp","security":"reality","xhttpSettings":{"path":"/x","host":"cdn.example.com","mode":"packet-up","extra":{"headers":{"x-test":"1"}}},"realitySettings":{"serverName":"reality.example.com","publicKey":"pub","shortId":"abcd","spiderX":"/bot","mldsa65Verify":"pqv","fingerprint":"randomized","echConfigList":"ech","pinnedPeerCertSha256":"pcs"},"finalmask":{"tcp":[{"type":"custom"}]}}}',
         'Node Name',
         'vless'
       );
@@ -471,6 +471,7 @@ export default function localUnitTest() {
       expect(vless.transportType).assertEqual('xhttp');
       expect(vless.transportXhttpMode).assertEqual('packet-up');
       expect(vless.transportXhttpExtra).assertContain('"x-test": "1"');
+      expect(vless.browserDialerMode).assertEqual('WebView');
       expect(vless.tlsSecurity).assertEqual('reality');
       expect(vless.realitySpiderX).assertEqual('/bot');
       expect(vless.realityMldsa65Verify).assertEqual('pqv');
@@ -492,6 +493,7 @@ export default function localUnitTest() {
       expect(kcp.transportPath).assertEqual('seed');
       expect(kcp.transportKcpMtu).assertEqual('1200');
       expect(kcp.transportKcpTti).assertEqual('30');
+      expect(kcp.browserDialerMode).assertEqual('Disable');
 
       const wireguard = parseManualOutboundEditState(
         '{"protocol":"wireguard","tag":"WG","settings":{"secretKey":"private","address":["172.16.0.2/32","fd00::2/128"],"reserved":[1,2,3],"mtu":1420,"peers":[{"publicKey":"public","preSharedKey":"shared","endpoint":"[2001:db8::1]:51820"}]}}',
@@ -691,6 +693,27 @@ export default function localUnitTest() {
         '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"server.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tcpSettings":{"header":{"type":"http","request":{"headers":{"Host":["1.1.1.1"]},"path":["/"]}}},"tlsSettings":{"allowInsecure":false}}}';
       const fallbackResult = buildXrayConfigWithSettings(tcpIpHostOutbound, settings);
       expect(fallbackResult.configJson).assertContain('"serverName": "server.example.com"');
+    });
+
+    it('keeps Browser Dialer profile metadata out of runtime configs', 0, () => {
+      const settings = buildSettingsFixture();
+      const browserDialerOutbound = VLESS_XHTTP_OUTBOUND.replace('"settings"', '"browserDialerMode":"OkHttp","settings"');
+      const validation = validateOutboundJson(browserDialerOutbound);
+      expect(validation.valid).assertTrue();
+      expect(validation.normalizedJson).assertContain('"browserDialerMode": "OkHttp"');
+
+      const editState = parseManualOutboundEditState(browserDialerOutbound, 'dialer', 'vless');
+      expect(editState.valid).assertTrue();
+      expect(editState.browserDialerMode).assertEqual('OkHttp');
+
+      const runtime = buildXrayConfigWithSettings(browserDialerOutbound, settings);
+      expect(runtime.configJson.indexOf('"browserDialerMode"')).assertEqual(-1);
+      const delay = buildDelayTestConfig(browserDialerOutbound);
+      expect(delay.configJson.indexOf('"browserDialerMode"')).assertEqual(-1);
+
+      const fullConfigWithDialer = FULL_XRAY_CONFIG.replace('"protocol":"freedom"', '"browserDialerMode":"WebView","protocol":"freedom"');
+      const fullRuntime = buildRuntimeXrayConfig(fullConfigWithDialer, settings, 'full');
+      expect(fullRuntime.configJson.indexOf('"browserDialerMode"')).assertEqual(-1);
     });
 
     it('applies mux only to v2rayNG supported outbound protocols', 0, () => {
@@ -2464,6 +2487,10 @@ export default function localUnitTest() {
       expect(V2RAYNG_KCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|srtp|utp|wechat-video|dtls|wireguard|dns');
       expect(V2RAYNG_XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
       expect(V2RAYNG_GRPC_MODE_OPTIONS.join('|')).assertEqual('gun|multi');
+      expect(V2RAYNG_DEFAULT_BROWSER_DIALER_MODE).assertEqual('Disable');
+      expect(V2RAYNG_BROWSER_DIALER_MODE_OPTIONS.join('|')).assertEqual('Disable|OkHttp|WebView');
+      expect(normalizeV2rayNgBrowserDialerMode('webview')).assertEqual('WebView');
+      expect(normalizeV2rayNgBrowserDialerMode('bad')).assertEqual('Disable');
       expect(V2RAYNG_DEFAULT_STREAM_ALPN).assertEqual('');
       expect(V2RAYNG_STREAM_ALPN_OPTIONS.join('|')).assertEqual('|h3|h2|http/1.1|h3,h2,http/1.1|h3,h2|h2,http/1.1');
       expect(normalizeV2rayNgStreamAlpn('h3,h2')).assertEqual('h3,h2');

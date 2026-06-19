@@ -880,8 +880,9 @@ export function buildRuntimeXrayConfig(configJson: string, settings?: AppSetting
   }
 
   if (validation.configType === 'full') {
+    const fullConfig = stripFullConfigProfileMetadata(validation.normalizedJson);
     return {
-      configJson: normalizeFullConfigRoutingProcesses(validation.normalizedJson, resolveProcessUid, canUseProcessRouting(settings))
+      configJson: normalizeFullConfigRoutingProcesses(fullConfig, resolveProcessUid, canUseProcessRouting(settings))
     };
   }
   if (validation.configType === 'proxy-chain') {
@@ -1086,7 +1087,28 @@ function cloneOutbound(outbound: XrayOutbound): XrayOutbound {
   return JSON.parse(JSON.stringify(outbound)) as XrayOutbound;
 }
 
+function stripOutboundProfileMetadata(outbound: XrayOutbound): void {
+  const record = outbound as Record<string, Object | string | number | boolean | undefined>;
+  record['browserDialerMode'] = undefined;
+}
+
+function stripFullConfigProfileMetadata(configJson: string): string {
+  try {
+    const config = parseFullConfig(configJson);
+    if (!Array.isArray(config.outbounds)) {
+      return configJson;
+    }
+    for (let index = 0; index < config.outbounds.length; index++) {
+      stripOutboundProfileMetadata(config.outbounds[index]);
+    }
+    return JSON.stringify(config, null, 2);
+  } catch (error) {
+    return configJson;
+  }
+}
+
 function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSettings | undefined): void {
+  stripOutboundProfileMetadata(outbound);
   applyXhttpModeParity(outbound);
   applyTlsServerNameFallbackParity(outbound);
   applyPinnedCertificateAllowInsecureParity(outbound);
@@ -1778,6 +1800,7 @@ export function buildDelayTestConfig(outboundJson: string, socksPort: number = D
   if (outbound.tag === undefined || outbound.tag.length === 0) {
     outbound.tag = 'proxy';
   }
+  stripOutboundProfileMetadata(outbound);
   outbound.mux = undefined;
 
   const socksInbound: XrayInboundConfig = {

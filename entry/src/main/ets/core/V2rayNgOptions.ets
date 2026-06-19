@@ -87,6 +87,31 @@ export function normalizeV2rayNgXhttpMode(value: string, fallback: string = V2RA
   return V2RAYNG_DEFAULT_XHTTP_MODE;
 }
 
+export const V2RAYNG_BROWSER_DIALER_MODE_OPTIONS: Array<string> = [
+  'Disable',
+  'OkHttp',
+  'WebView'
+];
+
+export const V2RAYNG_DEFAULT_BROWSER_DIALER_MODE: string = 'Disable';
+
+export function normalizeV2rayNgBrowserDialerMode(
+  value: string,
+  fallback: string = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE
+): string {
+  const trimmed = value.trim();
+  for (let index = 0; index < V2RAYNG_BROWSER_DIALER_MODE_OPTIONS.length; index++) {
+    const option = V2RAYNG_BROWSER_DIALER_MODE_OPTIONS[index];
+    if (trimmed === option || trimmed.toLowerCase() === option.toLowerCase()) {
+      return option;
+    }
+  }
+  if (V2RAYNG_BROWSER_DIALER_MODE_OPTIONS.indexOf(fallback) >= 0) {
+    return fallback;
+  }
+  return V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+}
+
 export const V2RAYNG_GRPC_MODE_OPTIONS: Array<string> = [
   'gun',
   'multi'

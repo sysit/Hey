@@ -1,6 +1,7 @@
 import { readKcpShareParamsFromFinalMask } from './KcpTransport';
 import {
   V2RAYNG_DEFAULT_VMESS_SECURITY,
+  V2RAYNG_DEFAULT_BROWSER_DIALER_MODE,
   V2RAYNG_KCP_HEADER_TYPE_OPTIONS,
   V2RAYNG_SS_SECURITY_OPTIONS,
   V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS,
@@ -8,6 +9,7 @@ import {
   V2RAYNG_UTLS_FINGERPRINT_OPTIONS,
   V2RAYNG_VMESS_SECURITY_OPTIONS,
   V2RAYNG_XHTTP_MODE_OPTIONS,
+  normalizeV2rayNgBrowserDialerMode,
   normalizeV2rayNgStreamAlpn
 } from './V2rayNgOptions';
 
@@ -44,6 +46,7 @@ export interface ManualOutboundEditState {
   transportGrpcMode: string;
   transportXhttpMode: string;
   transportXhttpExtra: string;
+  browserDialerMode: string;
   tlsSecurity: string;
   tlsSni: string;
   tlsAlpn: string;
@@ -130,6 +133,7 @@ export function parseManualOutboundEditState(outboundJson: string, nodeName: str
     }
 
     applyStreamState(state, recordValue(root, 'streamSettings'));
+    applyBrowserDialerMode(state, root);
     return state;
   } catch (error) {
     return invalidState(`节点配置解析失败：${JSON.stringify(error)}`);
@@ -184,6 +188,7 @@ function createDefaultManualOutboundEditState(protocol: string): ManualOutboundE
     transportGrpcMode: 'gun',
     transportXhttpMode: 'auto',
     transportXhttpExtra: '',
+    browserDialerMode: V2RAYNG_DEFAULT_BROWSER_DIALER_MODE,
     tlsSecurity: 'none',
     tlsSni: '',
     tlsAlpn: protocol === 'hysteria2' ? 'h3' : '',
@@ -321,6 +326,14 @@ function applyStreamState(state: ManualOutboundEditState, stream: JsonRecord | n
   if (finalMask !== undefined) {
     state.transportFinalMask = JSON.stringify(finalMask, null, 2);
   }
+}
+
+function applyBrowserDialerMode(state: ManualOutboundEditState, root: JsonRecord): void {
+  if (state.transportType !== 'ws' && state.transportType !== 'xhttp') {
+    state.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+    return;
+  }
+  state.browserDialerMode = normalizeV2rayNgBrowserDialerMode(stringValue(root, 'browserDialerMode', V2RAYNG_DEFAULT_BROWSER_DIALER_MODE));
 }
 
 function applyTlsState(state: ManualOutboundEditState, tls: JsonRecord | null, security: string): void {

@@ -7,7 +7,7 @@ import { isManualEditProtocol, ManualOutboundEditState, normalizeManualEditProto
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgStreamAlpn, normalizeV2rayNgXhttpMode } from '../core/V2rayNgOptions';
+import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgStreamAlpn, normalizeV2rayNgXhttpMode } from '../core/V2rayNgOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -361,6 +361,7 @@ interface FormOutbound {
   tag: string;
   settings?: FormOutboundSettings;
   streamSettings?: FormStreamSettings;
+  browserDialerMode?: string;
 }
 
 interface NodeEditParams {
@@ -395,6 +396,7 @@ struct NodeEditPage {
   @State private transportGrpcMode: string = 'gun';
   @State private transportXhttpMode: string = 'auto';
   @State private transportXhttpExtra: string = '';
+  @State private browserDialerMode: string = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
   
   // 安全传输层设置 (TLS / Reality)
   @State private tlsSecurity: string = 'none';
@@ -673,6 +675,13 @@ struct NodeEditPage {
                   })
                   this.EditorRow('XHTTP Extra JSON (可选)', this.transportXhttpExtra, '{ "headers": {} }', (value: string) => {
                     this.transportXhttpExtra = value;
+                  })
+                }
+                if (this.transportType === 'ws' || this.transportType === 'xhttp') {
+                  PickerRow({
+                    label: 'Browser Dialer',
+                    options: V2RAYNG_BROWSER_DIALER_MODE_OPTIONS,
+                    selectedValue: $browserDialerMode
                   })
                 }
                 this.EditorRow('FinalMask JSON (fm - 可选)', this.transportFinalMask, '{ "tcp": [], "udp": [] }', (value: string) => {
@@ -1153,6 +1162,12 @@ struct NodeEditPage {
         }
         
         outbound.streamSettings = streamSettings;
+        if (network === 'ws' || network === 'xhttp') {
+          const mode = normalizeV2rayNgBrowserDialerMode(this.browserDialerMode);
+          if (mode !== V2RAYNG_DEFAULT_BROWSER_DIALER_MODE) {
+            outbound.browserDialerMode = mode;
+          }
+        }
       }
 
       // 4. 进行校验与保存
@@ -1236,6 +1251,7 @@ struct NodeEditPage {
       this.serverPort = '443';
       this.securityOrMethod = 'none';
       this.transportType = 'tcp';
+      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'reality';
       this.tlsFingerprint = 'chrome';
       this.vlessFlow = 'xtls-rprx-vision';
@@ -1244,17 +1260,20 @@ struct NodeEditPage {
       this.securityOrMethod = V2RAYNG_DEFAULT_VMESS_SECURITY;
       this.vmessAlterId = '0';
       this.transportType = 'tcp';
+      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'tls';
       this.tlsFingerprint = 'chrome';
     } else if (protocol === 'trojan') {
       this.serverPort = '443';
       this.transportType = 'tcp';
+      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'tls';
       this.tlsFingerprint = 'chrome';
     } else if (protocol === 'ss') {
       this.serverPort = '8388';
       this.securityOrMethod = 'aes-128-gcm';
       this.transportType = 'tcp';
+      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'none';
     } else if (protocol === 'socks') {
       this.serverPort = '1080';
@@ -1294,6 +1313,7 @@ struct NodeEditPage {
     this.transportGrpcMode = state.transportGrpcMode;
     this.transportXhttpMode = state.transportXhttpMode;
     this.transportXhttpExtra = state.transportXhttpExtra;
+    this.browserDialerMode = state.browserDialerMode;
     this.tlsSecurity = state.tlsSecurity;
     this.tlsSni = state.tlsSni;
     this.tlsAlpn = state.tlsAlpn;
