@@ -38,6 +38,7 @@ import {
   findInvalidNodes,
   removeVisibleNodesFromGroups,
   removeVisibleTestFailedNodesFromGroups,
+  sortGroupsByDelayTargets,
   sortNodes
 } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
@@ -1777,6 +1778,48 @@ export default function localUnitTest() {
       expect(result.groups[0].nodes[1].id).assertEqual(slow.id);
       expect(result.groups[0].selectedNodeId).assertEqual(slow.id);
       expect(result.groups[0].updatedAt).assertEqual(200);
+    });
+
+    it('sorts by test results with v2rayNG subscription group semantics', 0, () => {
+      const nodes = buildNodeFixture();
+      const untested = copyNode(nodes[1], 'node-untested-manual-sort');
+      untested.name = 'Untested';
+      untested.delayMs = 0;
+      const slow = copyNode(nodes[2], 'node-slow-manual-sort');
+      slow.name = 'Slow';
+      slow.delayMs = 900;
+      const failed = copyNode(nodes[0], 'node-failed-manual-sort');
+      failed.name = 'Failed';
+      failed.delayMs = -1;
+      failed.delayStatus = 'timeout';
+      const fast = copyNode(nodes[2], 'node-fast-manual-sort');
+      fast.name = 'Fast';
+      fast.delayMs = 80;
+      const otherSlow = copyNode(nodes[2], 'node-other-slow-manual-sort');
+      otherSlow.name = 'Other Slow';
+      otherSlow.delayMs = 600;
+      const otherFast = copyNode(nodes[2], 'node-other-fast-manual-sort');
+      otherFast.name = 'Other Fast';
+      otherFast.delayMs = 50;
+      const groups = [
+        buildGroupFixture('sub-a', 'A', [untested, slow, failed, fast], failed.id),
+        buildGroupFixture('sub-b', 'B', [otherSlow, otherFast], otherSlow.id)
+      ];
+
+      const activeGroupResult = sortGroupsByDelayTargets(groups, [slow, fast], 300);
+      expect(activeGroupResult.sortedGroupCount).assertEqual(1);
+      expect(activeGroupResult.groups[0].nodes[0].id).assertEqual(fast.id);
+      expect(activeGroupResult.groups[0].nodes[1].id).assertEqual(slow.id);
+      expect(activeGroupResult.groups[0].nodes[2].id).assertEqual(untested.id);
+      expect(activeGroupResult.groups[0].nodes[3].id).assertEqual(failed.id);
+      expect(activeGroupResult.groups[0].selectedNodeId).assertEqual(failed.id);
+      expect(activeGroupResult.groups[0].updatedAt).assertEqual(300);
+      expect(activeGroupResult.groups[1].nodes[0].id).assertEqual(otherSlow.id);
+
+      const allGroupsResult = sortGroupsByDelayTargets(groups, [slow, fast, otherSlow, otherFast], 301);
+      expect(allGroupsResult.sortedGroupCount).assertEqual(2);
+      expect(allGroupsResult.groups[1].nodes[0].id).assertEqual(otherFast.id);
+      expect(allGroupsResult.groups[1].nodes[1].id).assertEqual(otherSlow.id);
     });
 
     it('finds invalid nodes and exports only v2rayNG shareable nodes', 0, () => {

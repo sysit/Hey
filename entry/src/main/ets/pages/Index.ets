@@ -19,7 +19,8 @@ import {
   exportNodesText,
   filterNodes,
   removeVisibleNodesFromGroups,
-  removeVisibleTestFailedNodesFromGroups
+  removeVisibleTestFailedNodesFromGroups,
+  sortGroupsByDelayTargets
 } from '../features/nodes/NodeOperations';
 import { NODES_CONTROLLER, NodesControllerState, SaveProfileResult } from '../features/nodes/NodesController';
 import { ServerNodeCard } from '../features/servers/ServerCard';
@@ -582,6 +583,10 @@ struct Index {
       MenuItem({ content: this.t('menu.testRealConnection') })
         .onClick(() => {
           this.testVisibleNodeDelay('real');
+        })
+      MenuItem({ content: this.t('menu.sortByTestResult') })
+        .onClick(() => {
+          this.sortByTestResults();
         })
       MenuItem({ content: this.t('menu.deleteConfig') })
         .onClick(() => {
@@ -1188,6 +1193,22 @@ struct Index {
     const result = removeVisibleTestFailedNodesFromGroups(this.subscriptionGroups, targets, Date.now());
     this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.invalidNodesRemoved', 'count', result.removedCount.toString()));
+  }
+
+  private async sortByTestResults(): Promise<void> {
+    const targets = this.allGroupsSelected ? this.displayedNodes() : this.nodes;
+    if (targets.length === 0) {
+      return;
+    }
+    const result = sortGroupsByDelayTargets(this.subscriptionGroups, targets, Date.now());
+    if (result.sortedGroupCount === 0) {
+      return;
+    }
+    const context = getContext(this) as common.Context;
+    this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
+    const message = this.f1('log.nodesSortedByTestResult', 'count', result.sortedGroupCount.toString());
+    SHARED_RUNTIME_CONTROLLER.appendLog(message);
+    promptAction.showToast({ message });
   }
 
   private confirmClearNodes(): void {

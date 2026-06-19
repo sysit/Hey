@@ -318,7 +318,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 
 - [x] 广告拦截路由生效（`adBlockEnabled` 开关 → `geosite:category-ads-all` → block，全模式生效，2026-06-15）
 - [x] 订阅正则过滤 `filter`（`SubscriptionGroup.filter` 全链路：编辑页输入框 → 更新/更新全部时按节点名正则筛选，无效/空/零匹配回退全部，2026-06-15）
-- [x] 测速后自动操作：`autoSortAfterTest` / `autoRemoveInvalidAfterTest` 设置项 + 设置页开关 + 批量测速后触发（按延迟排序 / 删除超时节点；2026-06-19 补 All 虚拟分组跨订阅分组语义）
+- [x] 测速后自动操作：`autoSortAfterTest` / `autoRemoveInvalidAfterTest` 设置项 + 设置页开关 + 批量测速后触发（按延迟排序 / 删除超时节点；2026-06-19 补 All 虚拟分组跨订阅分组语义，并补 v2rayNG 手动按测试结果排序菜单）
 - [x] 真连接延迟测试：Settings 保存 `realPingConcurrency` 与 `delayTestUrl`；节点菜单提供 TCP 延迟和真连接测速两个入口，真连接批量测速按配置分批并发、通过 native `CGoPing` 访问目标 URL 并串行落盘（2026-06-19 补首页入口接线）
 - [x] 删除配置确认：Settings 保存 `confirmRemove`，默认关闭；开启后单节点删除与订阅分组删除弹二次确认（2026-06-18）
 - [x] 立即启动扫码：Settings 保存 `startScanImmediate`，默认关闭；开启后进入 Scanner 页自动拉起 ScanKit 相机扫码（2026-06-18）
@@ -363,6 +363,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-15 | M2 | ✅ 广告拦截路由真正生效（`adBlockEnabled` 开关 → `geosite:category-ads-all` → block）；纠正实测：去重/自定义 UA 早已落地 |
 | 2026-06-15 | M3 | ✅ 订阅正则过滤 `filter` 全链路（分组字段 + 编辑页 + 更新/更新全部按节点名筛选，零匹配/无效回退全部） |
 | 2026-06-15 | M3 | ✅ 测速后自动操作（`autoSortAfterTest`/`autoRemoveInvalidAfterTest` 设置项 + 设置页「节点测速」开关 + 批量测速后排序/删超时） |
+| 2026-06-19 | M3 | ✅ 手动按测试结果排序菜单完成；对齐 v2rayNG `sort_by_test_results`，按当前订阅分组或 All 虚拟分组分别排序并持久化 |
 | 2026-06-15 | M4 | ✅ 二维码生成（节点详情页 `generateBarcode.createBarcode` 渲染分享链接 QR + 复制链接） |
 | 2026-06-15 | M4 | ✅ URL Scheme / Want 深链导入（`hey://install-sub`/`install-config` scheme + EntryAbility 暂存 + Index 解析导入订阅/节点） |
 | 2026-06-15 | 修复 | ✅ 预检改为非阻断（避免重建后 `CGoTestXray` 对 tun inbound 误报阻断已验证连接）；核对 ScanKit QR API 字段无误 |

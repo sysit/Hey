@@ -30,6 +30,12 @@ export interface NodeBatchMutationResult {
   sortedGroupCount: number;
 }
 
+interface NodeTestDelaySortEntry {
+  node: ProxyNode;
+  delay: number;
+  originalIndex: number;
+}
+
 export function filterNodes(nodes: Array<ProxyNode>, query: string): Array<ProxyNode> {
   const keyword = query.trim().toLowerCase();
   if (keyword.length === 0) {
@@ -190,13 +196,27 @@ export function applyDelayTestPostActionsToGroups(
     return result;
   }
 
+  const sortedResult = sortGroupsByDelayTargets(result.groups, sortTargets, updatedAt);
+  return {
+    groups: sortedResult.groups,
+    removedCount: result.removedCount,
+    sortedGroupCount: sortedResult.sortedGroupCount
+  };
+}
+
+export function sortGroupsByDelayTargets(
+  groups: Array<SubscriptionGroup>,
+  sortTargets: Array<ProxyNode>,
+  updatedAt: number = 0
+): NodeBatchMutationResult {
   const sortIds = nodeIdSet(sortTargets);
   const sortedGroups = new Array<SubscriptionGroup>();
   let sortedCount = 0;
-  for (let index = 0; index < result.groups.length; index++) {
-    const group = copySubscriptionGroup(result.groups[index]);
+  const sourceGroups = copySubscriptionGroups(groups);
+  for (let index = 0; index < sourceGroups.length; index++) {
+    const group = sourceGroups[index];
     if (containsAnyNodeId(group.nodes, sortIds)) {
-      group.nodes = sortNodes(group.nodes, 'delay');
+      group.nodes = sortNodesByTestResults(group.nodes);
       group.selectedNodeId = resolveSelectedNodeId(group.nodes, group.selectedNodeId);
       group.updatedAt = updatedAt > 0 ? updatedAt : group.updatedAt;
       sortedCount++;
@@ -206,7 +226,7 @@ export function applyDelayTestPostActionsToGroups(
 
   return {
     groups: sortedGroups,
-    removedCount: result.removedCount,
+    removedCount: 0,
     sortedGroupCount: sortedCount
   };
 }
@@ -340,6 +360,29 @@ function compareText(left: string, right: string): number {
     return 1;
   }
   return 0;
+}
+
+function sortNodesByTestResults(nodes: Array<ProxyNode>): Array<ProxyNode> {
+  const copied = copyNodes(nodes);
+  const entries = new Array<NodeTestDelaySortEntry>();
+  for (let index = 0; index < copied.length; index++) {
+    entries.push({
+      node: copied[index],
+      delay: copied[index].delayMs > 0 ? copied[index].delayMs : 999999,
+      originalIndex: index
+    });
+  }
+  entries.sort((left: NodeTestDelaySortEntry, right: NodeTestDelaySortEntry): number => {
+    if (left.delay !== right.delay) {
+      return left.delay - right.delay;
+    }
+    return left.originalIndex - right.originalIndex;
+  });
+  const result = new Array<ProxyNode>();
+  for (let index = 0; index < entries.length; index++) {
+    result.push(entries[index].node);
+  }
+  return result;
 }
 
 function removeNodeIdsFromGroups(
