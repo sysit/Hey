@@ -2,6 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import {
   clearVisiblePerAppPackages,
   exportPerAppProxyList,
@@ -621,6 +622,7 @@ struct PerAppPage {
     this.draft.perAppProxyBypass = this.perAppProxyBypass;
     const context = getContext(this) as common.Context;
     this.draft = SETTINGS_CONTROLLER.toDraft(await SETTINGS_CONTROLLER.save(context, this.draft));
+    markRuntimeSettingsRestartNeeded();
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', 'perApp'));
   }
 

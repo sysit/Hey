@@ -6,6 +6,7 @@ import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrency, ProxyNode, resolveDelayTestUrl, RuntimeStats, SubscriptionGroup, SubscriptionProfile } from '../core/Profile';
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
+import { consumeRuntimeSettingsRestartDecision } from '../core/SettingsChange';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
 import { CONTROL_CARD_MANAGER } from '../services/ControlCardManager';
 import { SPEED_NOTIFICATION_MANAGER } from '../services/SpeedNotificationManager';
@@ -109,10 +110,33 @@ struct Index {
   private async refreshFromStorage(): Promise<void> {
     await this.loadSettings();
     await this.loadNodes();
+    await this.handlePendingRuntimeSettingsRestart();
     await this.handlePendingAutoStartupLaunch();
     await this.handlePendingDeepLink();
     await this.refreshDueSubscriptions();
     await this.syncSubscriptionBackgroundSchedule();
+  }
+
+  private async handlePendingRuntimeSettingsRestart(): Promise<void> {
+    const decision = consumeRuntimeSettingsRestartDecision(this.isRunning(), this.isBusy());
+    if (decision.keepPending) {
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.settingsRestartDeferred'));
+      return;
+    }
+    if (!decision.shouldRestart) {
+      return;
+    }
+
+    this.connectionOperationRunning = true;
+    try {
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.settingsRestartRequested'));
+      const stopped = await this.stopConnectionInternal();
+      if (stopped) {
+        await this.startConnectionInternal();
+      }
+    } finally {
+      this.connectionOperationRunning = false;
+    }
   }
 
   private async handlePendingAutoStartupLaunch(): Promise<void> {

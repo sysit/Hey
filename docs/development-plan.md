@@ -27,7 +27,7 @@
 | Native 桥接 | M1 已接通 12 个（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），代码完成 | **待 `libxray.so` 重建（导出符号已加）+ 真机复测**；仅 `CGoRunXray` 仍闲置 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules`，规则集可按 v2rayNG 从剪贴板或二维码 JSON 导入并保留 locked 规则，`routeOnly` 会控制 process 规则输出和 sniffing routeOnly；生成 Xray routing 时会按 v2rayNG 将 `geoip:cn/private` 改写为 `geoip-only-cn-private.dat` ext 引用，并将 process 包名解析为 Harmony app UID | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线；本地 SOCKS 入口按 v2rayNG 默认开启，可供代理经由能力使用 | 待真机触发回归后台唤醒路径 |
-| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情可按 v2rayNG `shareFullContent2Clipboard` 复制完整运行配置；URL-style 普通 TCP 节点导出会按 v2rayNG 写出 `headerType=none`；剪贴板导入路径已补 Harmony `READ_PASTEBOARD` 权限声明与运行时请求 | 仍待真机回归不同分享目标兼容性 |
+| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情可按 v2rayNG `shareFullContent2Clipboard` 复制完整运行配置；URL-style 普通 TCP 节点导出会按 v2rayNG 写出 `headerType=none`；剪贴板导入路径已补 Harmony `READ_PASTEBOARD` 权限声明与运行时请求；运行中导入/扫码/新增/选择当前节点后会标记待重启，返回首页自动应用新配置 | 仍待真机回归不同分享目标兼容性 |
 | 速度通知 | 🟡 常驻通知代码完成；连接运行且速度显示开启时每 3 秒刷新上传/下载速率与累计流量，停止或关闭设置时取消 | 待真机通知权限弹窗、通知中心展示与后台留存回归 |
 | 深链导入 | ✅ Harmony Want / `hey://install-sub` / `hey://install-config` 已接入 EntryAbility 与首页解析 | 仍待真机回归外部应用触发路径 |
 | 桌面入口 | 🟡 Harmony 服务卡片基础入口完成；2×2 卡片提供 toggle/start/stop/scan 四个控制深链入口，并通过保存 formId + updateForm 同步运行态 | 待真机添加卡片、点击调起和系统刷新回归 |
@@ -245,6 +245,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
   （2026-06-18 代码完成，待真机通知权限与展示回归）
 - ✅ **关于页更新检查**：对应 v2rayNG `UpdateCheckerManager`；
   About 页从 GitHub release API 拉取 tag/assets，比较当前版本 `1.1.0`，发现新版本时打开下载页/Release 页，失败时记录运行日志；`pref_check_update_pre_release` 等价开关可选择是否包含 pre-release
+- ✅ **运行配置变更自动重启**：对应 v2rayNG `SettingsChangeManager.makeRestartService()`；
+  Settings/Route/PerApp 保存、导入/扫码/新增/选择当前节点和编辑当前自定义节点时写入待重启标记，首页恢复时若服务运行且空闲则自动 stop/start 应用最新配置，忙碌时保留标记稍后继续
 
 **v2rayNG 对照**：`UrlSchemeActivity`、`share2QRCode`、`WidgetProvider`/`QSTileService`/`shortcuts.xml`、`UpdateCheckerManager`。
 **验收标准**：外部链接可一键导入；节点可生成二维码被另一台设备扫入。
@@ -391,6 +393,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | M4 | ✅ 本地文件资源编辑入口对齐完成（本地导入资源保留覆盖导入/删除，不再进入编辑表单；补 file/local URL 可编辑性单测） |
 | 2026-06-19 | M4 | ✅ 内置 Geo 文件更新对齐 v2rayNG（Assets 页新增 `geoip-only-cn-private.dat` 状态/单独更新/删除/本地覆盖，一键更新强制从 Loyalsoldier/geoip raw URL 拉取；补 URL 与规格单测） |
 | 2026-06-19 | M4 | ✅ Geo 下载源选择对齐 v2rayNG（Assets 页源列表补齐 `runetfreedom/russia-v2ray-rules-dat` 与 `Chocolate4U/Iran-v2ray-rules`，源菜单改为动态生成；补源仓库与 URL 拼接单测） |
+| 2026-06-19 | M4 | ✅ 运行配置变更自动重启对齐 v2rayNG（保存 Settings/Route/PerApp、导入/扫码/新增/选择当前节点、编辑当前自定义节点后标记待重启；首页恢复时运行中自动重连，忙碌时保留待处理标记；补重启决策单测） |
 | 2026-06-19 | M2 | ✅ routeOnly process 路由语义完成（`routeOnlyEnabled` 开启时写入 TUN sniffing `routeOnly` 并允许自定义规则输出 `process`；关闭时过滤 process-only 规则或移除 process 条件；补配置生成单测） |
 | 2026-06-19 | M2 | ✅ routeOnly sniffing 边界对齐 v2rayNG（普通 sniffing 与 FakeDNS 都关闭时仍生成 `enabled=false`、空 `destOverride`、`routeOnly=true` 的 sniffing 对象；补配置生成单测） |
 | 2026-06-19 | M4 | ✅ FakeDNS sniffing 边界对齐 v2rayNG（sniffing 的 `fakedns` 仅跟随 `fakeDnsEnabled`；顶层 `fakedns` 与 DNS FakeDNS server 仍要求本地 DNS + FakeDNS；补配置生成单测） |

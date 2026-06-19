@@ -17,7 +17,7 @@
 | 路由设置页 | ✅ 84% | 广告拦截、自定义规则、预设规则集导入/导出均已生效，预设内容补齐 v2rayNG 中国白名单/黑名单公共 DNS IP/域名规则，规则集支持 v2rayNG 风格剪贴板与二维码 JSON 导入；路由域名策略按 v2rayNG `AsIs/IPIfNonMatch/IPOnDemand` 三值归一化后保存并写入 Xray；`routeOnly` 控制 process 规则输出和 sniffing routeOnly，运行配置会将 process 包名转换为 Harmony app UID；运行配置生成时将路由 IP 匹配里的 `geoip:cn/private` 改写为 v2rayNG 同款 ext 引用；自定义规则可选择当前高级出站目标；真机规则回归待补 |
 | Geo 资产管理 | ✅ 97% | 下载 / 自定义 URL / 本地 `.dat` 导入 / 资源 URL 二维码导入 / 自定义资源名称唯一性校验 / 本地文件资源隐藏编辑入口 / 剪贴板备份还原 / WebDAV ZIP 云备份还原已实现，恢复兼容旧 JSON 包；内置下载已包含 v2rayNG 强制更新的 `geoip-only-cn-private.dat`，用于支撑 `geoip:cn/private` ext 路由，下载源选择补齐 v2rayNG 的 Loyalsoldier / Russia / Iran 三组规则源；Geo 文件 native 计数/校验已接线，待重建 `.so` 真机验证 |
 | 分应用代理 | 🟡 82% | 开关、黑白名单、手动包名、应用枚举、批量全选/清除/反选、自动选中需代理应用、剪贴板导入导出和 VPN 应用映射已接线；自动选择会先拉取 v2rayNG `androidpackagenamelist` 远程列表，失败时回退内置列表，并保留 `com.google*` 强制匹配/WebView 排除；默认模式对齐 v2rayNG 为“代理选中的应用”，空列表仍阻断自身包名防回路；仍受平台可见性限制，待真机回归 |
-| 设置页 | 🟡 94% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理按 v2rayNG 默认开启，静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、fake DNS、DNS hosts、出站域名预解析方式（含启动前 live DNS 预解析）、速度显示、常驻速度通知、当前连接信息测试网址、语言跟随系统、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线 |
+| 设置页 | 🟡 95% | 核心项持久化并生效，`pref_mode` 已支持 VPN / Proxy only，本地 SOCKS 代理按 v2rayNG 默认开启，静态/动态端口、UDP、认证已写入运行配置；IPv6 启用与 IPv6 优先已按 v2rayNG 拆分；mux/XUDP/fragment 高级参数、fake DNS、DNS hosts、出站域名预解析方式（含启动前 live DNS 预解析）、速度显示、常驻速度通知、当前连接信息测试网址、语言跟随系统、UI 模式、显示所有分组、双列显示、删除配置确认、立即启动扫码与日志级别选择器已接线；运行中保存设置/路由/分应用或切换当前节点后会按 v2rayNG `SettingsChangeManager` 语义返回首页自动重启服务 |
 | 扫码导入 | ✅ 82% | 粘贴导入和 ScanKit 相机扫码已接线，剪贴板读取已声明并运行时请求 Harmony `READ_PASTEBOARD` 权限；`startScanImmediate` 开启时进入扫码页自动拉起相机，待真机相机权限/机型回归 |
 | 导出 / 分享 | ✅ 86% | 文本/文件导出、节点二维码、订阅链接二维码与系统分享面板已完成；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情已支持 v2rayNG `shareFullContent2Clipboard` 等价的完整运行配置复制；后续主要是真机分享目标兼容回归 |
 | 平台集成 | 🟡 53% | Want / URL Scheme 深链导入已完成，并按 v2rayNG 处理 `install-sub`/`install-config` 外层 fragment 名称兜底；控制深链支持 start/stop/toggle/scan，可作为 Tasker/快捷方式入口；Logcat 页已支持搜索、复制全部、分享全部、单条复制与清空；常驻速度通知已接 Harmony NotificationKit；2×2 桌面服务卡片基础入口已接 FormExtensionAbility/FormLink，并已通过保存 formId + updateForm 同步运行态，待真机通知权限、卡片添加/点击与系统刷新回归 |
@@ -214,6 +214,7 @@
 | 2026-06-19 | 阶段 5 | ✅ 本地文件资源编辑入口对齐完成；本地导入资源保留覆盖导入/删除，不再进入编辑表单，对齐 v2rayNG `url == "file"` 行为 |
 | 2026-06-19 | 阶段 5 | ✅ 内置 Geo 文件更新对齐 v2rayNG；Assets 页新增 `geoip-only-cn-private.dat` 状态/单独更新/删除/本地覆盖，一键更新固定拉取 Loyalsoldier/geoip raw 文件 |
 | 2026-06-19 | 阶段 5 | ✅ Geo 下载源选择对齐 v2rayNG；Assets 页补齐 `runetfreedom/russia-v2ray-rules-dat` 与 `Chocolate4U/Iran-v2ray-rules`，并改为动态源菜单 |
+| 2026-06-19 | 阶段 4 | ✅ 运行配置变更自动重启对齐 v2rayNG；Settings/Route/PerApp 保存、导入/扫码/新增/选择当前节点后标记待重启，首页恢复时运行中自动 stop/start 应用新配置 |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 端口跳跃间隔完成；`mportHopInt` 可导入导出并在 NodeEdit 手动填写，导出时按 v2rayNG 规则规范化 |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 TLS/insecure 导出完成；分享链接导出按 v2rayNG 显式写入 `security=tls` 与 `insecure=1/0` |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 证书 pin 完成；`pinSHA256` 可从分享链接导入导出，并可在 NodeEdit 手动填写写入 outbound |

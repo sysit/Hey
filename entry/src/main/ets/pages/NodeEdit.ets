@@ -4,6 +4,7 @@ import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { buildKcpFinalMask } from '../core/KcpTransport';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../core/V2rayNgOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
@@ -1116,6 +1117,7 @@ struct NodeEditPage {
       }
 
       await SubscriptionStore.addManualNode(context, this.nodeName, validation.normalizedJson, validation.configType);
+      markRuntimeSettingsRestartNeeded();
       promptAction.showToast({ message: '节点保存成功' });
       router.back();
     } catch (error) {

@@ -16,6 +16,7 @@ import { parseDeepLink } from '../main/ets/core/DeepLink';
 import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
 import { SUPPORTED_SHARE_LINK_SCHEMES, buildUnsupportedShareLinkMessage, formatOutboundJsonToShareLink, isSupportedShareLink, parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
 import { exportRoutingRulesJson, importRoutingRulesJson, resetRoutingRulesFromPreset } from '../main/ets/core/RoutingRules';
+import { decideRuntimeSettingsRestart } from '../main/ets/core/SettingsChange';
 import {
   DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
   MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
@@ -76,6 +77,26 @@ const WIREGUARD_CONF_WITHOUT_MTU: string =
   '[Interface]\nPrivateKey = private-key\nAddress = 172.16.0.2/32\n\n[Peer]\nPublicKey = peer-key\nEndpoint = wg.example.com:51820\nAllowedIPs = 0.0.0.0/0\n';
 
 export default function localUnitTest() {
+  describe('settingsChange', () => {
+    it('decides when runtime settings changes should restart the service', 0, () => {
+      const idle = decideRuntimeSettingsRestart(false, true, false);
+      expect(idle.shouldRestart).assertFalse();
+      expect(idle.keepPending).assertFalse();
+
+      const stopped = decideRuntimeSettingsRestart(true, false, false);
+      expect(stopped.shouldRestart).assertFalse();
+      expect(stopped.keepPending).assertFalse();
+
+      const busy = decideRuntimeSettingsRestart(true, true, true);
+      expect(busy.shouldRestart).assertFalse();
+      expect(busy.keepPending).assertTrue();
+
+      const running = decideRuntimeSettingsRestart(true, true, false);
+      expect(running.shouldRestart).assertTrue();
+      expect(running.keepPending).assertFalse();
+    });
+  });
+
   describe('xrayConfig', () => {
     it('validates vless reality outbound json', 0, () => {
       const result = validateOutboundJson(VLESS_REALITY_OUTBOUND);

@@ -6,6 +6,7 @@ import { util } from '@kit.ArkTS';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { resolveJsonConfigNodeName } from '../core/JsonConfigNames';
 import { AppLanguage, ProxyNode, XrayConfigType } from '../core/Profile';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -313,6 +314,7 @@ struct JsonImportPage {
       }
 
       await SubscriptionStore.addManualNode(context, nodeName, normalizedJson, validation.configType);
+      markRuntimeSettingsRestartNeeded();
       SHARED_RUNTIME_CONTROLLER.appendLog('自定义 JSON 节点导入成功');
       promptAction.showToast({ message: this.t('jsonImport.imported') });
       router.back();
@@ -348,6 +350,9 @@ struct JsonImportPage {
       if (!result.success) {
         this.lastError = result.lastError;
         return;
+      }
+      if (result.selected) {
+        markRuntimeSettingsRestartNeeded();
       }
       SHARED_RUNTIME_CONTROLLER.appendLog('自定义 JSON 节点已更新');
       promptAction.showToast({ message: this.t('jsonImport.updated') });

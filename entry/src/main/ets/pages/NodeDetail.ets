@@ -5,6 +5,7 @@ import { generateBarcode, scanCore } from '@kit.ScanKit';
 import { image } from '@kit.ImageKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, AppSettings, ProxyNode, SubscriptionGroup } from '../core/Profile';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { formatOutboundJsonToShareLink } from '../core/ShareLinkParser';
 import { buildNodeFullConfigModel, NodeFullConfigModel } from '../features/nodes/NodeOperations';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
@@ -387,6 +388,9 @@ struct NodeDetailPage {
     const state = await NODES_CONTROLLER.selectNode(context, this.node, this.language);
     this.selectedNodeId = state.selectedNodeId;
     this.lastError = state.lastError;
+    if (state.lastError.length === 0) {
+      markRuntimeSettingsRestartNeeded();
+    }
     SHARED_RUNTIME_CONTROLLER.appendLog(state.lastError.length > 0 ? state.lastError : this.f1('log.selectedNode', 'name', this.node.name));
   }
 

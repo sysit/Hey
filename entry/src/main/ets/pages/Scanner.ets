@@ -4,6 +4,7 @@ import { scanBarcode, scanCore } from '@kit.ScanKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
@@ -371,6 +372,7 @@ struct ScannerPage {
       }
 
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
+      markRuntimeSettingsRestartNeeded();
       SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.profileSaved'));
       promptAction.showToast({ message: '节点导入成功' });
       router.back();

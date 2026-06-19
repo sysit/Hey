@@ -25,6 +25,7 @@ import {
   VPN_INTERFACE_ADDRESS_CONFIGS
 } from '../core/Profile';
 import { applyColorMode } from '../core/ColorMode';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import {
   LanguageToggleRow,
   SettingInputRow,
@@ -531,6 +532,7 @@ struct SettingsPage {
       const saved = await SETTINGS_CONTROLLER.save(context, this.buildDraft());
       applyColorMode(context, saved.uiModeNight);
       this.applyDraft(SETTINGS_CONTROLLER.toDraft(saved));
+      markRuntimeSettingsRestartNeeded();
       if (showMessage) {
         SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.settingsSaved'));
       }

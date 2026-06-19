@@ -2,6 +2,7 @@ import { common } from '@kit.AbilityKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { AppRoute } from '../shell/AppRoute';
@@ -393,6 +394,7 @@ struct ImportPage {
           return;
         }
 
+        markRuntimeSettingsRestartNeeded();
         promptAction.showToast({ message: importedCount === 1 ? '节点解析成功' : `已导入 ${importedCount} 个节点` });
         router.back();
         return;
@@ -400,6 +402,7 @@ struct ImportPage {
 
       const nodeName = this.resolveNodeName(saved.profile.outboundJson, '链接导入');
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
+      markRuntimeSettingsRestartNeeded();
       promptAction.showToast({ message: '节点解析成功' });
       router.back();
     } catch (error) {

@@ -4,6 +4,7 @@ import { promptAction } from '@kit.ArkUI';
 import { scanBarcode, scanCore } from '@kit.ScanKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, ProxyNode, RoutingRule } from '../core/Profile';
+import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import {
   exportRoutingRulesJson,
   importRoutingRulesJson,
@@ -623,6 +624,7 @@ struct RoutingPage {
     this.draft = SETTINGS_CONTROLLER.toDraft(saved);
     this.language = this.draft.language;
     this.routingRules = this.copyRules(this.draft.routingRules);
+    markRuntimeSettingsRestartNeeded();
     SHARED_RUNTIME_CONTROLLER.appendLog(logMessage);
   }
 
