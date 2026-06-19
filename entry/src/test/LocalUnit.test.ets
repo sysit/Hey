@@ -2219,6 +2219,16 @@ export default function localUnitTest() {
       expect(roundTripShortSs.success).assertTrue();
       expect(roundTripShortSs.outboundJson).assertContain('"password": "p"');
 
+      const obfsSs = parseShareLinkToOutboundJson('ss://YWVzLTEyOC1nY206c2VjcmV0@example.com:8388?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dcdn.example%3Bpath%3D%2Fobfs#ss-obfs');
+      expect(obfsSs.success).assertTrue();
+      expect(obfsSs.outboundJson).assertContain('"network": "tcp"');
+      expect(obfsSs.outboundJson).assertContain('"type": "http"');
+      expect(obfsSs.outboundJson).assertContain('"cdn.example"');
+      expect(obfsSs.outboundJson).assertContain('"/obfs"');
+      const exportedObfsSs = formatOutboundJsonToShareLink(obfsSs.outboundJson, 'ss-obfs');
+      expect(exportedObfsSs).assertEqual('ss://YWVzLTEyOC1nY206c2VjcmV0@example.com:8388#ss-obfs');
+      expect(exportedObfsSs.indexOf('plugin=')).assertEqual(-1);
+
       const legacySlash = parseShareLinkToOutboundJson('ss://QUVTLTI1Ni1HQ006cGFzczp3b3JkOndpdGg6Y29sb25zQGV4YW1wbGUuY29tOjgzODgv#Legacy%20Slash');
       expect(legacySlash.success).assertTrue();
       expect(legacySlash.name).assertEqual('Legacy Slash');

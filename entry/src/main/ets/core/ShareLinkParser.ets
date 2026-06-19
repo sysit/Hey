@@ -1597,20 +1597,8 @@ function formatShadowsocks(outbound: XrayOutbound, name: string): string {
   const credentials = `${server.method}:${server.password}`;
   const base64Credentials = encodeUtf8ToBase64NoPadding(credentials);
 
-  const queryParams = new Map<string, string>();
-  const stream = outbound.streamSettings;
-  if (stream) {
-    const network = stream.network || 'tcp';
-    if (network === 'tcp' && stream.tcpSettings?.header?.type === 'http') {
-      const host = stream.tcpSettings.header.request?.headers?.Host?.[0] || '';
-      const path = stream.tcpSettings.header.request?.path?.[0] || '';
-      queryParams.set('plugin', `obfs-local;obfs=http;obfs-host=${host};path=${path}`);
-    }
-  }
-
-  const queryStr = formatQueryParams(queryParams);
   const hashStr = name.length > 0 ? `#${encodeURIComponent(name)}` : '';
-  return `ss://${formatUserInfo(base64Credentials)}@${formatHostPort(server.address, server.port)}${queryStr}${hashStr}`;
+  return `ss://${formatUserInfo(base64Credentials)}@${formatHostPort(server.address, server.port)}${hashStr}`;
 }
 
 function formatSocks(outbound: XrayOutbound, name: string): string {
