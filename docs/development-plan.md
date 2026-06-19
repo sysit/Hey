@@ -230,7 +230,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
   `hey://start` / `hey://stop` / `hey://toggle` / `hey://scan`
 - ✅ **开机自动连接设置**：对应 v2rayNG `pref_is_booted`/`BootReceiver`，
   设置页可持久化“开机自动连接”；Harmony `AUTO_STARTUP` 启动原因会在主页加载设置和当前节点后触发启动当前节点
-  （受系统自启动开关/权限控制，仍需真机重启回归）
+  （不声明会阻断普通调试签名安装的 `ohos.permission.RECEIVER_STARTUP_COMPLETED`；受系统自启动开关控制，仍需真机重启回归）
 - ✅ **二维码生成**：节点分享与订阅链接分享生成 QR（ScanKit `generateBarcode.createBarcode`），
   节点补齐"显示二维码 / 单行链接 / 完整 JSON"三种分享形态；订阅详情页可显示订阅 URL 二维码并复制/系统分享
 - ✅ **资源 URL 二维码导入**：Assets 页新增 v2rayNG `add_qrcode` 等价入口，
@@ -513,6 +513,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ URL-style 默认 TCP query 完成（无 `streamSettings` 的 VLESS/Trojan outbound 导出时补齐 v2rayNG 普通 TCP 默认 `security/type/headerType`，Trojan 补 `insecure=0`/`allowInsecure=0`；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ HTTPUpgrade/XHTTP 传输参数完成（分享链接 `type=httpupgrade` 的 host/path 导出不再丢失，NodeEdit 可选择 httpupgrade；XHTTP `mode/extra` 可手动填写并 round-trip 保留；补传输选项与参数单测） |
 | 2026-06-19 | 协议点检 | ✅ XHTTP mode 枚举完成（分享链接导入/导出、NodeEdit 保存与运行配置生成均按 v2rayNG `auto/packet-up/stream-up/stream-one` 限定，非法值兜底 `auto`；补归一化单测） |
+| 2026-06-19 | M4 | ✅ 开机自启安装兼容修正（移除受限 `ohos.permission.RECEIVER_STARTUP_COMPLETED` manifest 声明，保留 `AUTO_STARTUP` 启动原因下的 `startOnBoot` 处理，避免普通调试签名 HAP 安装被授权 ACL 拦截） |
 | 2026-06-19 | 协议点检 | ✅ gRPC 传输模式完成（NodeEdit 可选择 v2rayNG `gun/multi`，保存时写入 `grpcSettings.multiMode`；分享链接 `mode=multi` round-trip 保留） |
 | 2026-06-19 | 协议点检 | ✅ KCP 传输参数完成（分享链接 `type=kcp` 的 `headerType`/`seed`/`mtu`/`tti` 导入导出保留，运行 JSON 生成 `kcpSettings` 与 v2rayNG 风格 `finalmask.udp`，NodeEdit 可手动填写；补 KCP 参数与 VMess QR round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ SOCKS 分享认证导出完成（用户密码导出为 v2rayNG `base64(user:pass)` userInfo，导入导出 round-trip 保留认证信息） |
