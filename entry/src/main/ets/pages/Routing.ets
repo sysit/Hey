@@ -17,6 +17,7 @@ import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
+import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 import { RoutingRuleDialog } from './routing/RoutingRuleDialog';
 
@@ -722,6 +723,11 @@ struct RoutingPage {
 
   private async importRulesFromClipboard(): Promise<void> {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (!systemPasteboard.hasDataSync()) {
         promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });

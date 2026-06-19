@@ -10,6 +10,7 @@ import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData
 import { formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../../core/GeoAssets';
 import { validateWebDavConfig, WebDavConfigInput } from '../../core/WebDav';
 import { countNativeGeoData } from '../../native/HeyNative';
+import { ensureReadPasteboardPermission } from '../../utils/ClipboardPermission';
 import { formatOne, formatTwo } from '../../utils/LocalizationPresenter';
 import { SHARED_RUNTIME_CONTROLLER } from '../runtime/RuntimeController';
 import { AssetStore, CustomAssetUrl } from '../../storage/AssetStore';
@@ -352,6 +353,11 @@ export class AssetsController {
     onFailure: () => void
   ): Promise<void> {
     try {
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: this.t(language, 'prompt.clipboardEmpty') });
+        onFailure();
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (!systemPasteboard.hasDataSync()) {
         promptAction.showToast({ message: this.t(language, 'prompt.clipboardEmpty') });

@@ -1,9 +1,11 @@
+import { common } from '@kit.AbilityKit';
 import { ProxyNode, SubscriptionGroup } from '../../core/Profile';
 import { IconButton } from '../../components/IconButton';
 import { SubscriptionGroupListRow, SubscriptionNodeListRow } from './SubscriptionRows';
 import { AppColor } from '../../theme/Theme';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
+import { ensureReadPasteboardPermission } from '../../utils/ClipboardPermission';
 
 export interface SubscriptionGroupRowModel {
   group: SubscriptionGroup;
@@ -98,6 +100,11 @@ export struct SubscriptionManagerPanel {
 
   private async pasteFromClipboard() {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: '无法读取剪贴板' });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (systemPasteboard.hasDataSync()) {
         const pasteData = await systemPasteboard.getData();

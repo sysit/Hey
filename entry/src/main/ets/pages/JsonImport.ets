@@ -12,6 +12,7 @@ import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
+import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 const MAX_IMPORT_FILE_BYTES: number = 2 * 1024 * 1024;
@@ -360,6 +361,11 @@ struct JsonImportPage {
 
   private async pasteFromClipboard() {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: '无法读取剪贴板' });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (systemPasteboard.hasDataSync()) {
         const pasteData = await systemPasteboard.getData();

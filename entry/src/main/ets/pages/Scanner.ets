@@ -12,6 +12,7 @@ import { SUBSCRIPTIONS_CONTROLLER } from '../features/subscriptions/Subscription
 import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
+import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { AppColor } from '../theme/Theme';
 
@@ -302,6 +303,11 @@ struct ScannerPage {
 
   private async pasteFromClipboard(): Promise<void> {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: '无法读取剪贴板内容' });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (systemPasteboard.hasDataSync()) {
         const pasteData = await systemPasteboard.getData();

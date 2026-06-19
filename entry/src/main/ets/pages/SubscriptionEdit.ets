@@ -11,6 +11,7 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { AppRoute } from '../shell/AppRoute';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
+import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
@@ -434,6 +435,11 @@ struct SubscriptionEditPage {
 
   private async pasteFromClipboard() {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: '无法读取剪贴板' });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (systemPasteboard.hasDataSync()) {
         const pasteData = await systemPasteboard.getData();

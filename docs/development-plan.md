@@ -27,7 +27,7 @@
 | Native 桥接 | M1 已接通 12 个（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），代码完成 | **待 `libxray.so` 重建（导出符号已加）+ 真机复测**；仅 `CGoRunXray` 仍闲置 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules`，`routeOnly` 会控制 process 规则输出和 sniffing routeOnly；生成 Xray routing 时会按 v2rayNG 将 `geoip:cn/private` 改写为 `geoip-only-cn-private.dat` ext 引用，并将 process 包名解析为 Harmony app UID | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线；本地 SOCKS 入口按 v2rayNG 默认开启，可供代理经由能力使用 | 待真机触发回归后台唤醒路径 |
-| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板 | 仍待真机回归不同分享目标兼容性 |
+| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；剪贴板导入路径已补 Harmony `READ_PASTEBOARD` 权限声明与运行时请求 | 仍待真机回归不同分享目标兼容性 |
 | 速度通知 | 🟡 常驻通知代码完成；连接运行且速度显示开启时每 3 秒刷新上传/下载速率与累计流量，停止或关闭设置时取消 | 待真机通知权限弹窗、通知中心展示与后台留存回归 |
 | 深链导入 | ✅ Harmony Want / `hey://install-sub` / `hey://install-config` 已接入 EntryAbility 与首页解析 | 仍待真机回归外部应用触发路径 |
 | 桌面入口 | 🟡 Harmony 服务卡片基础入口完成；2×2 卡片提供 toggle/start/stop/scan 四个控制深链入口，并通过保存 formId + updateForm 同步运行态 | 待真机添加卡片、点击调起和系统刷新回归 |
@@ -226,6 +226,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
   （受系统自启动开关/权限控制，仍需真机重启回归）
 - ✅ **二维码生成**：节点分享与订阅链接分享生成 QR（ScanKit `generateBarcode.createBarcode`），
   节点补齐"显示二维码 / 单行链接 / 完整 JSON"三种分享形态；订阅详情页可显示订阅 URL 二维码并复制/系统分享
+- ✅ **剪贴板导入权限**：对应 v2rayNG 剪贴板导入配置/规则集路径，Harmony manifest 已声明
+  `ohos.permission.READ_PASTEBOARD` 并在读取前统一请求，覆盖扫码页粘贴、JSON 导入、订阅粘贴、路由规则导入、分应用/备份恢复等读取入口
 - 🟡 **桌面服务卡片 / 快捷方式**：一键启停、扫码（对应 QSTile/Widget/Shortcuts）；
   Harmony `ControlCardAbility` 已注册 2×2 ArkTS 服务卡片，卡片通过 `FormLink`
   跳转 `hey://toggle` / `hey://start` / `hey://stop` / `hey://scan`
@@ -384,6 +386,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M3 | ✅ 本地 HTTP 代理共享开关生效（`proxySharingEnabled` 开启时 `http-in.listen=0.0.0.0`，默认仍为 `127.0.0.1`，补配置生成单测） |
 | 2026-06-18 | M0 补点 | ✅ VPN 接口 DNS 不再写死，`settings.vpnDns` 会规范化后写入 Harmony `VpnConfig.dnsAddresses`，空值回退 `1.1.1.1/8.8.8.8` |
 | 2026-06-18 | M4 | ✅ 系统分享面板接入（批量导出文本 + 单节点分享链接走 `ohos.want.action.sendData`，失败回退剪贴板，并补分享 Want 单测） |
+| 2026-06-19 | M4 | ✅ 剪贴板导入权限对齐（manifest 声明 `ohos.permission.READ_PASTEBOARD` 并补用途说明/前台 usedScene，所有剪贴板读取入口统一运行时请求，覆盖 v2rayNG 剪贴板导入配置/规则集等路径，并消除 ArkTS 读取剪贴板权限告警） |
 | 2026-06-18 | M4 | ✅ 完整自定义 Xray config 编辑完成（节点详情入口 + JSON 导入页编辑模式 + 手动节点原位更新 + 当前 profile 同步 + 单测覆盖命名解析） |
 | 2026-06-18 | M0 补点 | ✅ TUN IPv6 设置接线完成（Settings `ipv6Enabled` 开关持久化 + VPN IPv6 client `/126` 地址 + `::/0` 默认路由 + `isIPv6Accepted`） |
 | 2026-06-18 | M0 补点 | ✅ `preferIpv6` 继续贯通到生成的 Xray outbound：开启时写入 `sockopt.domainStrategy=UseIP` 与 `happyEyeballs.prioritizeIPv6/interleave`，并覆盖 fragment 共存单测 |

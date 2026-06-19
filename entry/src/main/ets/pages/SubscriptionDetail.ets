@@ -13,6 +13,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
+import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { generateBarcode, scanCore } from '@kit.ScanKit';
@@ -450,6 +451,11 @@ struct SubscriptionDetailPage {
 
   private async pasteFromClipboard() {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: '无法读取剪贴板' });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (systemPasteboard.hasDataSync()) {
         const pasteData = await systemPasteboard.getData();

@@ -19,6 +19,7 @@ import { PER_APP_PROXY_LIST_MANAGER } from '../services/PerAppProxyListManager';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
+import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 interface AppItem {
@@ -555,6 +556,11 @@ struct PerAppPage {
 
   private async importProxyAppsFromClipboard(): Promise<void> {
     try {
+      const context = getContext(this) as common.Context;
+      if (!await ensureReadPasteboardPermission(context)) {
+        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        return;
+      }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (!systemPasteboard.hasDataSync()) {
         promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
