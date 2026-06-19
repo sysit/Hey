@@ -2,7 +2,7 @@ import { describe, it, expect } from '@ohos/hypium';
 import { buildPolicyGroupConfigFromNodes, buildPolicyGroupConfigFromSubscription, buildProxyChainConfigFromNodes, isAdvancedOutboundBuildableNode, normalizePolicyGroupBuilderStrategy, resolveDynamicPolicyGroupConfigJson } from '../main/ets/core/AdvancedOutboundBuilder';
 import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData, parseAppBackupPayload } from '../main/ets/core/AppBackup';
 import { CONTROL_CARD_FORM_NAME, CONTROL_CARD_SCAN_URI, CONTROL_CARD_START_URI, CONTROL_CARD_STOP_URI, CONTROL_CARD_TOGGLE_URI, buildControlCardFormData } from '../main/ets/core/ControlCard';
-import { hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
+import { AssetNameEntry, hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
 import { decodeBase64ToUtf8 } from '../main/ets/core/Encoding';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLanguage, resolveSystemLanguage, translate } from '../main/ets/core/I18n';
 import { resolveImportedNodeName } from '../main/ets/core/ImportedNodeNames';
@@ -1364,6 +1364,8 @@ export default function localUnitTest() {
       expect(translate('zh', 'screen.settings.title')).assertEqual('设置');
       expect(translate('en', 'screen.settings.title')).assertEqual('Settings');
       expect(translate('en', 'settings.checkUpdatePreRelease')).assertEqual('Include pre-release versions');
+      expect(translate('en', 'prompt.clipboardReadFailed')).assertEqual('Could not read clipboard');
+      expect(translate('zh', 'prompt.pastedJsonConfig')).assertEqual('已粘贴 JSON 配置');
       expect(translate('zh', 'missing.translation.key')).assertEqual('missing.translation.key');
       expect(formatTranslation('en', 'subscription.updateComplete', ['count'], ['3'])).assertContain('3');
       expect(formatOne('zh', 'subscription.updateComplete', 'count', '3')).assertContain('3');
@@ -1447,7 +1449,7 @@ export default function localUnitTest() {
     });
 
     it('detects duplicate custom asset names like v2rayNG asset remarks', 0, () => {
-      const assets = [
+      const assets: Array<AssetNameEntry> = [
         { id: 'asset-a', name: 'geosite' },
         { id: 'asset-b', name: 'geoip' }
       ];
@@ -1730,27 +1732,27 @@ export default function localUnitTest() {
     });
 
     it('maps per-app vpn package lists like v2rayNG', 0, () => {
-      const disabled = createDefaultVpnConfig(false, false, []) as Record<string, Object>;
-      const disabledBlocked = disabled['blockedApplications'] as Array<string>;
+      const disabled = createDefaultVpnConfig(false, false, []);
+      const disabledBlocked = disabled.blockedApplications ?? [];
       expect(disabledBlocked[0]).assertEqual(BUNDLE_NAME);
 
-      const enabledEmpty = createDefaultVpnConfig(true, false, []) as Record<string, Object>;
-      const emptyBlocked = enabledEmpty['blockedApplications'] as Array<string>;
+      const enabledEmpty = createDefaultVpnConfig(true, false, []);
+      const emptyBlocked = enabledEmpty.blockedApplications ?? [];
       expect(emptyBlocked[0]).assertEqual(BUNDLE_NAME);
 
-      const selfOnly = createDefaultVpnConfig(true, false, [BUNDLE_NAME]) as Record<string, Object>;
-      const selfOnlyBlocked = selfOnly['blockedApplications'] as Array<string>;
+      const selfOnly = createDefaultVpnConfig(true, false, [BUNDLE_NAME]);
+      const selfOnlyBlocked = selfOnly.blockedApplications ?? [];
       expect(selfOnlyBlocked[0]).assertEqual(BUNDLE_NAME);
-      expect(selfOnly['trustedApplications'] === undefined).assertTrue();
+      expect(selfOnly.trustedApplications === undefined).assertTrue();
 
-      const proxySelected = createDefaultVpnConfig(true, false, [BUNDLE_NAME, 'com.tencent.mm']) as Record<string, Object>;
-      const trusted = proxySelected['trustedApplications'] as Array<string>;
+      const proxySelected = createDefaultVpnConfig(true, false, [BUNDLE_NAME, 'com.tencent.mm']);
+      const trusted = proxySelected.trustedApplications ?? [];
       expect(trusted.length).assertEqual(1);
       expect(trusted[0]).assertEqual('com.tencent.mm');
-      expect(proxySelected['blockedApplications'] === undefined).assertTrue();
+      expect(proxySelected.blockedApplications === undefined).assertTrue();
 
-      const bypassSelected = createDefaultVpnConfig(true, true, [BUNDLE_NAME, 'com.tencent.mm']) as Record<string, Object>;
-      const blocked = bypassSelected['blockedApplications'] as Array<string>;
+      const bypassSelected = createDefaultVpnConfig(true, true, [BUNDLE_NAME, 'com.tencent.mm']);
+      const blocked = bypassSelected.blockedApplications ?? [];
       expect(blocked.length).assertEqual(2);
       expect(blocked[0]).assertEqual(BUNDLE_NAME);
       expect(blocked[1]).assertEqual('com.tencent.mm');

@@ -308,7 +308,7 @@ struct ScannerPage {
     try {
       const context = getContext(this) as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: '无法读取剪贴板内容' });
+        promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -318,15 +318,15 @@ struct ScannerPage {
         if (text && text.trim().length > 0) {
           this.importBuffer = text.trim();
           this.lastError = '';
-          promptAction.showToast({ message: '已从剪贴板粘贴配置' });
+          promptAction.showToast({ message: this.t('prompt.pastedConfig') });
         } else {
-          promptAction.showToast({ message: '剪贴板内未发现有效文本' });
+          promptAction.showToast({ message: this.t('prompt.clipboardTextEmpty') });
         }
       } else {
-        promptAction.showToast({ message: '剪贴板为空' });
+        promptAction.showToast({ message: this.t('prompt.clipboardNoData') });
       }
     } catch (error) {
-      promptAction.showToast({ message: '无法读取剪贴板内容' });
+      promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
     }
   }
 

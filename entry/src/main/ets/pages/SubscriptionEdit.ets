@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { DEFAULT_LANGUAGE } from '../core/I18n';
+import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
 import {
   DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
@@ -437,7 +437,7 @@ struct SubscriptionEditPage {
     try {
       const context = getContext(this) as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: '无法读取剪贴板' });
+        promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -446,15 +446,15 @@ struct SubscriptionEditPage {
         const text = pasteData.getPrimaryText();
         if (text && text.trim().length > 0) {
           this.subscriptionUrl = text.trim();
-          promptAction.showToast({ message: '已粘贴订阅链接' });
+          promptAction.showToast({ message: this.t('prompt.pastedSubscriptionUrl') });
         } else {
-          promptAction.showToast({ message: '剪贴板未发现有效链接' });
+          promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
         }
       } else {
-        promptAction.showToast({ message: '剪贴板为空' });
+        promptAction.showToast({ message: this.t('prompt.clipboardNoData') });
       }
     } catch (error) {
-      promptAction.showToast({ message: '无法读取剪贴板' });
+      promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
     }
   }
 
@@ -487,5 +487,9 @@ struct SubscriptionEditPage {
       return null;
     }
     return parsed;
+  }
+
+  private t(key: string): string {
+    return translate(this.language, key);
   }
 }

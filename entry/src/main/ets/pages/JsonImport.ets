@@ -368,7 +368,7 @@ struct JsonImportPage {
     try {
       const context = getContext(this) as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: '无法读取剪贴板' });
+        promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -378,15 +378,15 @@ struct JsonImportPage {
         if (text && text.trim().length > 0) {
           this.outboundJson = text.trim();
           this.validateConfig();
-          promptAction.showToast({ message: '已粘贴 JSON 配置' });
+          promptAction.showToast({ message: this.t('prompt.pastedJsonConfig') });
         } else {
-          promptAction.showToast({ message: '剪贴板未发现有效文本' });
+          promptAction.showToast({ message: this.t('prompt.clipboardTextEmpty') });
         }
       } else {
-        promptAction.showToast({ message: '剪贴板为空' });
+        promptAction.showToast({ message: this.t('prompt.clipboardNoData') });
       }
     } catch (error) {
-      promptAction.showToast({ message: '无法读取剪贴板' });
+      promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
     }
   }
 

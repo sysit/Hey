@@ -550,6 +550,12 @@ export const TRANSLATION_KEYS: Array<string> = [
   'action.clearInput',
   'subscription.fetchSuccess',
   'prompt.clipboardEmpty',
+  'prompt.clipboardReadFailed',
+  'prompt.clipboardNoData',
+  'prompt.clipboardTextEmpty',
+  'prompt.pastedSubscriptionUrl',
+  'prompt.pastedConfig',
+  'prompt.pastedJsonConfig',
   'about.official.title',
   'about.official.detail',
   'about.issues.title',
@@ -1168,7 +1174,13 @@ const ZH_TRANSLATIONS: Record<string, string> = {
   'action.fetchNodes': '获取并更新节点',
   'action.clearInput': '清空输入',
   'subscription.fetchSuccess': '成功获取并更新了 {count} 个节点！',
-  'prompt.clipboardEmpty': '剪贴板未发现有效链接'
+  'prompt.clipboardEmpty': '剪贴板未发现有效链接',
+  'prompt.clipboardReadFailed': '无法读取剪贴板',
+  'prompt.clipboardNoData': '剪贴板为空',
+  'prompt.clipboardTextEmpty': '剪贴板未发现有效文本',
+  'prompt.pastedSubscriptionUrl': '已粘贴订阅链接',
+  'prompt.pastedConfig': '已从剪贴板粘贴配置',
+  'prompt.pastedJsonConfig': '已粘贴 JSON 配置'
 };
 
 const EN_TRANSLATIONS: Record<string, string> = {
@@ -1752,7 +1764,13 @@ const EN_TRANSLATIONS: Record<string, string> = {
   'action.fetchNodes': 'Fetch & Update',
   'action.clearInput': 'Clear Input',
   'subscription.fetchSuccess': 'Successfully updated {count} nodes!',
-  'prompt.clipboardEmpty': 'No valid URL in clipboard'
+  'prompt.clipboardEmpty': 'No valid URL in clipboard',
+  'prompt.clipboardReadFailed': 'Could not read clipboard',
+  'prompt.clipboardNoData': 'Clipboard is empty',
+  'prompt.clipboardTextEmpty': 'No valid text in clipboard',
+  'prompt.pastedSubscriptionUrl': 'Subscription URL pasted',
+  'prompt.pastedConfig': 'Configuration pasted from clipboard',
+  'prompt.pastedJsonConfig': 'JSON configuration pasted'
 };
 
 export function normalizeLanguage(value: string | undefined): AppLanguage {

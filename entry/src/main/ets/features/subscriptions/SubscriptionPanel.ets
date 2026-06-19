@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit';
-import { ProxyNode, SubscriptionGroup } from '../../core/Profile';
+import { DEFAULT_LANGUAGE, translate } from '../../core/I18n';
+import { AppLanguage, ProxyNode, SubscriptionGroup } from '../../core/Profile';
 import { IconButton } from '../../components/IconButton';
 import { SubscriptionGroupListRow, SubscriptionNodeListRow } from './SubscriptionRows';
 import { AppColor } from '../../theme/Theme';
@@ -27,6 +28,7 @@ export type SubscriptionNodeActionHandler = (node: ProxyNode) => void;
 
 @Component
 export struct SubscriptionManagerPanel {
+  language: AppLanguage = DEFAULT_LANGUAGE;
   title: string = '';
   summary: string = '';
   urlPlaceholder: string = '';
@@ -102,7 +104,7 @@ export struct SubscriptionManagerPanel {
     try {
       const context = getContext(this) as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: '无法读取剪贴板' });
+        promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -111,16 +113,20 @@ export struct SubscriptionManagerPanel {
         const text = pasteData.getPrimaryText();
         if (text && text.trim().length > 0) {
           this.onUrlChange(text.trim());
-          promptAction.showToast({ message: '已粘贴订阅链接' });
+          promptAction.showToast({ message: this.t('prompt.pastedSubscriptionUrl') });
         } else {
-          promptAction.showToast({ message: '剪贴板未发现有效链接' });
+          promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
         }
       } else {
-        promptAction.showToast({ message: '剪贴板为空' });
+        promptAction.showToast({ message: this.t('prompt.clipboardNoData') });
       }
     } catch (error) {
-      promptAction.showToast({ message: '无法读取剪贴板' });
+      promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
     }
+  }
+
+  private t(key: string): string {
+    return translate(this.language, key);
   }
 
   build() {
