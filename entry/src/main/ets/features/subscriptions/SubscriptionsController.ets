@@ -100,12 +100,8 @@ export class SubscriptionsController {
       const filter = this.findGroupFilter(subscriptionBeforeUpdate.groups, targetGroupId);
       const nodes = this.applyNodeFilter(result.nodes, filter);
 
-      let nextSelectedId = selectedNodeId;
-      if (this.findNode(nodes, nextSelectedId) === null) {
-        nextSelectedId = nodes[0].id;
-      }
-      const subscription = await SubscriptionStore.saveNodes(context, targetGroupId, url, nodes, nextSelectedId);
-      const selected = this.findNode(subscription.nodes, nextSelectedId);
+      const subscription = await SubscriptionStore.saveNodes(context, targetGroupId, url, nodes, selectedNodeId);
+      const selected = this.findNode(subscription.nodes, subscription.selectedNodeId);
       if (selected !== null) {
         await ProfileStore.save(context, selected.outboundJson, selected.configType);
       }
@@ -350,13 +346,8 @@ export class SubscriptionsController {
     }
 
     const nodes = this.applyNodeFilter(result.nodes, group.filter ?? '');
-    let nextSelectedId = group.selectedNodeId;
-    if (this.findNode(nodes, nextSelectedId) === null) {
-      nextSelectedId = nodes.length > 0 ? nodes[0].id : '';
-    }
-
     return {
-      subscription: await SubscriptionStore.saveNodes(context, group.id, url, nodes, nextSelectedId, makeActive),
+      subscription: await SubscriptionStore.saveNodes(context, group.id, url, nodes, group.selectedNodeId, makeActive),
       ok: true
     };
   }

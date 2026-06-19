@@ -7,6 +7,7 @@ import {
   moveSubscriptionGroup,
   normalizeSubscriptionUpdateInterval
 } from '../core/SubscriptionGroups';
+import { resolveRetainedSelectedNodeId } from '../core/SubscriptionSelection';
 import { normalizeConfigInput } from '../core/XrayConfig';
 
 const PREFERENCES_NAME: string = 'hey_vpn_subscription';
@@ -77,9 +78,11 @@ export class SubscriptionStore {
       profile.groups.push(group);
     }
 
+    const previousNodes = group.nodes;
+    const mergedNodes = SubscriptionStore.mergeNodeRuntime(previousNodes, nodes);
     group.url = url;
-    group.nodes = SubscriptionStore.mergeNodeRuntime(group.nodes, nodes);
-    group.selectedNodeId = selectedNodeId;
+    group.nodes = mergedNodes;
+    group.selectedNodeId = resolveRetainedSelectedNodeId(previousNodes, mergedNodes, selectedNodeId);
     group.updatedAt = Date.now();
     if (makeActive) {
       profile.selectedGroupId = group.id;

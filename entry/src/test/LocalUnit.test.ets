@@ -30,6 +30,7 @@ import {
   normalizeSubscriptionUpdateInterval
 } from '../main/ets/core/SubscriptionGroups';
 import { buildSubscriptionAutoUpdateSchedulePlan } from '../main/ets/core/SubscriptionSchedulerPlan';
+import { findMatchedSubscriptionNode, resolveRetainedSelectedNodeId } from '../main/ets/core/SubscriptionSelection';
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
@@ -2214,6 +2215,29 @@ export default function localUnitTest() {
       expect(result.length).assertEqual(baseNodes.length + 2);
       expect(result[result.length - 2].id).assertEqual('complex-one');
       expect(result[result.length - 1].id).assertEqual('complex-two');
+    });
+
+    it('retains selected subscription nodes with v2rayNG multi-level matching', 0, () => {
+      const nodes = buildNodeFixture();
+      const selected = nodes[0];
+      const unrelated = copyNode(nodes[2], 'new-unrelated');
+      unrelated.name = 'Unrelated';
+      unrelated.outboundJson = VLESS_FINALMASK_OUTBOUND;
+      const sameServerRenamed = copyNode(selected, 'new-same-server');
+      sameServerRenamed.name = 'Beta Renamed';
+      sameServerRenamed.rawLink = 'trojan://secret@relay.example.com:443#beta-renamed';
+
+      expect(resolveRetainedSelectedNodeId(nodes, [unrelated, sameServerRenamed], selected.id)).assertEqual(sameServerRenamed.id);
+      expect(resolveRetainedSelectedNodeId(nodes, [selected, unrelated], selected.id)).assertEqual(selected.id);
+      expect(resolveRetainedSelectedNodeId(nodes, [unrelated], selected.id)).assertEqual(unrelated.id);
+
+      const sameRemarks = copyNode(unrelated, 'new-same-remarks');
+      sameRemarks.name = selected.name.toUpperCase();
+      const sameServerOnly = copyNode(selected, 'new-same-server-only');
+      sameServerOnly.name = 'Different';
+      sameServerOnly.outboundJson = selected.outboundJson.replace('"password":"secret"', '"password":"changed"');
+      const matchedByRemarks = findMatchedSubscriptionNode([sameRemarks, sameServerOnly], selected);
+      expect(matchedByRemarks?.id ?? '').assertEqual(sameRemarks.id);
     });
 
     it('applies v2rayNG visible batch operations across all groups', 0, () => {
