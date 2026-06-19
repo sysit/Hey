@@ -27,7 +27,19 @@ import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildW
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
 import { V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS } from '../main/ets/core/V2rayNgOptions';
 import { filterLogItems, formatLogcatText } from '../main/ets/features/logs/LogOperations';
-import { buildNodeExportModel, buildNodeFullConfigModel, dedupeNodes, exportNodesText, filterNodes, findInvalidNodes, sortNodes } from '../main/ets/features/nodes/NodeOperations';
+import {
+  applyDelayTestPostActionsToGroups,
+  buildNodeExportModel,
+  buildNodeFullConfigModel,
+  dedupeNodes,
+  dedupeVisibleNodesInGroups,
+  exportNodesText,
+  filterNodes,
+  findInvalidNodes,
+  removeVisibleNodesFromGroups,
+  removeVisibleTestFailedNodesFromGroups,
+  sortNodes
+} from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
@@ -1709,6 +1721,64 @@ export default function localUnitTest() {
       expect(result.length).assertEqual(nodes.length);
     });
 
+    it('applies v2rayNG visible batch operations across all groups', 0, () => {
+      const nodes = buildNodeFixture();
+      const duplicateAlpha = copyNode(nodes[2], 'node-alpha-duplicate');
+      duplicateAlpha.rawLink = nodes[2].rawLink;
+      const failedTwo = copyNode(nodes[0], 'node-failed-two');
+      failedTwo.rawLink = 'trojan://secret2@example.com:443#failed-two';
+      failedTwo.delayStatus = 'timeout';
+      const groups = [
+        buildGroupFixture('sub-a', 'A', [nodes[2], nodes[0]], nodes[2].id),
+        buildGroupFixture('sub-b', 'B', [duplicateAlpha, nodes[1], failedTwo], duplicateAlpha.id)
+      ];
+
+      const deduped = dedupeVisibleNodesInGroups(groups, [nodes[2], duplicateAlpha], 100);
+      expect(deduped.removedCount).assertEqual(1);
+      expect(deduped.groups[1].nodes[0].id).assertEqual(nodes[1].id);
+      expect(deduped.groups[1].updatedAt).assertEqual(100);
+
+      const failedRemoved = removeVisibleTestFailedNodesFromGroups(groups, [nodes[0], nodes[1], failedTwo], 101);
+      expect(failedRemoved.removedCount).assertEqual(2);
+      expect(failedRemoved.groups[0].nodes.length).assertEqual(1);
+      expect(failedRemoved.groups[1].nodes.length).assertEqual(2);
+
+      const cleared = removeVisibleNodesFromGroups(groups, [nodes[2], failedTwo], 102);
+      expect(cleared.removedCount).assertEqual(2);
+      expect(cleared.groups[0].nodes[0].id).assertEqual(nodes[0].id);
+      expect(cleared.groups[1].nodes.length).assertEqual(2);
+    });
+
+    it('applies v2rayNG post delay-test remove and sort by subscription group', 0, () => {
+      const nodes = buildNodeFixture();
+      const slow = copyNode(nodes[2], 'node-slow');
+      slow.name = 'Slow';
+      slow.delayMs = 900;
+      slow.rawLink = 'vless://slow@example.com:443#slow';
+      const fast = copyNode(nodes[2], 'node-fast');
+      fast.name = 'Fast';
+      fast.delayMs = 80;
+      fast.rawLink = 'vless://fast@example.com:443#fast';
+      const failed = copyNode(nodes[0], 'node-failed-sort');
+      failed.name = 'Failed';
+      failed.delayStatus = 'failed';
+      const pending = copyNode(nodes[1], 'node-pending-sort');
+      pending.name = 'Pending';
+      const groups = [
+        buildGroupFixture('sub-a', 'A', [slow, failed, fast], failed.id),
+        buildGroupFixture('sub-b', 'B', [pending], pending.id)
+      ];
+
+      const result = applyDelayTestPostActionsToGroups(groups, [failed], [slow, failed, fast, pending], true, true, 200);
+      expect(result.removedCount).assertEqual(1);
+      expect(result.sortedGroupCount).assertEqual(2);
+      expect(result.groups[0].nodes.length).assertEqual(2);
+      expect(result.groups[0].nodes[0].id).assertEqual(fast.id);
+      expect(result.groups[0].nodes[1].id).assertEqual(slow.id);
+      expect(result.groups[0].selectedNodeId).assertEqual(slow.id);
+      expect(result.groups[0].updatedAt).assertEqual(200);
+    });
+
     it('finds invalid nodes and exports only v2rayNG shareable nodes', 0, () => {
       const nodes = buildNodeFixture();
       const invalid = copyNode(nodes[0], 'invalid');
@@ -2478,6 +2548,23 @@ function buildNodeFixture(): Array<ProxyNode> {
     delayStatus: ''
   };
   return [second, manual, first];
+}
+
+function buildGroupFixture(id: string, name: string, nodes: Array<ProxyNode>, selectedNodeId: string): SubscriptionGroup {
+  return {
+    id,
+    name,
+    url: `https://${id}.example/sub`,
+    enabled: true,
+    selectedNodeId,
+    nodes,
+    updatedAt: 1,
+    userAgent: '',
+    filter: '',
+    allowInsecureUrl: false,
+    autoUpdate: false,
+    updateIntervalMinutes: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES
+  };
 }
 
 function buildAdvancedNodeFixture(): Array<ProxyNode> {

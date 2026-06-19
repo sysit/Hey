@@ -3,7 +3,7 @@ import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { IconButton } from '../components/IconButton';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
-import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrency, ProxyNode, resolveDelayTestUrl, RuntimeStats, SubscriptionGroup } from '../core/Profile';
+import { AppLanguage, AppSettings, ConnectionStatus, normalizeRealPingConcurrency, ProxyNode, resolveDelayTestUrl, RuntimeStats, SubscriptionGroup, SubscriptionProfile } from '../core/Profile';
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameFromDeepLink } from '../core/DeepLink';
 import { DelayTester, DelayTestResult } from '../services/DelayTester';
@@ -13,7 +13,14 @@ import { SubscriptionBackgroundScheduler } from '../services/SubscriptionBackgro
 import { SubscriptionManager } from '../services/SubscriptionManager';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
-import { filterNodes, findInvalidNodes, exportNodesText, sortNodes, removeTestFailedNodesFromList } from '../features/nodes/NodeOperations';
+import {
+  applyDelayTestPostActionsToGroups,
+  dedupeVisibleNodesInGroups,
+  exportNodesText,
+  filterNodes,
+  removeVisibleNodesFromGroups,
+  removeVisibleTestFailedNodesFromGroups
+} from '../features/nodes/NodeOperations';
 import { NODES_CONTROLLER, NodesControllerState, SaveProfileResult } from '../features/nodes/NodesController';
 import { ServerNodeCard } from '../features/servers/ServerCard';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
@@ -1162,22 +1169,29 @@ struct Index {
   }
 
   private async dedupeNodes(): Promise<void> {
-    const before = this.nodes.length;
+    const targets = this.visibleNodes();
+    if (targets.length === 0) {
+      return;
+    }
     const context = getContext(this) as common.Context;
-    this.applyNodesState(await NODES_CONTROLLER.dedupeActiveGroupNodes(context, this.language));
-    const removed = Math.max(0, before - this.nodes.length);
-    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.nodesDeduped', 'count', removed.toString()));
+    const result = dedupeVisibleNodesInGroups(this.subscriptionGroups, targets, Date.now());
+    this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
+    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.nodesDeduped', 'count', result.removedCount.toString()));
   }
 
   private async removeInvalidNodes(): Promise<void> {
-    const invalid = findInvalidNodes(this.nodes).length;
+    const targets = this.visibleNodes();
+    if (targets.length === 0) {
+      return;
+    }
     const context = getContext(this) as common.Context;
-    this.applyNodesState(await NODES_CONTROLLER.removeInvalidNodes(context, this.language));
-    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.invalidNodesRemoved', 'count', invalid.toString()));
+    const result = removeVisibleTestFailedNodesFromGroups(this.subscriptionGroups, targets, Date.now());
+    this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
+    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.invalidNodesRemoved', 'count', result.removedCount.toString()));
   }
 
   private confirmClearNodes(): void {
-    if (this.nodes.length === 0) {
+    if (this.visibleNodes().length === 0) {
       promptAction.showToast({ message: this.t('prompt.noNodesToDelete') });
       return;
     }
@@ -1205,10 +1219,11 @@ struct Index {
   }
 
   private async clearActiveGroupNodes(): Promise<void> {
-    const removed = this.nodes.length;
+    const targets = this.visibleNodes();
+    const result = removeVisibleNodesFromGroups(this.subscriptionGroups, targets, Date.now());
     const context = getContext(this) as common.Context;
-    this.applyNodesState(await NODES_CONTROLLER.clearActiveGroupNodes(context, this.language));
-    const message = this.f1('log.nodesCleared', 'count', removed.toString());
+    this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
+    const message = this.f1('log.nodesCleared', 'count', result.removedCount.toString());
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
     promptAction.showToast({ message });
   }
@@ -1255,7 +1270,7 @@ struct Index {
           SHARED_RUNTIME_CONTROLLER.appendLog(this.f2('log.delayResult', 'name', item.node.name, 'result', this.delayResultText(result)));
         }
       }
-      await this.applyPostTestActions(context);
+      await this.applyPostTestActions(context, targets);
     } catch (error) {
       this.lastError = this.f1('error.delayTest', 'error', JSON.stringify(error));
       SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
@@ -1266,29 +1281,16 @@ struct Index {
 
   // After a batch delay test, optionally drop timed-out nodes and/or reorder by
   // latency, controlled by the auto-test settings. Persists the active group.
-  private async applyPostTestActions(context: common.Context): Promise<void> {
+  private async applyPostTestActions(context: common.Context, testedNodes: Array<ProxyNode>): Promise<void> {
     const autoRemove = this.currentSettings.autoRemoveInvalidAfterTest;
     const autoSort = this.currentSettings.autoSortAfterTest;
     if (!autoRemove && !autoSort) {
       return;
     }
-    let processed: Array<ProxyNode> = this.nodes;
-    if (autoRemove) {
-      processed = removeTestFailedNodesFromList(processed);
-    }
-    if (autoSort) {
-      processed = sortNodes(processed, 'delay');
-    }
-    const subscription = await SubscriptionStore.saveActiveGroupNodes(context, processed, this.selectedNodeId);
-    this.applySubscriptionsState({
-      subscriptionUrl: subscription.url,
-      nodes: subscription.nodes,
-      selectedNodeId: subscription.selectedNodeId,
-      subscriptionMessage: this.subscriptionMessage,
-      subscriptionUpdatedAt: subscription.updatedAt,
-      subscriptionGroups: subscription.groups,
-      selectedGroupId: subscription.selectedGroupId
-    });
+    const sortTargets = this.allGroupsSelected ? this.displayedNodes() : this.nodes;
+    const result = applyDelayTestPostActionsToGroups(this.subscriptionGroups, testedNodes, sortTargets, autoRemove, autoSort, Date.now());
+    const subscription = await SubscriptionStore.saveGroups(context, result.groups);
+    this.applySubscriptionsState(this.subscriptionStateFromProfile(subscription));
   }
 
   private async measureNodeTcpDelay(node: ProxyNode, timeoutMs: number): Promise<DelayTestResult> {
@@ -1404,6 +1406,18 @@ struct Index {
     this.subscriptionGroups = state.subscriptionGroups;
     this.selectedGroupId = state.selectedGroupId;
     this.reconcileAllGroupsSelection();
+  }
+
+  private subscriptionStateFromProfile(subscription: SubscriptionProfile): SubscriptionsControllerState {
+    return {
+      subscriptionUrl: subscription.url,
+      nodes: subscription.nodes,
+      selectedNodeId: subscription.selectedNodeId,
+      subscriptionMessage: this.subscriptionMessage,
+      subscriptionUpdatedAt: subscription.updatedAt,
+      subscriptionGroups: subscription.groups,
+      selectedGroupId: subscription.selectedGroupId
+    };
   }
 
   private applyRuntimeState(state: RuntimeViewState): void {

@@ -115,19 +115,32 @@ export class SubscriptionStore {
     return SubscriptionStore.load(context);
   }
 
+  static async saveGroups(context: common.Context, groups: Array<SubscriptionGroup>): Promise<SubscriptionProfile> {
+    const profile = await SubscriptionStore.load(context);
+    profile.groups = groups;
+    await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
+    return SubscriptionStore.load(context);
+  }
+
   static async removeNode(context: common.Context, nodeId: string): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
-    const group = SubscriptionStore.activeGroup(profile);
-    if (group !== null) {
+    let removed = false;
+    for (let groupIndex = 0; groupIndex < profile.groups.length; groupIndex++) {
+      const group = profile.groups[groupIndex];
       const nodes = new Array<ProxyNode>();
       for (let index = 0; index < group.nodes.length; index++) {
         if (group.nodes[index].id !== nodeId) {
           nodes.push(group.nodes[index]);
         }
       }
-      group.nodes = nodes;
-      group.selectedNodeId = SubscriptionStore.resolveSelectedNodeId(nodes, group.selectedNodeId);
-      group.updatedAt = Date.now();
+      if (nodes.length !== group.nodes.length) {
+        group.nodes = nodes;
+        group.selectedNodeId = SubscriptionStore.resolveSelectedNodeId(nodes, group.selectedNodeId);
+        group.updatedAt = Date.now();
+        removed = true;
+      }
+    }
+    if (removed) {
       await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     }
     return SubscriptionStore.load(context);

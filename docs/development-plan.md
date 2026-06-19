@@ -318,14 +318,14 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 
 - [x] 广告拦截路由生效（`adBlockEnabled` 开关 → `geosite:category-ads-all` → block，全模式生效，2026-06-15）
 - [x] 订阅正则过滤 `filter`（`SubscriptionGroup.filter` 全链路：编辑页输入框 → 更新/更新全部时按节点名正则筛选，无效/空/零匹配回退全部，2026-06-15）
-- [x] 测速后自动操作：`autoSortAfterTest` / `autoRemoveInvalidAfterTest` 设置项 + 设置页开关 + 批量测速后触发（按延迟排序 / 删除超时节点，2026-06-15）
+- [x] 测速后自动操作：`autoSortAfterTest` / `autoRemoveInvalidAfterTest` 设置项 + 设置页开关 + 批量测速后触发（按延迟排序 / 删除超时节点；2026-06-19 补 All 虚拟分组跨订阅分组语义）
 - [x] 真连接延迟测试：Settings 保存 `realPingConcurrency` 与 `delayTestUrl`；节点菜单提供 TCP 延迟和真连接测速两个入口，真连接批量测速按配置分批并发、通过 native `CGoPing` 访问目标 URL 并串行落盘（2026-06-19 补首页入口接线）
 - [x] 删除配置确认：Settings 保存 `confirmRemove`，默认关闭；开启后单节点删除与订阅分组删除弹二次确认（2026-06-18）
 - [x] 立即启动扫码：Settings 保存 `startScanImmediate`，默认关闭；开启后进入 Scanner 页自动拉起 ScanKit 相机扫码（2026-06-18）
 - [x] 速度显示：Settings 保存 `speedEnabled`，默认关闭；开启后生成 metrics/stats/policy 并显示上传/下载，关闭时不启动 VPN stats 轮询（2026-06-18）
 - [x] 语言跟随系统：Settings 保存 v2rayNG `pref_language=auto/en/zh`，默认 `auto`；`auto` 通过 Harmony 系统语言解析为中/英显示，设置页三段切换并补单测（2026-06-19）
 - [x] UI 模式：Settings 保存 v2rayNG `uiModeNight=0/1/2`，应用启动/回前台/保存设置后切换 Harmony 跟随系统/浅色/深色 colorMode（2026-06-18）
-- [x] 显示所有分组：Settings 保存 `groupAllDisplay`，节点页开启 All 虚拟分组并聚合所有订阅分组节点，搜索/测速/导出按聚合可见节点执行（2026-06-18）
+- [x] 显示所有分组：Settings 保存 `groupAllDisplay`，节点页开启 All 虚拟分组并聚合所有订阅分组节点，搜索/测速/导出/删除全部/去重/删除测速失败节点按聚合可见节点执行（2026-06-19 补批处理语义）
 - [x] 双列显示：Settings 保存 `doubleColumnDisplay`，默认关闭；开启后节点页以双列列表展示配置并保留选择/滑动操作（2026-06-18）
 - [x] 当前连接信息测试网址：Settings 保存 `ipApiUrl`，默认 `https://api.ip.sb/geoip`；启动成功后经本地 HTTP 代理查询出口国家/IP 并写入运行日志（2026-06-18）
 - [x] 二维码生成：节点详情页用 `@kit.ScanKit` `generateBarcode.createBarcode` 渲染分享链接 QR + 复制链接（2026-06-15）
@@ -446,6 +446,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | M4 | ✅ 批量导出非自定义配置完成（Export/Nodes 批量导出按 v2rayNG `shareNonCustomConfigsToClipboard` 语义跳过 full custom、proxy-chain、policy-group 与无效 JSON，只统计实际导出的可分享普通节点；补导出模型单测） |
 | 2026-06-19 | M4 | ✅ 单节点完整配置复制完成（节点详情新增“复制完整配置”，按 v2rayNG `shareFullContent2Clipboard` 语义生成普通/full custom/proxy-chain/policy-group 的完整运行 Xray config 后写入剪贴板；动态策略组会按最新订阅成员展开；补 full config 生成单测） |
 | 2026-06-19 | M4 | ✅ Logcat 操作对齐完成（Logs 页支持 v2rayNG Logcat 的搜索过滤、复制全部、分享全部、单条日志复制与清空；分享走 Harmony `sendData` 并保留剪贴板回退；补日志过滤/格式化单测） |
+| 2026-06-19 | M3 | ✅ All 分组批处理对齐完成（Nodes 页单节点删除、删除全部、去重、删除无效配置按 v2rayNG 当前可见范围跨订阅分组执行；“删除无效配置”改为删除测速失败节点；测速后自动排序/删除失败节点按订阅分组保存；补 All 分组批处理纯函数单测） |
 | 2026-06-19 | 协议点检 | ✅ `flow`/uTLS 指纹选项完成（NodeEdit 手动编辑补齐 `xtls-rprx-vision-udp443` 与 `ios/android/randomized` 指纹选项，分享链接导入导出保留这些值；补选项和 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ VMess QR TLS insecure 完成（旧版 VMess JSON `insecure=1` 导入为 `tlsSettings.allowInsecure`，导出后再导入仍保留；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ URL-style TLS allowInsecure 导出完成（VLESS/Trojan 等 TLS 分享导出同时写 `insecure` 与 `allowInsecure`，true/false 均按 v2rayNG `1/0` 输出；补 round-trip 单测） |

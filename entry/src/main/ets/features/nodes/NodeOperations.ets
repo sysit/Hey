@@ -24,6 +24,12 @@ export interface NodeFullConfigModel {
   message: string;
 }
 
+export interface NodeBatchMutationResult {
+  groups: Array<SubscriptionGroup>;
+  removedCount: number;
+  sortedGroupCount: number;
+}
+
 export function filterNodes(nodes: Array<ProxyNode>, query: string): Array<ProxyNode> {
   const keyword = query.trim().toLowerCase();
   if (keyword.length === 0) {
@@ -118,6 +124,91 @@ function isTestFailed(node: ProxyNode): boolean {
   }
   const status = node.delayStatus;
   return status.length > 0 && status !== 'ok' && status !== 'testing';
+}
+
+export function removeVisibleNodesFromGroups(
+  groups: Array<SubscriptionGroup>,
+  visibleNodes: Array<ProxyNode>,
+  updatedAt: number = 0
+): NodeBatchMutationResult {
+  return removeNodeIdsFromGroups(groups, nodeIdSet(visibleNodes), updatedAt);
+}
+
+export function removeVisibleTestFailedNodesFromGroups(
+  groups: Array<SubscriptionGroup>,
+  visibleNodes: Array<ProxyNode>,
+  updatedAt: number = 0
+): NodeBatchMutationResult {
+  const failed = new Array<ProxyNode>();
+  for (let index = 0; index < visibleNodes.length; index++) {
+    if (isTestFailed(visibleNodes[index])) {
+      failed.push(visibleNodes[index]);
+    }
+  }
+  return removeVisibleNodesFromGroups(groups, failed, updatedAt);
+}
+
+export function dedupeVisibleNodesInGroups(
+  groups: Array<SubscriptionGroup>,
+  visibleNodes: Array<ProxyNode>,
+  updatedAt: number = 0
+): NodeBatchMutationResult {
+  const seen = new Set<string>();
+  const duplicateIds = new Set<string>();
+  for (let index = 0; index < visibleNodes.length; index++) {
+    const node = visibleNodes[index];
+    const key = dedupeKey(node);
+    if (key.length === 0) {
+      continue;
+    }
+    if (seen.has(key)) {
+      duplicateIds.add(node.id);
+    } else {
+      seen.add(key);
+    }
+  }
+  return removeNodeIdsFromGroups(groups, duplicateIds, updatedAt);
+}
+
+export function applyDelayTestPostActionsToGroups(
+  groups: Array<SubscriptionGroup>,
+  removeTargets: Array<ProxyNode>,
+  sortTargets: Array<ProxyNode>,
+  autoRemoveFailed: boolean,
+  autoSort: boolean,
+  updatedAt: number = 0
+): NodeBatchMutationResult {
+  let result: NodeBatchMutationResult = {
+    groups: copySubscriptionGroups(groups),
+    removedCount: 0,
+    sortedGroupCount: 0
+  };
+  if (autoRemoveFailed) {
+    result = removeVisibleTestFailedNodesFromGroups(result.groups, removeTargets, updatedAt);
+  }
+  if (!autoSort) {
+    return result;
+  }
+
+  const sortIds = nodeIdSet(sortTargets);
+  const sortedGroups = new Array<SubscriptionGroup>();
+  let sortedCount = 0;
+  for (let index = 0; index < result.groups.length; index++) {
+    const group = copySubscriptionGroup(result.groups[index]);
+    if (containsAnyNodeId(group.nodes, sortIds)) {
+      group.nodes = sortNodes(group.nodes, 'delay');
+      group.selectedNodeId = resolveSelectedNodeId(group.nodes, group.selectedNodeId);
+      group.updatedAt = updatedAt > 0 ? updatedAt : group.updatedAt;
+      sortedCount++;
+    }
+    sortedGroups.push(group);
+  }
+
+  return {
+    groups: sortedGroups,
+    removedCount: result.removedCount,
+    sortedGroupCount: sortedCount
+  };
 }
 
 export function exportNodesText(nodes: Array<ProxyNode>): string {
@@ -249,6 +340,91 @@ function compareText(left: string, right: string): number {
     return 1;
   }
   return 0;
+}
+
+function removeNodeIdsFromGroups(
+  groups: Array<SubscriptionGroup>,
+  ids: Set<string>,
+  updatedAt: number
+): NodeBatchMutationResult {
+  const nextGroups = new Array<SubscriptionGroup>();
+  let removedCount = 0;
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = copySubscriptionGroup(groups[groupIndex]);
+    const nextNodes = new Array<ProxyNode>();
+    let groupRemoved = 0;
+    for (let nodeIndex = 0; nodeIndex < group.nodes.length; nodeIndex++) {
+      const node = group.nodes[nodeIndex];
+      if (ids.has(node.id)) {
+        groupRemoved++;
+      } else {
+        nextNodes.push(node);
+      }
+    }
+    if (groupRemoved > 0) {
+      group.nodes = nextNodes;
+      group.selectedNodeId = resolveSelectedNodeId(group.nodes, group.selectedNodeId);
+      group.updatedAt = updatedAt > 0 ? updatedAt : group.updatedAt;
+      removedCount += groupRemoved;
+    }
+    nextGroups.push(group);
+  }
+  return {
+    groups: nextGroups,
+    removedCount,
+    sortedGroupCount: 0
+  };
+}
+
+function nodeIdSet(nodes: Array<ProxyNode>): Set<string> {
+  const ids = new Set<string>();
+  for (let index = 0; index < nodes.length; index++) {
+    ids.add(nodes[index].id);
+  }
+  return ids;
+}
+
+function containsAnyNodeId(nodes: Array<ProxyNode>, ids: Set<string>): boolean {
+  for (let index = 0; index < nodes.length; index++) {
+    if (ids.has(nodes[index].id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function resolveSelectedNodeId(nodes: Array<ProxyNode>, selectedNodeId: string): string {
+  for (let index = 0; index < nodes.length; index++) {
+    if (nodes[index].id === selectedNodeId) {
+      return selectedNodeId;
+    }
+  }
+  return nodes.length > 0 ? nodes[0].id : '';
+}
+
+function copySubscriptionGroups(groups: Array<SubscriptionGroup>): Array<SubscriptionGroup> {
+  const copied = new Array<SubscriptionGroup>();
+  for (let index = 0; index < groups.length; index++) {
+    copied.push(copySubscriptionGroup(groups[index]));
+  }
+  return copied;
+}
+
+function copySubscriptionGroup(group: SubscriptionGroup): SubscriptionGroup {
+  return {
+    id: group.id,
+    name: group.name,
+    url: group.url,
+    enabled: group.enabled,
+    selectedNodeId: group.selectedNodeId,
+    nodes: copyNodes(group.nodes),
+    updatedAt: group.updatedAt,
+    userAgent: group.userAgent,
+    filter: group.filter,
+    allowInsecureUrl: group.allowInsecureUrl,
+    autoUpdate: group.autoUpdate,
+    updateIntervalMinutes: group.updateIntervalMinutes
+  };
 }
 
 function copyNodes(nodes: Array<ProxyNode>): Array<ProxyNode> {
