@@ -427,7 +427,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M3 | 🟡 订阅 WorkScheduler 后台调度接线（持久重复任务 + `SubscriptionUpdateWorkAbility` 到期刷新 + 增删改/首页同步注册 + 诊断日志 + 调度计划单测）；待真机触发回归 |
 | 2026-06-18 | M3 | ✅ 运行中经由本地 HTTP 代理更新订阅（`appendHttpProxy` 设置 + `http-in` inbound 10809 + 订阅拉取 `usingProxy` 优先/直连回退 + 单测） |
 | 2026-06-18 | M3 | ✅ 本地 HTTP 代理共享开关生效（`proxySharingEnabled` 开启时 `http-in.listen=0.0.0.0`，默认仍为 `127.0.0.1`，补配置生成单测） |
-| 2026-06-18 | M0 补点 | ✅ VPN 接口 DNS 不再写死，`settings.vpnDns` 会规范化后写入 Harmony `VpnConfig.dnsAddresses`，空值回退 `1.1.1.1/8.8.8.8` |
+| 2026-06-18 | M0 补点 | ✅ VPN 接口 DNS 不再写死，`settings.vpnDns` 会规范化后写入 Harmony `VpnConfig.dnsAddresses` |
+| 2026-06-20 | M0 补点 | ✅ VPN DNS 默认值对齐 v2rayNG，空/未设置时 Harmony `VpnConfig.dnsAddresses` 只回退 `AppConfig.DNS_VPN = 1.1.1.1`，显式多 DNS 仍按用户输入去重保留 |
 | 2026-06-18 | M4 | ✅ 系统分享面板接入（批量导出文本 + 单节点分享链接走 `ohos.want.action.sendData`，失败回退剪贴板，并补分享 Want 单测） |
 | 2026-06-19 | M4 | ✅ 剪贴板导入安装兼容修正（移除受限 `ohos.permission.READ_PASTEBOARD` manifest 声明、用途说明和运行时授权请求，覆盖 v2rayNG 剪贴板导入配置/规则集等路径；ArkTS 仍保留读取剪贴板权限告警） |
 | 2026-06-18 | M4 | ✅ 完整自定义 Xray config 编辑完成（节点详情入口 + JSON 导入页编辑模式 + 手动节点原位更新 + 当前 profile 同步 + 单测覆盖命名解析） |

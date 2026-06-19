@@ -19,7 +19,7 @@ export const VPN_MTU: number = DEFAULT_VPN_MTU;
 export const TUN_IPV4: string = resolveVpnInterfaceAddressConfig().ipv4Client;
 export const TUN_IPV6: string = resolveVpnInterfaceAddressConfig().ipv6Client;
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
-export const DEFAULT_VPN_DNS_ADDRESSES: string[] = ['1.1.1.1', '8.8.8.8'];
+export const DEFAULT_VPN_DNS_ADDRESSES: string[] = ['1.1.1.1'];
 export const VPN_BYPASS_LAN_IPV4_ROUTES: string[] = [
   '0.0.0.0/5',
   '8.0.0.0/7',

@@ -55,7 +55,7 @@ import { buildTextShareWant } from '../main/ets/services/SystemShare';
 import { DEFAULT_APP_SETTINGS } from '../main/ets/storage/SettingsStore';
 import { formatBytes, formatDuration } from '../main/ets/utils/Formatters';
 import { formatOne, localizedProfileSavedText, localizeCoreMessage } from '../main/ets/utils/LocalizationPresenter';
-import { BUNDLE_NAME, createDefaultVpnConfig } from '../main/ets/vpn/VpnConstants';
+import { BUNDLE_NAME, DEFAULT_VPN_DNS_ADDRESSES, createDefaultVpnConfig, normalizeVpnDnsAddresses } from '../main/ets/vpn/VpnConstants';
 
 const VLESS_REALITY_OUTBOUND: string =
   '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision"}]}]},"streamSettings":{"network":"tcp","security":"reality","realitySettings":{"serverName":"www.example.com","publicKey":"test-public-key","shortId":"abcd","fingerprint":"chrome"}}}';
@@ -1943,6 +1943,29 @@ export default function localUnitTest() {
       expect(blocked.length).assertEqual(2);
       expect(blocked[0]).assertEqual(BUNDLE_NAME);
       expect(blocked[1]).assertEqual('com.tencent.mm');
+    });
+
+    it('uses v2rayNG vpn dns default', 0, () => {
+      expect(DEFAULT_VPN_DNS_ADDRESSES.length).assertEqual(1);
+      expect(DEFAULT_VPN_DNS_ADDRESSES[0]).assertEqual('1.1.1.1');
+
+      const unset = normalizeVpnDnsAddresses();
+      expect(unset.length).assertEqual(1);
+      expect(unset[0]).assertEqual('1.1.1.1');
+
+      const blank = normalizeVpnDnsAddresses(' , ');
+      expect(blank.length).assertEqual(1);
+      expect(blank[0]).assertEqual('1.1.1.1');
+
+      const explicit = normalizeVpnDnsAddresses(' 9.9.9.9, 1.1.1.1,9.9.9.9 ');
+      expect(explicit.length).assertEqual(2);
+      expect(explicit[0]).assertEqual('9.9.9.9');
+      expect(explicit[1]).assertEqual('1.1.1.1');
+
+      const config = createDefaultVpnConfig(false, false, [], '');
+      const dnsAddresses = config.dnsAddresses ?? [];
+      expect(dnsAddresses.length).assertEqual(1);
+      expect(dnsAddresses[0]).assertEqual('1.1.1.1');
     });
 
     it('normalizes ui mode night like v2rayNG', 0, () => {
