@@ -279,6 +279,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ uTLS fingerprint（`fp`）：分享链接导入导出保留，NodeEdit 指纹选项对齐 v2rayNG `chrome/firefox/safari/ios/android/edge/360/qq/random/randomized`（2026-06-19）
 - ✅ VMess QR TLS insecure：旧版 VMess JSON 分享里的 `insecure=1` 会导入为 `tlsSettings.allowInsecure`，导出再导入仍保留（2026-06-19）
 - ✅ URL-style TLS allowInsecure 导出：VLESS/Trojan 等分享导出按 v2rayNG 同时写入 `insecure` 与 `allowInsecure` 兼容键，`0/1` 状态可 round-trip 保留（2026-06-19）
+- ✅ TLS 证书 pin 与 `allowInsecure` 运行语义：分享链接/手动配置仍保留字段，生成运行 Xray 配置时若有 `pinnedPeerCertSha256` 则按 v2rayNG 将 `allowInsecure` 置为 `false`（2026-06-19）
 - ✅ URL-style userInfo 编码：Trojan/WireGuard/Hysteria2/HTTP 等导出按 v2rayNG 对 userInfo 做 URI 编码，密码/密钥含 `@`、`/`、`?`、`+`、`=` 时 round-trip 保留（2026-06-19）
 - ✅ URL-style 空备注默认值：VLESS/VMess AEAD/Trojan/SS/SOCKS/WireGuard/Hysteria2 等分享链接缺少 fragment 时按 v2rayNG 使用 `none` 作为节点名（2026-06-19）
 - ✅ 分享链接支持列表文案：解析失败提示、本地化文案和导入/扫码页说明已同步实际支持的 `https://`、`socks4://`、`socks5://` 与 `hy2://` 别名，避免支持能力和用户提示漂移（2026-06-19）
@@ -461,6 +462,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ `flow`/uTLS 指纹选项完成（NodeEdit 手动编辑补齐 `xtls-rprx-vision-udp443` 与 `ios/android/randomized` 指纹选项，分享链接导入导出保留这些值；补选项和 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ VMess QR TLS insecure 完成（旧版 VMess JSON `insecure=1` 导入为 `tlsSettings.allowInsecure`，导出后再导入仍保留；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ URL-style TLS allowInsecure 导出完成（VLESS/Trojan 等 TLS 分享导出同时写 `insecure` 与 `allowInsecure`，true/false 均按 v2rayNG `1/0` 输出；补 round-trip 单测） |
+| 2026-06-19 | 协议点检 | ✅ TLS 证书 pin 与 allowInsecure 运行语义完成（运行配置生成时若有 `pinnedPeerCertSha256`，按 v2rayNG 禁用 `allowInsecure`；无 pin 时保持原值；补运行配置单测） |
 | 2026-06-19 | 协议点检 | ✅ URL-style userInfo 编码完成（Trojan/WireGuard/Hysteria2/HTTP 导出对密码、私钥和用户密码做 URI 编码，特殊字符不再截断分享链接；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ URL-style 空备注默认值完成（分享链接缺少 fragment 时按 v2rayNG 将导入节点名设为 `none`，订阅导入同样保留；补解析与订阅单测） |
 | 2026-06-19 | 协议点检 | ✅ 分享链接支持列表文案完成（解析器支持列表、失败提示、本地化与导入/扫码说明统一覆盖 `https://`、`socks4://`、`socks5://`、`hy2://`；补支持列表防漂移单测） |

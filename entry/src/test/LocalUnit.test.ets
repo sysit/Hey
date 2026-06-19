@@ -491,6 +491,20 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"domainStrategy": "bad"')).assertEqual(-1);
     });
 
+    it('disables allowInsecure when a pinned certificate is configured like v2rayNG', 0, () => {
+      const settings = buildSettingsFixture();
+      const pinnedTlsOutbound =
+        '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"pinned.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tlsSettings":{"serverName":"pinned.example.com","allowInsecure":true,"pinnedPeerCertSha256":"test-pinned-ca256"}}}';
+      const pinned = buildXrayConfigWithSettings(pinnedTlsOutbound, settings);
+      expect(pinned.configJson).assertContain('"pinnedPeerCertSha256": "test-pinned-ca256"');
+      expect(pinned.configJson).assertContain('"allowInsecure": false');
+
+      const unpinnedTlsOutbound =
+        '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"plain.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tlsSettings":{"serverName":"plain.example.com","allowInsecure":true}}}';
+      const unpinned = buildXrayConfigWithSettings(unpinnedTlsOutbound, settings);
+      expect(unpinned.configJson).assertContain('"allowInsecure": true');
+    });
+
     it('applies mux only to v2rayNG supported outbound protocols', 0, () => {
       const settings = buildSettingsFixture();
       settings.muxEnabled = true;

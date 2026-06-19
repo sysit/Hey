@@ -1053,6 +1053,7 @@ function cloneOutbound(outbound: XrayOutbound): XrayOutbound {
 }
 
 function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSettings | undefined): void {
+  applyPinnedCertificateAllowInsecureParity(outbound);
   applyWireguardIpv6Setting(outbound, settings);
   applyHysteria2FinalMaskSettings(outbound);
   if (settings !== undefined && settings.muxEnabled && shouldApplyMux(outbound)) {
@@ -1075,6 +1076,27 @@ function applyOutboundRuntimeSettings(outbound: XrayOutbound, settings: AppSetti
     };
     sockopt['domainStrategy'] = 'UseIP';
     sockopt['happyEyeballs'] = happyEyeballs;
+  }
+}
+
+function applyPinnedCertificateAllowInsecureParity(outbound: XrayOutbound): void {
+  if (outbound.streamSettings === undefined) {
+    return;
+  }
+  const streamSettings = outbound.streamSettings as Record<string, Object | string | number | boolean | undefined>;
+  disableAllowInsecureWhenPinned(streamSettings['tlsSettings']);
+  disableAllowInsecureWhenPinned(streamSettings['realitySettings']);
+}
+
+function disableAllowInsecureWhenPinned(value: Object | string | number | boolean | undefined): void {
+  if (!isRecord(value)) {
+    return;
+  }
+  const settings = value as Record<string, Object | string | number | boolean | undefined>;
+  const pinnedPeerCertSha256 = settings['pinnedPeerCertSha256'];
+  if (typeof pinnedPeerCertSha256 === 'string' && pinnedPeerCertSha256.trim().length > 0 &&
+    settings['allowInsecure'] === true) {
+    settings['allowInsecure'] = false;
   }
 }
 
