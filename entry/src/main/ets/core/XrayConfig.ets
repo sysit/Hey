@@ -1,6 +1,7 @@
 import { bundleManager } from '@kit.AbilityKit';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
+import { normalizeV2rayNgFragmentPackets } from './V2rayNgOptions';
 
 interface XrayOutbound {
   protocol?: string;
@@ -1347,13 +1348,14 @@ function applyFragmentFinalMaskSettings(outbound: XrayOutbound, settings: AppSet
 }
 
 function normalizeFragmentPackets(security: string, packets: string): string {
-  if (security === 'reality' && packets === 'tlshello') {
+  const normalizedPackets = normalizeV2rayNgFragmentPackets(packets);
+  if (security === 'reality' && normalizedPackets === 'tlshello') {
     return '1-3';
   }
-  if (security === 'tls' && packets !== 'tlshello') {
+  if (security === 'tls' && normalizedPackets !== 'tlshello') {
     return 'tlshello';
   }
-  return packets;
+  return normalizedPackets;
 }
 
 function hasDialerProxy(streamSettings: Record<string, Object | string | number | boolean | undefined>): boolean {

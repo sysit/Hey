@@ -315,6 +315,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ SOCKS 端口/UDP/认证/动态端口：Settings 已可配置本地 SOCKS inbound，`localSocksEnabled` 按 v2rayNG `pref_enable_local_proxy` 默认开启，默认端口按 v2rayNG 为 `10808`，写入 `socks-in` 端口、UDP 与用户名/密码认证，并随代理共享监听 LAN；动态端口开启时连接前通过 `CGoGetFreePorts` 选择运行端口，失败回退用户设置端口（2026-06-19 补默认端口/开启语义）
 - ✅ Mux 协议适用范围：全局 Mux 只应用到 v2rayNG 允许的 VMess/VLESS 等出站，自动跳过 Shadowsocks/SOCKS/HTTP/Trojan/WireGuard/Hysteria2 与 XHTTP，并对 VLESS flow 节点写入 `concurrency=-1`（2026-06-19）
 - ✅ Fragment 运行配置：全局 Fragment 按 v2rayNG 只在 TLS/Reality 且无 `dialerProxy`/既有 `finalmask` 时生成 `streamSettings.finalmask.tcp/udp`，Reality 默认 packets 从 `tlshello` 改为 `1-3`，TLS 强制使用 `tlshello`（2026-06-19）
+- ✅ Fragment packets 枚举：Settings 按 v2rayNG `fragment_packets` 固定为 `tlshello/1-2/1-3/1-5`，保存和运行配置均对旧非法值兜底到 `tlshello`（2026-06-19）
 - ✅ 本地 DNS / FakeDNS 已生成 Xray `dns-out`、FakeDNS server 和 TUN 53 端口路由；remote/domestic DNS 已按 v2rayNG 规则生成 proxy/direct domain-bound servers、CN `expectIPs`、DNS 专用 proxy/direct 路由、block hosts 和内置 googleapis/Private DNS 默认 hosts（2026-06-19）
 
 ---
@@ -517,6 +518,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ WireGuard MTU 默认值完成（分享链接和 `.conf` 导入缺省 `mtu` 时按 v2rayNG 写入 `1420`，导出分享链接保留 `mtu=1420`；补默认值单测） |
 | 2026-06-19 | 协议点检 | ✅ Mux 协议适用范围完成（全局 Mux 跳过 v2rayNG 禁用协议与 XHTTP，VLESS flow 节点使用 `concurrency=-1`；补运行配置单测） |
 | 2026-06-19 | 协议点检 | ✅ Fragment finalmask 运行配置完成（TLS/Reality 生成 `finalmask.tcp/udp`，Reality 默认 `packets=1-3`，已有 finalmask 和代理链 dialerProxy 会跳过；补运行配置单测） |
+| 2026-06-19 | 协议点检 | ✅ Fragment packets 枚举完成（Settings action menu 按 v2rayNG `fragment_packets` 限定 `tlshello/1-2/1-3/1-5`，SettingsController 与 XrayConfig 均兜底非法值；补选项和归一化单测） |
 | 2026-06-19 | 协议点检 | ✅ 本地 SOCKS 默认端口完成（`pref_socks_port` 默认对齐 v2rayNG 为 10808；Hey 的 Harmony HTTP inbound 兼容端口避让到 10809；补默认端口单测） |
 | 2026-06-15 | 自查 | ✅ 字段一致性总扫：AppSettings/SettingsDraft 5 个构造点字段完整一致，SubscriptionGroup.filter 贯通，无需修改 |
 | 2026-06-15 | 自查 | ✅ 深链/metrics 配置形状核对 Xray 官方一致；自查清单收尾（净修复：预检非阻断 + 清理未用导入） |

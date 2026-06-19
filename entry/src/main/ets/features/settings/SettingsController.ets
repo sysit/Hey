@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { AppLanguage, AppRuntimeMode, AppSettings, normalizeAppRuntimeMode, normalizeOutboundDomainResolveMethod, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, OutboundDomainResolveMethod, RoutingRule } from '../../core/Profile';
+import { normalizeV2rayNgFragmentPackets } from '../../core/V2rayNgOptions';
 import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore';
 
 export interface SettingsDraft {
@@ -160,7 +161,7 @@ export class SettingsController {
       muxXudpConcurrency: this.muxConcurrencyValue(draft.muxXudpConcurrency, DEFAULT_APP_SETTINGS.muxXudpConcurrency),
       muxXudpQuic: this.muxXudpQuicValue(draft.muxXudpQuic, DEFAULT_APP_SETTINGS.muxXudpQuic),
       fragmentEnabled: draft.fragmentEnabled,
-      fragmentPackets: this.nonEmptyString(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
+      fragmentPackets: normalizeV2rayNgFragmentPackets(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
       fragmentLength: this.nonEmptyString(draft.fragmentLength, DEFAULT_APP_SETTINGS.fragmentLength),
       fragmentInterval: this.nonEmptyString(draft.fragmentInterval, DEFAULT_APP_SETTINGS.fragmentInterval),
       ipv6Enabled: draft.ipv6Enabled,

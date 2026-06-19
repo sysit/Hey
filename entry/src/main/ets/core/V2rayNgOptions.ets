@@ -78,3 +78,20 @@ export const V2RAYNG_GRPC_MODE_OPTIONS: Array<string> = [
   'gun',
   'multi'
 ];
+
+export const V2RAYNG_FRAGMENT_PACKET_OPTIONS: Array<string> = [
+  'tlshello',
+  '1-2',
+  '1-3',
+  '1-5'
+];
+
+export const V2RAYNG_DEFAULT_FRAGMENT_PACKETS: string = 'tlshello';
+
+export function normalizeV2rayNgFragmentPackets(value: string, fallback: string = V2RAYNG_DEFAULT_FRAGMENT_PACKETS): string {
+  const trimmed = value.trim();
+  if (V2RAYNG_FRAGMENT_PACKET_OPTIONS.indexOf(trimmed) >= 0) {
+    return trimmed;
+  }
+  return fallback;
+}

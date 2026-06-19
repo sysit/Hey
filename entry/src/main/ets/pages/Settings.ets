@@ -26,6 +26,7 @@ import {
 } from '../core/Profile';
 import { applyColorMode } from '../core/ColorMode';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
+import { V2RAYNG_FRAGMENT_PACKET_OPTIONS, normalizeV2rayNgFragmentPackets } from '../core/V2rayNgOptions';
 import {
   LanguageToggleRow,
   SettingInputRow,
@@ -219,7 +220,7 @@ struct SettingsPage {
             this.SettingToggle(this.t('settings.fragment'), this.settingFragment, 'fragment')
             if (this.settingFragment) {
               this.RowDivider()
-              this.SettingInput(this.t('settings.fragmentPackets'), this.settingFragmentPackets, 'fragmentPackets')
+              this.SettingOption(this.t('settings.fragmentPackets'), this.fragmentPacketsLabel(), 'fragmentPackets')
               this.RowDivider()
               this.SettingInput(this.t('settings.fragmentLength'), this.settingFragmentLength, 'fragmentLength')
               this.RowDivider()
@@ -734,6 +735,10 @@ struct SettingsPage {
     }
     if (action === 'muxXudpQuic') {
       this.showMuxXudpQuicMenu();
+      return;
+    }
+    if (action === 'fragmentPackets') {
+      this.showFragmentPacketsMenu();
     }
   }
 
@@ -907,6 +912,24 @@ struct SettingsPage {
     });
   }
 
+  private showFragmentPacketsMenu(): void {
+    const buttons = new Array<promptAction.Button>();
+    for (let index = 0; index < V2RAYNG_FRAGMENT_PACKET_OPTIONS.length; index++) {
+      buttons.push({ text: V2RAYNG_FRAGMENT_PACKET_OPTIONS[index], color: AppColor.brand } as promptAction.Button);
+    }
+
+    promptAction.showActionMenu({
+      title: this.t('settings.fragmentPackets'),
+      buttons: this.toActionMenuButtons(buttons)
+    }).then((result) => {
+      if (result.index >= 0 && result.index < V2RAYNG_FRAGMENT_PACKET_OPTIONS.length) {
+        this.settingFragmentPackets = V2RAYNG_FRAGMENT_PACKET_OPTIONS[result.index];
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.fragmentPackets')));
+        this.persistSettings(false);
+      }
+    });
+  }
+
   private toActionMenuButtons(buttons: Array<promptAction.Button>): [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?] {
     return buttons as [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?];
   }
@@ -976,6 +999,10 @@ struct SettingsPage {
       return this.t('settings.muxXudpQuic.skip');
     }
     return this.t('settings.muxXudpQuic.reject');
+  }
+
+  private fragmentPacketsLabel(): string {
+    return normalizeV2rayNgFragmentPackets(this.settingFragmentPackets);
   }
 
   private isMuxXudpQuicAvailable(): boolean {
