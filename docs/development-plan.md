@@ -298,7 +298,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ Shadowsocks plugin 导出对齐：SIP002 `obfs=http` plugin 可导入为 TCP HTTP 伪装，但分享导出按 v2rayNG 不回写 `plugin` 查询参数（2026-06-19）
 - ✅ Hysteria2 端口跳跃（`mport`/`mportHopInt`）、`security=tls`、显式 `insecure=1/0`、`obfs`、证书 pin（`pinSHA256`）与带宽：分享链接解析和手动编辑器均已写入 outbound，导出 `mportHopInt` 时按 v2rayNG 规则规范化为不少于 5 秒的单值间隔，运行配置会生成 v2rayNG/Xray core 形状的 `protocol=hysteria`、`hysteriaSettings.auth`、TLS 设置、`finalmask.quicParams.brutalUp/brutalDown`、`udpHop` 与 `salamander` mask（2026-06-19；实连仍待真机/内核验证）
 - ✅ WireGuard `.conf` 文件整段解析（2026-06-18 已完成：`[Interface]`/`[Peer]` 文本或文件导入转为 Xray wireguard outbound）
-- ✅ WireGuard reserved 默认值：分享链接、`.conf` 导入和手动 outbound 生成在缺省时写入 v2rayNG 默认 `0,0,0`，导出分享链接保留 `reserved=0,0,0`（2026-06-19）
+- ✅ WireGuard reserved/MTU 默认值：分享链接、`.conf` 导入和手动 outbound 生成在缺省时写入 v2rayNG 默认 `reserved=0,0,0` 与 `mtu=1420`，导出分享链接保留默认值（2026-06-19）
 - ✅ WireGuard/Hysteria2 手动编辑器：NodeEdit 已生成可校验 outbound，WG 支持 secret/public/pre-shared/reserved/MTU/IPv6 endpoint，HY2 支持 SNI/ALPN/insecure/obfs/mport/mportHopInt/pinSHA256/bandwidth，且 HY2 bandwidth/obfs/port-hop 会在启动配置中转为 v2rayNG 风格 `finalmask`（2026-06-19）
 - ✅ SOCKS 端口/UDP/认证/动态端口：Settings 已可配置本地 SOCKS inbound，`localSocksEnabled` 按 v2rayNG `pref_enable_local_proxy` 默认开启，默认端口按 v2rayNG 为 `10808`，写入 `socks-in` 端口、UDP 与用户名/密码认证，并随代理共享监听 LAN；动态端口开启时连接前通过 `CGoGetFreePorts` 选择运行端口，失败回退用户设置端口（2026-06-19 补默认端口/开启语义）
 - ✅ Mux 协议适用范围：全局 Mux 只应用到 v2rayNG 允许的 VMess/VLESS 等出站，自动跳过 Shadowsocks/SOCKS/HTTP/Trojan/WireGuard/Hysteria2 与 XHTTP，并对 VLESS flow 节点写入 `concurrency=-1`（2026-06-19）
@@ -492,6 +492,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 bandwidth/obfs/port-hop 运行配置完成（手动/订阅 HY2 节点启动前生成 `finalmask.quicParams` brutal 带宽、`udpHop` 和 `salamander` mask；补 runtime config 单测） |
 | 2026-06-19 | 协议点检 | ✅ Hysteria2 runtime core 形状完成（启动配置按 v2rayNG 将 `hysteria2` 节点归一为 Xray `protocol=hysteria`、`settings.address/port/version` 与 `streamSettings.hysteriaSettings.auth`，并保留 TLS/pin/finalmask） |
 | 2026-06-19 | 协议点检 | ✅ WireGuard reserved 默认值完成（分享链接、`.conf` 导入和手动 builder 缺省写入 `[0,0,0]`，导出分享链接保留 `reserved=0,0,0`；补默认值单测） |
+| 2026-06-19 | 协议点检 | ✅ WireGuard MTU 默认值完成（分享链接和 `.conf` 导入缺省 `mtu` 时按 v2rayNG 写入 `1420`，导出分享链接保留 `mtu=1420`；补默认值单测） |
 | 2026-06-19 | 协议点检 | ✅ Mux 协议适用范围完成（全局 Mux 跳过 v2rayNG 禁用协议与 XHTTP，VLESS flow 节点使用 `concurrency=-1`；补运行配置单测） |
 | 2026-06-19 | 协议点检 | ✅ Fragment finalmask 运行配置完成（TLS/Reality 生成 `finalmask.tcp/udp`，Reality 默认 `packets=1-3`，已有 finalmask 和代理链 dialerProxy 会跳过；补运行配置单测） |
 | 2026-06-19 | 协议点检 | ✅ 本地 SOCKS 默认端口完成（`pref_socks_port` 默认对齐 v2rayNG 为 10808；Hey 的 Harmony HTTP inbound 兼容端口避让到 10809；补默认端口单测） |

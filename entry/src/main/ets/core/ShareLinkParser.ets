@@ -239,6 +239,7 @@ interface VmessQrCode {
 }
 
 const DEFAULT_WIREGUARD_RESERVED: Array<number> = [0, 0, 0];
+const DEFAULT_WIREGUARD_MTU: number = 1420;
 
 function makeFailure(message: string, protocol: string = ''): ShareLinkParseResult {
   return {
@@ -374,10 +375,7 @@ export function parseWireguardConfigToOutboundJson(input: string): ShareLinkPars
       address: splitCsvWithDefault(mapValue(document.interfaceParams, 'address'), '172.16.0.2/32'),
       peers: [peer]
     };
-    const mtu = parseOptionalPositiveInt(mapValue(document.interfaceParams, 'mtu'));
-    if (mtu > 0) {
-      settings.mtu = mtu;
-    }
+    settings.mtu = parseWireguardMtu(mapValue(document.interfaceParams, 'mtu'));
     settings.reserved = parseWireguardReserved(mapValue(document.peerParams, 'reserved'));
 
     const outbound: XrayOutbound = {
@@ -701,10 +699,7 @@ function parseWireguardLink(input: string): ShareLinkParseResult {
     address: splitCsvWithDefault(queryValue(parsed.query, 'address', ''), '172.16.0.2/32'),
     peers: [peer]
   };
-  const mtu = parseOptionalPositiveInt(queryValue(parsed.query, 'mtu', ''));
-  if (mtu > 0) {
-    settings.mtu = mtu;
-  }
+  settings.mtu = parseWireguardMtu(queryValue(parsed.query, 'mtu', ''));
   settings.reserved = parseWireguardReserved(queryValue(parsed.query, 'reserved', '0,0,0'));
 
   const outbound: XrayOutbound = {
@@ -1276,6 +1271,11 @@ function parseWireguardReserved(value: string): Array<number> {
     return reserved;
   }
   return DEFAULT_WIREGUARD_RESERVED.slice();
+}
+
+function parseWireguardMtu(value: string): number {
+  const mtu = parseOptionalPositiveInt(value);
+  return mtu > 0 ? mtu : DEFAULT_WIREGUARD_MTU;
 }
 
 function empty(value: string | undefined): boolean {
