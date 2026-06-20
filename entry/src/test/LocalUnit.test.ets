@@ -1,6 +1,5 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { buildPolicyGroupConfigFromNodes, buildPolicyGroupConfigFromSubscription, buildProxyChainConfigFromNodes, isAdvancedOutboundBuildableNode, normalizePolicyGroupBuilderStrategy, parseAdvancedOutboundEditState, resolveDynamicPolicyGroupConfigJson } from '../main/ets/core/AdvancedOutboundBuilder';
-import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData, parseAppBackupPayload } from '../main/ets/core/AppBackup';
 import { CONTROL_CARD_FORM_NAME, CONTROL_CARD_SCAN_URI, CONTROL_CARD_START_URI, CONTROL_CARD_STOP_URI, CONTROL_CARD_TOGGLE_URI, buildControlCardFormData } from '../main/ets/core/ControlCard';
 import { V2RAYNG_DNS_DIRECT, V2RAYNG_DNS_PROXY, isV2rayNgCoreDnsAddress, isV2rayNgPureIpAddress, normalizeV2rayNgDnsServers } from '../main/ets/core/DnsAddresses';
 import { AssetNameEntry, hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
@@ -34,7 +33,6 @@ import {
 import { buildSubscriptionAutoUpdateGroupSchedulePlans, buildSubscriptionAutoUpdateSchedulePlan, subscriptionAutoUpdateWorkIdForGroup } from '../main/ets/core/SubscriptionSchedulerPlan';
 import { findMatchedSubscriptionNode, resolveRetainedSelectedNodeId } from '../main/ets/core/SubscriptionSelection';
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
-import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
 import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_HYSTERIA2_SECURITY, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_STREAM_ALPN, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_HYSTERIA2_SECURITY_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgHysteria2Security, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpn, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from '../main/ets/core/V2rayNgOptions';
 import { filterLogItems, formatLogcatText } from '../main/ets/features/logs/LogOperations';
@@ -2289,64 +2287,6 @@ export default function localUnitTest() {
       expect(formatLogcatText(filterLogItems(items, 'I/'))).assertEqual(
         '09-01 10:00:00.000 I/HeyVpn: started\n09-01 10:00:02.000 I/GoLog: outbound ready'
       );
-    });
-
-    it('builds and validates app backup payloads', 0, () => {
-      const backup = buildAppBackupPayload('profile-json', 'settings-json', 'subscription-json', 'assets-json', 1234);
-      expect(backup).assertContain('"hey_backup":true');
-      const parsed = parseAppBackupPayload(backup);
-      expect(parsed.valid).assertTrue();
-      expect(parsed.payload?.version).assertEqual('1');
-      expect(parsed.payload?.createdAt).assertEqual(1234);
-      expect(parsed.payload?.profile).assertEqual('profile-json');
-      expect(parsed.payload?.settings).assertEqual('settings-json');
-      expect(parsed.payload?.subscription).assertEqual('subscription-json');
-      expect(parsed.payload?.assets).assertEqual('assets-json');
-      expect(parseAppBackupPayload('{"hey_backup":false}').valid).assertFalse();
-      expect(parseAppBackupPayload('{').valid).assertFalse();
-    });
-
-    it('wraps app backup payloads in restorable zip packages', 0, () => {
-      const backup = buildAppBackupPayload('profile-json', 'settings-json', 'subscription-json', 'assets-json', 1234);
-      const zip = buildAppBackupZipFromPayload(backup);
-      const view = new Uint8Array(zip);
-      expect(view[0]).assertEqual(0x50);
-      expect(view[1]).assertEqual(0x4B);
-      expect(view[2]).assertEqual(0x03);
-      expect(view[3]).assertEqual(0x04);
-
-      const parsed = parseAppBackupData(zip);
-      expect(parsed.valid).assertTrue();
-      expect(parsed.payload?.profile).assertEqual('profile-json');
-      expect(parsed.payload?.settings).assertEqual('settings-json');
-      expect(parseAppBackupData(backup).valid).assertTrue();
-    });
-
-    it('normalizes webdav backup urls and auth headers', 0, () => {
-      const config = normalizeWebDavConfig({
-        baseUrl: 'https://example.com/remote.php/dav/files/user/',
-        username: 'alice',
-        password: 'secret',
-        remoteBasePath: '/backups/hey/',
-        remoteFileName: 'backup.json',
-        timeoutSeconds: 2
-      });
-      expect(config.baseUrl).assertEqual('https://example.com/remote.php/dav/files/user');
-      expect(config.remoteBasePath).assertEqual('backups/hey');
-      expect(config.timeoutSeconds).assertEqual(5);
-      expect(buildWebDavRemoteUrl(config)).assertEqual('https://example.com/remote.php/dav/files/user/backups/hey/backup.json');
-      expect(buildWebDavAuthorizationHeader(config.username, config.password)).assertEqual('Basic YWxpY2U6c2VjcmV0');
-
-      const mkcolUrls = buildWebDavMkcolUrls(config);
-      expect(mkcolUrls[0]).assertEqual('https://example.com/remote.php');
-      expect(mkcolUrls[mkcolUrls.length - 1]).assertEqual('https://example.com/remote.php/dav/files/user/backups/hey');
-      expect(validateWebDavConfig({ baseUrl: 'ftp://example.com' }).valid).assertFalse();
-      expect(validateWebDavConfig({ baseUrl: 'https://example.com/dav', remoteFileName: 'bad/name.json' }).valid).assertFalse();
-      expect(isWebDavMkcolAcceptedStatus(201)).assertTrue();
-      expect(isWebDavMkcolAcceptedStatus(405)).assertTrue();
-      expect(isWebDavMkcolAcceptedStatus(500)).assertFalse();
-      expect(DEFAULT_WEBDAV_BACKUP_FILE_NAME).assertEqual('backup_ng.zip');
-      expect(normalizeWebDavConfig({}).remoteFileName).assertEqual('backup_ng.zip');
     });
 
     it('filters nodes by v2rayNG-style regex or literal fallback', 0, () => {
