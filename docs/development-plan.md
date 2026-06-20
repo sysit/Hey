@@ -27,7 +27,7 @@
 | Native 桥接 | M1 已接通当前打包库导出的 12 个 CGo 符号（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），且预构建 `libxray.so` 已重建并验证导出符号 | **待真机复测**流量、预检、版本、Geo 计数、动态端口与 native 分享转换；上游旧入口 `CGoRunXray` 不作为 Hey 运行目标 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules`，规则集可按 v2rayNG 从剪贴板或二维码 JSON 导入并保留 locked 规则，`routeOnly` 会控制 sniffing routeOnly；process 规则输出按 v2rayNG `canUseProcessRouting` 受 `routeOnly` 与 Hev TUN 共同约束，并在可用时将包名解析为 Harmony app UID；生成 Xray routing 时会按 v2rayNG 将 `geoip:cn/private` 改写为 `geoip-only-cn-private.dat` ext 引用 | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + WorkScheduler 后台调度接线；订阅请求保留自定义 User-Agent，按 v2rayNG 支持 URL 内嵌 `user:pass@host` Basic Auth，并会将非 ASCII host 转 punycode 后请求；本地 SOCKS 入口按 v2rayNG 默认开启，可供代理经由能力使用 | 待真机触发回归后台唤醒路径 |
-| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情可按 v2rayNG `shareFullContent2Clipboard` 复制完整运行配置；URL-style 普通 TCP 节点导出会按 v2rayNG 写出 `security/type/headerType` 默认 query；剪贴板导入路径不声明受限 Harmony `READ_PASTEBOARD`，读取失败由各入口现有提示处理；运行中导入/扫码/新增/选择当前节点后会标记待重启，返回首页自动应用新配置 | 仍待真机回归不同分享目标兼容性 |
+| 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情可按 v2rayNG `shareFullContent2Clipboard` 复制完整运行配置；URL-style 普通 TCP 节点导出会按 v2rayNG 写出 `security/type/headerType` 默认 query，并按 `FmtBase.toUri` 将 IDN server/endpoint host 转 punycode；剪贴板导入路径不声明受限 Harmony `READ_PASTEBOARD`，读取失败由各入口现有提示处理；运行中导入/扫码/新增/选择当前节点后会标记待重启，返回首页自动应用新配置 | 仍待真机回归不同分享目标兼容性 |
 | 速度通知 | 🟡 常驻通知代码完成；连接运行且速度显示开启时每 3 秒刷新上传/下载速率与累计流量，停止或关闭设置时取消 | 待真机通知权限弹窗、通知中心展示与后台留存回归 |
 | 深链导入 | ✅ Harmony Want / `hey://install-sub` / `hey://install-config` 已接入 EntryAbility 与首页解析；外部应用 `sendData/text/plain` 分享文本会复用订阅、单节点与 native 批量兜底导入路径 | 仍待真机回归外部应用触发路径 |
 | 桌面入口 | 🟡 Harmony 声明式快捷方式与服务卡片代码完成；系统快捷方式和 2×2 卡片均提供 toggle/start/stop/scan 控制入口，卡片通过保存 formId + updateForm 同步运行态 | 待真机添加快捷方式/卡片、点击调起和系统刷新回归 |
@@ -310,6 +310,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ finalMask（`fm`）：分享链接导入导出保留 `streamSettings.finalmask`，NodeEdit 可填写 FinalMask raw JSON（2026-06-19）
 - ✅ TCP HTTP 头伪装：`type=tcp&headerType=http` 可导入导出，NodeEdit 手动编辑可选择 `none/http` 并写入 `tcpSettings.header.request`（2026-06-19）
 - ✅ URL-style 默认 TCP query：无 `streamSettings` 的 VLESS/Trojan outbound 导出时会按 v2rayNG 手动普通 TCP 节点补齐 `security/type/headerType` 默认值，Trojan 同步写出 `insecure=0`/`allowInsecure=0`（2026-06-19）
+- ✅ IDN server host：URL-style/WireGuard/Hysteria2 分享导出按 v2rayNG `FmtBase.toUri` 将 server/endpoint host 转 punycode；普通启动、延迟测试、代理链/策略组成员运行配置按 `CoreOutboundBuilder.getServerAddress` 在 DNS 预解析后输出 punycode，DNS hosts 支持原文或 punycode key 命中（2026-06-20）
 - ✅ HTTPUpgrade / XHTTP 传输参数：`httpupgrade` host/path 导入导出保留，NodeEdit 可选择；XHTTP `mode/extra` 可手动填写并导入导出保留，`mode` 按 v2rayNG `auto/packet-up/stream-up/stream-one` 枚举在导入、导出、保存与运行配置中归一化（2026-06-19）
 - ✅ Browser Dialer profile 模式：WS/XHTTP 手动节点可按 v2rayNG 选择/回填 `Disable/OkHttp/WebView`，保存为 profile 元数据；普通启动、延迟测试和完整自定义配置运行输出会剥离该字段，避免未实现的 Harmony dialer 服务字段泄漏到 Xray core JSON（2026-06-20）
 - ✅ H2 传输 Host 列表：NodeEdit 手动 `h2` 保存时按 v2rayNG 将 Host 输入按逗号拆分、trim 并过滤空项，写入 Xray `httpSettings.host` 数组；空 Path 继续回退 `/`（2026-06-20）
@@ -539,6 +540,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ finalMask `fm` 完成（分享链接 `fm` raw JSON 导入为 `streamSettings.finalmask`，导出保留；NodeEdit 手动编辑可填写 FinalMask JSON；补 round-trip 单测） |
 | 2026-06-19 | 协议点检 | ✅ TCP HTTP 头伪装完成（NodeEdit 可选择 v2rayNG `none/http`，保存 `tcpSettings.header.request`；分享链接 `headerType=http` host/path round-trip 保留） |
 | 2026-06-19 | 协议点检 | ✅ URL-style 默认 TCP query 完成（无 `streamSettings` 的 VLESS/Trojan outbound 导出时补齐 v2rayNG 普通 TCP 默认 `security/type/headerType`，Trojan 补 `insecure=0`/`allowInsecure=0`；补 round-trip 单测） |
+| 2026-06-20 | 协议点检 | ✅ IDN server host 导出/运行完成（URL-style 分享导出、WireGuard endpoint、Hysteria2 与普通启动/测速配置按 v2rayNG 转 punycode；DNS hosts 原文/punycode key 均可命中；补分享、运行与预解析单测） |
 | 2026-06-19 | 协议点检 | ✅ HTTPUpgrade/XHTTP 传输参数完成（分享链接 `type=httpupgrade` 的 host/path 导出不再丢失，NodeEdit 可选择 httpupgrade；XHTTP `mode/extra` 可手动填写并 round-trip 保留；补传输选项与参数单测） |
 | 2026-06-19 | 协议点检 | ✅ XHTTP mode 枚举完成（分享链接导入/导出、NodeEdit 保存与运行配置生成均按 v2rayNG `auto/packet-up/stream-up/stream-one` 限定，非法值兜底 `auto`；补归一化单测） |
 | 2026-06-20 | 协议点检 | ✅ Browser Dialer profile 模式完成（WS/XHTTP 手动节点支持 v2rayNG `Disable/OkHttp/WebView` 选择与回填，运行/延迟/完整配置输出剥离 profile 元数据；补编辑回填、选项和运行配置单测） |

@@ -3041,6 +3041,69 @@ export default function localUnitTest() {
       expect(SubscriptionManager.toSubscriptionRequestUrl('  https://user:pass@例子.测试/list  ')).assertEqual('https://user:pass@xn--fsqu00a.xn--0zwm56d/list');
     });
 
+    it('exports IDN url-style share hosts as punycode like v2rayNG FmtBase', 0, () => {
+      const idnVlessJson = '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"例子.测试","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]}}';
+      const exportedVless = formatOutboundJsonToShareLink(idnVlessJson, 'idn-vless');
+      expect(exportedVless).assertContain('@xn--fsqu00a.xn--0zwm56d:443');
+      expect(exportedVless.indexOf('@例子.测试:443')).assertEqual(-1);
+
+      const idnTrojanJson = '{"protocol":"trojan","tag":"proxy","settings":{"servers":[{"address":"例子.测试","port":443,"password":"secret"}]}}';
+      const exportedTrojan = formatOutboundJsonToShareLink(idnTrojanJson, 'idn-trojan');
+      expect(exportedTrojan).assertContain('trojan://secret@xn--fsqu00a.xn--0zwm56d:443');
+
+      const idnWireguardJson = '{"protocol":"wireguard","tag":"proxy","settings":{"secretKey":"private-key","address":["172.16.0.2/32"],"peers":[{"publicKey":"peer-key","endpoint":"例子.测试:51820"}],"mtu":1420,"reserved":[0,0,0]}}';
+      const exportedWireguard = formatOutboundJsonToShareLink(idnWireguardJson, 'idn-wg');
+      expect(exportedWireguard).assertContain('wireguard://private-key@xn--fsqu00a.xn--0zwm56d:51820');
+
+      const idnHy2Json = '{"protocol":"hysteria2","tag":"proxy","settings":{"servers":[{"address":"例子.测试","port":443,"password":"secret","security":"tls"}]}}';
+      const exportedHy2 = formatOutboundJsonToShareLink(idnHy2Json, 'idn-hy2');
+      expect(exportedHy2).assertContain('hysteria2://secret@xn--fsqu00a.xn--0zwm56d:443');
+    });
+
+    it('uses punycode IDN outbound hosts in runtime configs like v2rayNG core builder', 0, () => {
+      const settings = buildSettingsFixture();
+      settings.outboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_NONE;
+      const idnVlessJson = '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"例子.测试","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]}}';
+      const runtime = buildXrayConfigWithSettings(idnVlessJson, settings);
+      expect(runtime.configJson).assertContain('"address": "xn--fsqu00a.xn--0zwm56d"');
+      expect(runtime.configJson.indexOf('"address": "例子.测试"')).assertEqual(-1);
+
+      const delay = buildDelayTestConfig(idnVlessJson);
+      expect(delay.configJson).assertContain('"address":"xn--fsqu00a.xn--0zwm56d"');
+      expect(delay.configJson.indexOf('"address":"例子.测试"')).assertEqual(-1);
+
+      const idnHy2Json = '{"protocol":"hysteria2","tag":"proxy","settings":{"servers":[{"address":"例子.测试","port":443,"password":"secret","security":"tls"}]}}';
+      const hy2Runtime = buildXrayConfigWithSettings(idnHy2Json, settings);
+      expect(hy2Runtime.configJson).assertContain('"protocol": "hysteria"');
+      expect(hy2Runtime.configJson).assertContain('"address": "xn--fsqu00a.xn--0zwm56d"');
+
+      const idnWireguardJson = '{"protocol":"wireguard","tag":"proxy","settings":{"secretKey":"private-key","address":["172.16.0.2/32"],"peers":[{"publicKey":"peer-key","endpoint":"例子.测试:51820"}],"mtu":1420,"reserved":[0,0,0]}}';
+      const wireguardRuntime = buildXrayConfigWithSettings(idnWireguardJson, settings);
+      expect(wireguardRuntime.configJson).assertContain('"endpoint": "xn--fsqu00a.xn--0zwm56d:51820"');
+    });
+
+    it('matches IDN outbound pre-resolve hosts by raw or punycode dns host keys', 0, () => {
+      const idnVlessJson = '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"例子.测试","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]}}';
+      const collectSettings = buildSettingsFixture();
+      collectSettings.dnsHosts = '';
+      collectSettings.outboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS;
+      const collected = collectOutboundDomainPreResolveHosts(idnVlessJson, collectSettings);
+      expect(collected.length).assertEqual(1);
+      expect(collected[0]).assertEqual('xn--fsqu00a.xn--0zwm56d');
+
+      const rawHostSettings = buildSettingsFixture();
+      rawHostSettings.dnsHosts = '例子.测试:203.0.113.8';
+      rawHostSettings.outboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_REPLACE;
+      const rawHostRuntime = buildXrayConfigWithSettings(idnVlessJson, rawHostSettings);
+      expect(rawHostRuntime.configJson).assertContain('"address": "203.0.113.8"');
+
+      const punycodeHostSettings = buildSettingsFixture();
+      punycodeHostSettings.dnsHosts = 'xn--fsqu00a.xn--0zwm56d:203.0.113.9';
+      punycodeHostSettings.outboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_REPLACE;
+      const punycodeHostRuntime = buildXrayConfigWithSettings(idnVlessJson, punycodeHostSettings);
+      expect(punycodeHostRuntime.configJson).assertContain('"address": "203.0.113.9"');
+    });
+
     it('adds embedded subscription basic auth like v2rayNG', 0, () => {
       const header = SubscriptionManager.buildSubscriptionRequestHeader(
         'https://user%40name:p%40ss%2Fword@sub.example/list',

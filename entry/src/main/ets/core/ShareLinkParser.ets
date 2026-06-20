@@ -1,4 +1,5 @@
 import { decodeBase64ToUtf8, encodeUtf8ToBase64, encodeUtf8ToBase64NoPadding } from './Encoding';
+import { toIdnDomain } from './IdnUrl';
 import { buildKcpFinalMask, isCanonicalKcpFinalMask, readKcpShareParamsFromFinalMask } from './KcpTransport';
 import { normalizeV2rayNgXhttpMode } from './V2rayNgOptions';
 
@@ -1308,10 +1309,20 @@ function stringifyError(error: Error): string {
 }
 
 function formatHostPort(host: string, port: number): string {
-  if (host.indexOf(':') >= 0 && !host.startsWith('[')) {
-    return `[${host}]:${port}`;
+  const asciiHost = toIdnDomain(host);
+  if (asciiHost.indexOf(':') >= 0 && !asciiHost.startsWith('[')) {
+    return `[${asciiHost}]:${port}`;
   }
-  return `${host}:${port}`;
+  return `${asciiHost}:${port}`;
+}
+
+function formatIdnEndpoint(endpoint: string): string {
+  try {
+    const parsed = parseHostPort(endpoint);
+    return formatHostPort(parsed.host, parsed.port);
+  } catch (error) {
+    return endpoint;
+  }
 }
 
 function formatQueryParams(params: Map<string, string>): string {
@@ -1668,7 +1679,7 @@ function formatWireguard(outbound: XrayOutbound, name: string): string {
     queryParams.set('reserved', settings.reserved.join(','));
   }
 
-  const endpoint = peer.endpoint;
+  const endpoint = formatIdnEndpoint(peer.endpoint);
   const queryStr = formatQueryParams(queryParams);
   const hashStr = name.length > 0 ? `#${encodeURIComponent(name)}` : '';
   return `wireguard://${formatUserInfo(settings.secretKey)}@${endpoint}${queryStr}${hashStr}`;

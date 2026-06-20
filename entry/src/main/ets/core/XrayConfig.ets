@@ -1,5 +1,6 @@
 import { bundleManager } from '@kit.AbilityKit';
 import { V2RAYNG_DNS_DIRECT, V2RAYNG_DNS_PROXY, normalizeV2rayNgDnsServers } from './DnsAddresses';
+import { toIdnDomain } from './IdnUrl';
 import { shouldExposeLocalHttpProxy } from './LocalProxy';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
@@ -1734,6 +1735,7 @@ function buildXrayConfigFromOutbounds(
 
   const dns = buildDnsConfig(settings);
   applyOutboundDomainResolveSettings(outbounds, dns, settings);
+  applyOutboundIdnHostParity(outbounds);
   prependDnsRoutingRules(routingRules, dns, proxyTarget);
 
   const config: XrayFullConfig = {
@@ -1803,6 +1805,7 @@ export function buildDelayTestConfig(outboundJson: string, socksPort: number = D
   }
   stripOutboundProfileMetadata(outbound);
   outbound.mux = undefined;
+  applyOutboundIdnHostParity([outbound]);
 
   const socksInbound: XrayInboundConfig = {
     tag: 'socks-in',
@@ -2147,7 +2150,7 @@ function normalizePreResolveHost(host: string): string {
   if (normalized.length === 0 || isIpLiteral(normalized)) {
     return '';
   }
-  return normalized;
+  return toIdnDomain(normalized);
 }
 
 function normalizeResolvedDnsAddresses(values: Array<string>): Array<string> {
@@ -2260,12 +2263,56 @@ function replaceFirstWireguardEndpoint(value: Object | undefined, hosts: Record<
   }
 }
 
+function applyOutboundIdnHostParity(outbounds: Array<XrayOutbound>): void {
+  for (let index = 0; index < outbounds.length; index++) {
+    const settings = outbounds[index].settings as Record<string, Object | string | number | boolean | undefined> | undefined;
+    if (settings === undefined) {
+      continue;
+    }
+    convertFirstServerAddressToIdn(settings['vnext']);
+    convertFirstServerAddressToIdn(settings['servers']);
+    const address = settings['address'];
+    if (typeof address === 'string') {
+      settings['address'] = toIdnDomain(address);
+    }
+    convertFirstWireguardEndpointToIdn(settings['peers']);
+  }
+}
+
+function convertFirstServerAddressToIdn(value: Object | string | number | boolean | undefined): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    return;
+  }
+  const first = value[0] as Record<string, Object | string | number | boolean | undefined>;
+  const address = first['address'];
+  if (typeof address === 'string') {
+    first['address'] = toIdnDomain(address);
+  }
+}
+
+function convertFirstWireguardEndpointToIdn(value: Object | string | number | boolean | undefined): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    return;
+  }
+  const first = value[0] as Record<string, Object | string | number | boolean | undefined>;
+  const endpoint = first['endpoint'];
+  if (typeof endpoint !== 'string') {
+    return;
+  }
+  const host = endpointHost(endpoint);
+  const asciiHost = toIdnDomain(host);
+  if (asciiHost !== host) {
+    first['endpoint'] = replaceEndpointHost(endpoint, asciiHost);
+  }
+}
+
 function resolveStaticHost(host: string, hosts: Record<string, string | Array<string>>, preferIpv6: boolean): string {
   const normalized = stripHostBrackets(host.trim());
   if (normalized.length === 0 || isIpLiteral(normalized)) {
     return '';
   }
-  const direct = hosts[normalized] ?? hosts[normalized.toLowerCase()];
+  const asciiHost = toIdnDomain(normalized);
+  const direct = hosts[normalized] ?? hosts[normalized.toLowerCase()] ?? hosts[asciiHost] ?? hosts[asciiHost.toLowerCase()];
   if (direct === undefined) {
     return '';
   }
