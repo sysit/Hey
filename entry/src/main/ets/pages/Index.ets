@@ -698,12 +698,12 @@ struct Index {
   @Builder
   private StatsCard() {
     Row() {
-      this.StatCell(this.t('home.duration'), this.isRunning() ? this.elapsedText : '--', AppColor.textPrimary)
+      this.StatCell('home.duration', this.isRunning() ? this.elapsedText : '--', AppColor.textPrimary)
       if (this.speedEnabled) {
         Divider().vertical(true).height(28).color(AppColor.divider)
-        this.StatCell(this.t('home.upload'), this.formatBytes(this.stats.uploadBytes), AppColor.brand)
+        this.StatCell('home.upload', this.formatBytes(this.stats.uploadBytes), AppColor.brand)
         Divider().vertical(true).height(28).color(AppColor.divider)
-        this.StatCell(this.t('home.download'), this.formatBytes(this.stats.downloadBytes), AppColor.success)
+        this.StatCell('home.download', this.formatBytes(this.stats.downloadBytes), AppColor.success)
       }
     }
     .width('100%')
@@ -714,7 +714,7 @@ struct Index {
   }
 
   @Builder
-  private StatCell(label: string, value: string, valueColor: ResourceColor) {
+  private StatCell(labelKey: string, value: string, valueColor: ResourceColor) {
     Column({ space: 4 }) {
       Text(value)
         .fontSize(FontSz.callout)
@@ -722,7 +722,7 @@ struct Index {
         .fontColor(valueColor)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-      Text(label)
+      Text(this.t(labelKey))
         .fontSize(FontSz.caption)
         .fontColor(AppColor.textTertiary)
     }
