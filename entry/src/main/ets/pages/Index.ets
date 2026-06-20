@@ -999,13 +999,13 @@ struct Index {
           .fillColor(AppColor.textTertiary)
           .opacity(0.4)
 
-        Text('探索 Hey VPN')
+        Text(this.t('home.empty.title'))
           .fontSize(FontSz.headline)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppColor.textPrimary)
           .margin({ top: Space.sm })
 
-        Text('开启安全、自由的网络连接。请先添加订阅分组以同步您的服务器节点。')
+        Text(this.t('home.empty.detail'))
           .fontSize(FontSz.footnote)
           .fontColor(AppColor.textTertiary)
           .textAlign(TextAlign.Center)
@@ -1016,7 +1016,7 @@ struct Index {
       .width('100%')
 
       Column({ space: Space.md }) {
-        Button('添加订阅分组')
+        Button(this.t('home.empty.addSubscription'))
           .width(200)
           .height(44)
           .backgroundColor(AppColor.brand)
@@ -1027,7 +1027,7 @@ struct Index {
             this.openRoute(AppRoute.SUBSCRIPTIONS);
           })
 
-        Button('手动配置 / 扫码导入')
+        Button(this.t('screen.import.title'))
           .width(200)
           .height(44)
           .backgroundColor(AppColor.surfaceAlt)
@@ -1053,18 +1053,18 @@ struct Index {
         .fillColor(AppColor.textTertiary)
         .opacity(0.4)
 
-      Text('当前分组暂无节点')
+      Text(this.t('nodes.emptyGroup.title'))
         .fontSize(FontSz.headline)
         .fontWeight(FontWeight.Bold)
         .fontColor(AppColor.textSecondary)
 
-      Text('您可以尝试手动更新当前订阅以同步最新的节点列表。')
+      Text(this.t('nodes.emptyGroup.detail'))
         .fontSize(FontSz.footnote)
         .fontColor(AppColor.textTertiary)
         .textAlign(TextAlign.Center)
         .padding({ left: 40, right: 40 })
 
-      Button('更新当前订阅')
+      Button(this.t('nodes.emptyGroup.update'))
         .height(38)
         .padding({ left: Space.xxl, right: Space.xxl })
         .backgroundColor(AppColor.brand)
