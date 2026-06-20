@@ -32,7 +32,7 @@
 | 深链导入 | ✅ Harmony Want / `hey://install-sub` / `hey://install-config` 已接入 EntryAbility 与首页解析；外部应用 `sendData/text/plain` 分享文本会复用订阅、单节点与 native 批量兜底导入路径 | 仍待真机回归外部应用触发路径 |
 | 桌面入口 | 🟡 Harmony 声明式快捷方式与服务卡片代码完成；系统快捷方式和 2×2 卡片均提供 toggle/start/stop/scan 控制入口，卡片通过保存 formId + updateForm 同步运行态 | 待真机添加快捷方式/卡片、点击调起和系统刷新回归 |
 | 高级路由 | 代理链、策略组/负载均衡运行核心已可通过 JSON 导入生成；添加节点页已可从已有普通节点创建代理链/策略组并保存为手动节点；手动高级节点可从节点详情重新打开、预填成员/策略/动态订阅条件并原位保存；策略组可按订阅分组与节点名正则动态展开成员，过滤匹配按 v2rayNG 搜索体验大小写不敏感；路由规则可选择当前高级出站目标 | 真机组合场景回归待补 |
-| 云备份 | 剪贴板 JSON 备份 + WebDAV ZIP 云备份/还原已落地，默认 `backups/backup_ng.zip`，恢复兼容旧 JSON 包 | 真 WebDAV 服务兼容回归待补 |
+| 备份功能 | 暂无云端备份入口；当前版本移除了剪贴板备份/还原（无云服务器时先不上线） | 需在服务可用时恢复 |
 
 ---
 
@@ -262,7 +262,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - ✅ **本地文件资源编辑入口**：本地导入资源保留覆盖导入/删除，
   不提供编辑表单入口，对齐 v2rayNG `url == "file"` 行为
 - ✅ **剪贴板导入兼容**：对应 v2rayNG 剪贴板导入配置/规则集路径，不声明受限
-  `ohos.permission.READ_PASTEBOARD`，避免普通调试签名安装被 ACL 拦截；扫码页粘贴、JSON 导入、订阅粘贴、路由规则导入、分应用/备份恢复等读取入口保留读取失败提示
+  `ohos.permission.READ_PASTEBOARD`，避免普通调试签名安装被 ACL 拦截；扫码页粘贴、JSON 导入、订阅粘贴、路由规则导入、分应用配置导入等读取入口保留读取失败提示
 - ✅ **扫码 native 分享兜底**：Scanner 在内置单节点解析失败后复用
   `CGoConvertShareLinksToXrayJson` 转换结果，支持 v2rayN 多行/base64 与 Clash.Meta YAML 文本/二维码批量保存为手动节点
 - 🟡 **桌面服务卡片 / 快捷方式**：一键启停、扫码（对应 QSTile/Widget/Shortcuts）；
@@ -286,7 +286,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 
 ---
 
-### M5 · 高级路由与云备份（进阶 · 可选）
+### M5 · 高级路由（进阶）
 
 **目标**：面向中高级用户的差异化能力。
 
@@ -296,11 +296,11 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
   `observatory` / `burstObservatory`；路由规则可选择当前策略组目标；动态成员可按订阅分组和节点名正则在启动时展开，过滤匹配按 v2rayNG 搜索体验大小写不敏感
 - 🟡 **策略组（PolicyGroup）**：静态成员 JSON 运行核心已完成；构建器会拒绝完整配置、嵌套高级节点和无效 outbound；添加节点页已有成员选择/策略选择/保存入口；从订阅按正则动态选成员已完成，过滤匹配按 v2rayNG 搜索体验大小写不敏感；真机组合场景待回归
 - 🟡 **代理链（ProxyChain）**：运行核心已完成，`proxy-chain` JSON 导入后可生成多段 outbounds 并用 `sockopt.dialerProxy` 串联；添加节点页已有成员选择、顺序调整与保存入口
-- ✅ **WebDAV 云备份/恢复**：BASIC 认证 + best-effort `MKCOL` 建目录 + 上传/下载 Hey ZIP 备份包（默认 `backups/backup_ng.zip`，内含 `hey_backup.json`，恢复兼容旧 JSON 包）；真服务兼容回归待补
+- 🟡 备份能力暂缓：先不做云端备份，待云端服务恢复后再补 WebDAV（或自定义后端）能力
 
 **v2rayNG 对照**：`BalancerStrategyType`、`ServerGroupActivity`、`ServerProxyChainActivity`、
 `WebDavManager`。
-**验收标准**：策略组按延迟自动择优；WebDAV 备份可跨设备恢复。
+**验收标准**：策略组按延迟自动择优；备份能力恢复后支持跨设备恢复。
 **依赖**：M2（路由系统）、M3（订阅）。
 
 ---
@@ -365,7 +365,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 第 2 段 | **M1 内核接线**（当前主线） | M3 订阅自动更新 |
 | 第 3 段 | M2 路由系统 | M3 批量操作 + M4 深链导入 |
 | 第 4 段 | M4 二维码/卡片/通知 | — |
-| 第 5 段 | M5 高级路由 / WebDAV | — |
+| 第 5 段 | M5 高级路由 | — |
 
 ---
 
@@ -394,8 +394,8 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - [x] 二维码生成：节点详情页用 `@kit.ScanKit` `generateBarcode.createBarcode` 渲染分享链接 QR + 复制链接（2026-06-15）
 - [x] URL Scheme / Want 深链导入：`hey://install-sub` / `hey://install-config?url=` 注册 scheme + `EntryAbility.onCreate/onNewWant` 暂存 + Index `onPageShow` 解析导入（2026-06-15）
 
-> ✅ 2026-06-15 批 backlog 全部完成。后续可补充项：负载均衡/策略组/代理链编辑器（M5）、
-> WebDAV 云备份；常驻速度通知已代码接线，待真机通知权限与真实流量回归。
+> ✅ 2026-06-15 批 backlog 全部完成。后续可补充项：负载均衡/策略组/代理链编辑器（M5）；
+> 常驻速度通知已代码接线，待真机通知权限与真实流量回归。
 
 ### 本会话代码自查清单（/loop 继续后续修复）
 
@@ -528,8 +528,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M5 | ✅ 路由规则高级出站目标 UI 完成（规则编辑器按当前选中高级节点显示代理链/策略组目标，导入导出与运行时保留高级目标语义） |
 | 2026-06-18 | M5 | ✅ 策略组订阅动态成员完成（创建策略组可启用动态成员、选择全部/指定订阅分组、输入节点名正则过滤，保存快照并在连接启动前按最新订阅重新展开） |
 | 2026-06-19 | M5 | ✅ 高级出站编辑回填完成（节点详情可重新打开手动代理链/策略组，预填成员顺序、策略与动态订阅过滤条件，保存时原位更新并在当前节点场景标记运行配置待重启；补编辑状态解析单测） |
-| 2026-06-18 | M5 | ✅ WebDAV 云备份/还原基础完成（Assets 页保存 WebDAV 配置，JSON 备份包上传/下载，Basic Auth + best-effort MKCOL + 单测） |
-| 2026-06-18 | M5 | ✅ WebDAV ZIP 备份格式完成（默认 `backups/backup_ng.zip`，ZIP stored 条目内含 `hey_backup.json`，上传/下载走二进制，恢复兼容旧 JSON 备份 + 单测） |
+| 2026-06-20 | M5 | 🟡 备份能力暂缓（无云服务器）：暂停 WebDAV 与剪贴板备份功能；保留配置与资源功能的主链路 |
 | 2026-06-18 | M4 | ✅ 控制深链入口完成（manifest 注册 `hey://control`/`start`/`stop`/`toggle`/`switch`/`scan`，Index 处理 start/stop/toggle/scan，补解析单测） |
 | 2026-06-20 | M4 | ✅ 声明式桌面快捷方式完成（`ohos.ability.shortcuts` + `shortcuts_config` 暴露开关/启动/停止/扫码四个入口，`EntryAbility` 解析快捷方式参数并复用控制深链，补参数解析单测）；待真机 launcher 展示/点击回归 |
 | 2026-06-20 | M4 | ✅ Tasker 指定节点控制完成（控制深链支持 `guid`/`nodeId`/`id` 目标节点，快捷方式参数可传 `hey.control.guid`/`hey.control.nodeId` 或 flat Tasker `tasker_extra_bundle_switch/guid`，start/toggle 会先选择目标节点再启动） |

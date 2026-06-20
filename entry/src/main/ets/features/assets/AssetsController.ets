@@ -1,20 +1,14 @@
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { preferences } from '@kit.ArkData';
-import { pasteboard } from '@kit.BasicServicesKit';
 import { http } from '@kit.NetworkKit';
 import fs from '@ohos.file.fs';
 import { AppLanguage } from '../../core/Profile';
 import { translate } from '../../core/I18n';
-import { buildAppBackupPayload, buildAppBackupZipFromPayload, parseAppBackupData } from '../../core/AppBackup';
 import { BUILTIN_GEO_DATA_FILE_NAMES, GEO_FILE_SOURCES, GeoSource, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../../core/GeoAssets';
-import { validateWebDavConfig, WebDavConfigInput } from '../../core/WebDav';
 import { countNativeGeoData } from '../../native/HeyNative';
-import { ensureReadPasteboardPermission } from '../../utils/ClipboardPermission';
 import { formatOne, formatTwo } from '../../utils/LocalizationPresenter';
-import { SHARED_RUNTIME_CONTROLLER } from '../runtime/RuntimeController';
 import { AssetStore, CustomAssetUrl } from '../../storage/AssetStore';
-import { WEBDAV_MANAGER } from '../../services/WebDavManager';
 
 export const GEO_SOURCES: Array<GeoSource> = GEO_FILE_SOURCES;
 
@@ -326,187 +320,6 @@ export class AssetsController {
     return updated;
   }
 
-  // 配置一键备份到剪贴板
-  async backupConfig(context: common.Context, language: AppLanguage): Promise<void> {
-    try {
-      const backupStr = await this.buildBackupText(context);
-      const systemPasteboard = pasteboard.getSystemPasteboard();
-      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, backupStr);
-      await systemPasteboard.setData(pasteData);
-      promptAction.showToast({ message: this.t(language, 'assets.backupSuccess') });
-      SHARED_RUNTIME_CONTROLLER.appendLog('已完成应用配置备份并复制到剪贴板。');
-    } catch (error) {
-      promptAction.showToast({ message: this.t(language, 'assets.backupFailed').replace('{error}', JSON.stringify(error)) });
-    }
-  }
-
-  // 配置从剪贴板一键还原
-  async restoreConfig(
-    context: common.Context,
-    language: AppLanguage,
-    onSuccess: () => void,
-    onFailure: () => void
-  ): Promise<void> {
-    try {
-      if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: this.t(language, 'prompt.clipboardEmpty') });
-        onFailure();
-        return;
-      }
-      const systemPasteboard = pasteboard.getSystemPasteboard();
-      if (!systemPasteboard.hasDataSync()) {
-        promptAction.showToast({ message: this.t(language, 'prompt.clipboardEmpty') });
-        onFailure();
-        return;
-      }
-      const pasteData = await systemPasteboard.getData();
-      const text = pasteData.getPrimaryText();
-      if (!text || text.trim().length === 0) {
-        promptAction.showToast({ message: this.t(language, 'prompt.clipboardEmpty') });
-        onFailure();
-        return;
-      }
-
-      const restored = await this.applyBackupText(context, text);
-      if (!restored) {
-        promptAction.showToast({ message: this.t(language, 'assets.invalidBackupData') });
-        onFailure();
-        return;
-      }
-
-      promptAction.showToast({ message: this.t(language, 'assets.restoreSuccess') });
-      SHARED_RUNTIME_CONTROLLER.appendLog('应用配置已成功还原。');
-      onSuccess();
-    } catch (error) {
-      promptAction.showToast({ message: this.t(language, 'assets.restoreFailed').replace('{error}', JSON.stringify(error)) });
-      onFailure();
-    }
-  }
-
-  async backupConfigToWebDav(context: common.Context, language: AppLanguage, config: WebDavConfigInput): Promise<boolean> {
-    const validation = validateWebDavConfig(config);
-    if (!validation.valid) {
-      promptAction.showToast({ message: this.localizeWebDavValidationMessage(language, validation.message) });
-      return false;
-    }
-
-    try {
-      promptAction.showToast({ message: this.t(language, 'assets.webdav.backup.start') });
-      const backupStr = await this.buildBackupText(context);
-      const result = await WEBDAV_MANAGER.uploadData(validation.config, buildAppBackupZipFromPayload(backupStr), 'application/zip');
-      if (!result.ok) {
-        promptAction.showToast({ message: this.t(language, 'assets.webdav.backup.failed').replace('{error}', result.message) });
-        SHARED_RUNTIME_CONTROLLER.appendLog(`WebDAV 备份失败：${result.message}`);
-        return false;
-      }
-      promptAction.showToast({ message: this.t(language, 'assets.webdav.backup.success') });
-      SHARED_RUNTIME_CONTROLLER.appendLog(`WebDAV 备份已上传：${result.remoteUrl}`);
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : JSON.stringify(error);
-      promptAction.showToast({ message: this.t(language, 'assets.webdav.backup.failed').replace('{error}', message) });
-      return false;
-    }
-  }
-
-  async restoreConfigFromWebDav(
-    context: common.Context,
-    language: AppLanguage,
-    config: WebDavConfigInput,
-    onSuccess: () => void,
-    onFailure: () => void
-  ): Promise<void> {
-    const validation = validateWebDavConfig(config);
-    if (!validation.valid) {
-      promptAction.showToast({ message: this.localizeWebDavValidationMessage(language, validation.message) });
-      onFailure();
-      return;
-    }
-
-    try {
-      promptAction.showToast({ message: this.t(language, 'assets.webdav.restore.start') });
-      const result = await WEBDAV_MANAGER.downloadData(validation.config);
-      if (!result.ok) {
-        promptAction.showToast({ message: this.t(language, 'assets.webdav.restore.failed').replace('{error}', result.message) });
-        SHARED_RUNTIME_CONTROLLER.appendLog(`WebDAV 还原下载失败：${result.message}`);
-        onFailure();
-        return;
-      }
-      if (result.data === null) {
-        promptAction.showToast({ message: this.t(language, 'assets.invalidBackupData') });
-        onFailure();
-        return;
-      }
-      const restored = await this.applyBackupData(context, result.data);
-      if (!restored) {
-        promptAction.showToast({ message: this.t(language, 'assets.invalidBackupData') });
-        onFailure();
-        return;
-      }
-      promptAction.showToast({ message: this.t(language, 'assets.webdav.restore.success') });
-      SHARED_RUNTIME_CONTROLLER.appendLog(`WebDAV 备份已还原：${result.remoteUrl}`);
-      onSuccess();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : JSON.stringify(error);
-      promptAction.showToast({ message: this.t(language, 'assets.webdav.restore.failed').replace('{error}', message) });
-      onFailure();
-    }
-  }
-
-  private async buildBackupText(context: common.Context): Promise<string> {
-    const profileStore = await preferences.getPreferences(context, 'hey_vpn_profile');
-    const settingsStore = await preferences.getPreferences(context, 'hey_vpn_settings');
-    const subStore = await preferences.getPreferences(context, 'hey_vpn_subscription');
-    const assetStore = await preferences.getPreferences(context, 'hey_vpn_assets');
-
-    const profileVal = await profileStore.get('default_profile', '');
-    const settingsVal = await settingsStore.get('app_settings', '');
-    const subVal = await subStore.get('subscription_profile', '');
-    const assetVal = await assetStore.get('custom_assets', '');
-
-    return buildAppBackupPayload(
-      profileVal.toString(),
-      settingsVal.toString(),
-      subVal.toString(),
-      assetVal.toString()
-    );
-  }
-
-  private async applyBackupText(context: common.Context, backupText: string): Promise<boolean> {
-    return this.applyBackupData(context, backupText);
-  }
-
-  private async applyBackupData(context: common.Context, backupData: string | ArrayBuffer): Promise<boolean> {
-    const parsed = parseAppBackupData(backupData);
-    if (!parsed.valid || parsed.payload === null) {
-      return false;
-    }
-    const payload = parsed.payload;
-    const profileStore = await preferences.getPreferences(context, 'hey_vpn_profile');
-    const settingsStore = await preferences.getPreferences(context, 'hey_vpn_settings');
-    const subStore = await preferences.getPreferences(context, 'hey_vpn_subscription');
-    const assetStore = await preferences.getPreferences(context, 'hey_vpn_assets');
-
-    await profileStore.put('default_profile', payload.profile);
-    await profileStore.flush();
-    await settingsStore.put('app_settings', payload.settings);
-    await settingsStore.flush();
-    await subStore.put('subscription_profile', payload.subscription);
-    await subStore.flush();
-    await assetStore.put('custom_assets', payload.assets);
-    await assetStore.flush();
-    return true;
-  }
-
-  private localizeWebDavValidationMessage(language: AppLanguage, message: string): string {
-    if (message === 'WebDAV 服务器地址必须以 http:// 或 https:// 开头。') {
-      return this.t(language, 'assets.webdav.invalidUrl');
-    }
-    if (message === 'WebDAV 远程文件名不能包含路径分隔符。') {
-      return this.t(language, 'assets.webdav.invalidFileName');
-    }
-    return message;
-  }
 }
 
 export const ASSETS_CONTROLLER: AssetsController = new AssetsController();

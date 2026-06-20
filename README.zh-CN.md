@@ -32,7 +32,7 @@ TUN 入站处理。
 
 ## 主要功能
 
-- HarmonyOS Stage 应用，包含 `EntryAbility`、`HeyVpnAbility` 和备份能力。
+- HarmonyOS Stage 应用，包含 `EntryAbility`、`HeyVpnAbility`，并完整接通核心路由/订阅/分享链路。
 - 节点列表、搜索、选择、启动、停止、重启和运行状态展示。
 - 支持导入订阅 URL、Xray outbound JSON 和常见分享链接。
 - 分享链接解析覆盖 `vless://`、`vmess://`、`trojan://`、`ss://`、`socks://`、
@@ -51,7 +51,7 @@ TUN 入站处理。
 | VPN 启停链路 | 已实现，待真机闭环 | `VpnExtensionAbility -> TUN fd -> Xray TUN inbound` 链路已接通 |
 | 节点测速 | 已实现，待更多真机验证 | 通过 `CGoPing` 做真实出站延迟测试 |
 | 路由设置 | 部分完成 | 基础绕过 LAN/CN 已进入配置，广告拦截和自定义规则仍待接入 |
-| Geo 资源 | 可用 | 支持 geoip/geosite 下载、自定义 URL 和备份还原 |
+| Geo 资源 | 可用 | 支持 geoip/geosite 下载与自定义 URL 管理 |
 | 分应用代理 | 可用 | 支持白/黑名单模式、预设应用列表和手动录入包名；受 NEXT 限制暂无全局应用枚举 |
 | 扫码与分享 | 部分完成 | 文本导入/导出可用，摄像头扫码和二维码生成待补齐 |
 

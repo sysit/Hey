@@ -71,7 +71,7 @@
 | 订阅分组页 | `pages/Subscriptions.ets` | ✅ | 分组改 iOS 列表行（图标+名称+信息+开关/箭头）；操作改左滑 |
 | 路由设置页 | `pages/Routing.ets` | ✅ | iOS 分组列表：流量模式/域名策略改单选行（右侧 ic_check），预置规则集改导航行（chevron→详情弹窗） |
 | 分应用代理页 | `pages/PerApp.ets` | ✅ | iOS 分组：主开关/过滤策略(单选行)/系统应用开关/应用列表(头像+包名+勾选)/手动添加(输入行+品牌按钮)；隐藏开发者键名，启用既有 perApp.* 文案 |
-| 资源文件页 | `pages/Assets.ets` + `pages/assets/*` | ✅ | iOS 分组：快捷操作/内置 Geo/自定义资源/备份还原四组卡片；BuiltinGeoCard 改纯分组卡内容；CustomAssetList 改 PageHeader+左滑列表（更新/编辑/删除）；弹窗令牌化 |
+| 资源文件页 | `pages/Assets.ets` + `pages/assets/*` | ✅ | iOS 分组：快捷操作/内置 Geo/自定义资源三组卡片；BuiltinGeoCard 改纯分组卡内容；CustomAssetList 改 PageHeader+左滑列表（更新/编辑/删除）；弹窗令牌化 |
 | 日志页 | `pages/Logs.ets` `LogPanel`/`RuntimePanel` | ✅ | 面板标题改 SectionHeader；运行状态/日志改分组卡，令牌化 |
 | 扫码页 | `pages/Scanner.ets` | 🌓 | 深色已适配；系统扫码 UI 不重排 |
 | 关于页 | `pages/About.ets` | ✅ | 三组卡片加 SectionHeader 标签；去阴影、令牌化；保留行按压高亮 |
@@ -180,7 +180,7 @@ entry/src/main/ets/core/XrayConfig.ets
 | 2026-06-05 | **订阅详情/编辑页 iOS 分组重排**：`SubscriptionDetail` 改灰底 + `SectionHeader`：订阅链接输入分组卡（link 图标 + 输入 + 清除/粘贴/扫码）+ 「获取并更新」品牌 pill + 成功/失败 tint 状态卡（去边框）+ 节点列表分组卡；空态居中占位。`SubscriptionEdit` 两张品牌色竖条卡 → `SectionHeader` + 分组卡（名称输入 / 链接输入行 + 小操作按钮）+ 脚注，保存按钮简化为品牌 pill。共享 `SubscriptionNodeListRow` 字号/间距/分割线令牌化（0.5px）。移除未用的 `IconButton` 导入、`isPressed` 与渐变/阴影/blur；`nodeDelayColor()` 字符串色链按既定约定保留。订阅更新/选节点/保存逻辑原样保留 |
 | 2026-06-05 | **导入/JSON/导出页 iOS 分组重排**：`Import` 三张品牌色阴影卡 → 灰底 + `SectionHeader` 三组（链接导入：输入卡 + 脚注 + 解析/扫码 pill 按钮；手动配置：8 协议由 2 列网格改分组列表行 + chevron；自定义 JSON：导航行）。`JsonImport` 输入卡改分组卡（粘贴/清空小按钮 + 透明等宽 TextArea），校验指示板去边框改 tint 卡，保存按钮简化为品牌 pill。`Export` 改 `SectionHeader` + 透明 TextArea 分组卡 + 脚注。统一移除渐变/阴影/按压缩放/blur 与未用的 `isPressed`；解析/校验/保存逻辑原样保留 |
 | 2026-06-05 | **节点详情/编辑页 iOS 分组重排**：`NodeDetail` 改灰底 + 节点信息组（名称/协议/来源信息行）+ 使用按钮（品牌/成功 pill）+ Outbound/原始链接分组卡 + 底部危险「删除」行；TextArea 透明融入卡片。`NodeEdit` 各表单卡片的品牌色标题条 → `SectionHeader`，卡片去阴影、改纯分组卡；`SegmentedControl`/`ToggleRow`/`PickerRow`/`EditorRow` 全令牌化（输入框 surfaceAlt + Radius.md，开关补 brand 选中色）；底部保存按钮由渐变+阴影+按压缩放简化为品牌 pill（禁用态 surfaceAlt），移除未用的 `isPressed` 状态与 blur。表单拼装与校验逻辑（saveManualNode 等）原样保留 |
-| 2026-06-05 | **资源文件页 iOS 分组重排**：`Assets.ets` 三张品牌色卡片 → 灰底 + `SectionHeader` 四组（快捷操作/内置 Geo/自定义资源/备份还原），统一 `EntryRow`（图标圈+标题+副标题+可选 chevron）。`BuiltinGeoCard` 去掉内部标题/阴影，改为纯分组卡内容（下载源行 + geosite/geoip 行 + 0.5px 细分割线）。`CustomAssetList` 自定义头改用统一 `PageHeader`（新增可选 `onBack` 回调），列表行内三按钮 → iOS 左滑（更新/覆盖导入·编辑·删除），底部「添加」改品牌 pill。`AssetAddEditDialog` 数值令牌化、按钮改 pill + i18n 文案。promptAction 删除按钮 hex 按既定约定保留 |
+| 2026-06-05 | **资源文件页 iOS 分组重排**：`Assets.ets` 三张品牌色卡片 → 灰底 + `SectionHeader` 三组（快捷操作/内置 Geo/自定义资源），统一 `EntryRow`（图标圈+标题+副标题+可选 chevron）。`BuiltinGeoCard` 去掉内部标题/阴影，改为纯分组卡内容（下载源行 + geosite/geoip 行 + 0.5px 细分割线）。`CustomAssetList` 自定义头改用统一 `PageHeader`（新增可选 `onBack` 回调），列表行内三按钮 → iOS 左滑（更新/覆盖导入·编辑·删除），底部「添加」改品牌 pill。`AssetAddEditDialog` 数值令牌化、按钮改 pill + i18n 文案。promptAction 删除按钮 hex 按既定约定保留 |
 | 2026-06-05 | **PageHeader 增强**：新增可选 `onBack: () => void`（默认 `router.back()`），向后兼容；供在页内子视图（如 CustomAssetList）复用统一页头并自定义返回行为 |
 | 2026-06-05 | **分应用代理页 iOS 分组重排**：单层固定布局 → 启用时整页 `Scroll` + 分组卡片（主开关 / 过滤策略黑白名单单选行 + 系统应用可见性开关 / 应用列表：圆形首字母头像+包名+勾选 / 手动添加：输入行 + 品牌按钮），关闭时居中占位。`SettingToggleRow` 改传空键名隐藏开发者键；黑白名单/系统可见性改用既有 `perApp.*` 中英文案；移除未用的 `bundleManager`/`ActionListItem` 导入与 `InputLabelPair` 子组件。逻辑（开关/名单/勾选/手动追加/persist）原样保留 |
 | 2026-06-05 | **路由页 iOS 分组重排**：三张品牌色卡片 → 灰底+`SectionHeader`+分组卡片。流量模式/域名策略由分段控件/自定义单选改为 iOS 单选行（图标+标题+副标题，右侧 `ic_check` 标选中），流量模式说明改组脚注；预置规则集改导航行（`ic_chevron_right`，点击仍弹详情）。去除卡片阴影，间距/圆角/字号全部令牌化。逻辑（trafficMode/strategy/routeOnly/persist）原样保留 |

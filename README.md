@@ -64,7 +64,7 @@ below.
 
 ## Features
 
-- HarmonyOS Stage app with `EntryAbility`, `HeyVpnAbility`, and backup ability.
+- HarmonyOS Stage app with `EntryAbility` and `HeyVpnAbility`, plus core VPN routing, config, and sharing flows.
 - Node list, search, selection, start/stop/restart controls, and runtime status.
 - Import of subscription URLs, Xray outbound JSON, and share links, with
   multi-subscription groups and per-node detail/edit pages.
@@ -74,7 +74,7 @@ below.
   outbounds, and routing rules (bypass LAN/CN).
 - Native N-API bridge for packaged `libxray.so`, including TUN fd setup,
   Xray lifecycle entry points, and real per-node delay testing (`CGoPing`).
-- Geo-asset management (geoip/geosite download, custom URLs, backup/restore).
+- Geo-asset management (geoip/geosite download, custom URLs, and status/count feedback).
 - Per-app proxy with allow/deny modes, a preset app list, and manual package
   entry (HarmonyOS NEXT restricts global app enumeration).
 - Scan/import and export pages, diagnostic log panel, native runtime stat
