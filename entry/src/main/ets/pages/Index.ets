@@ -20,8 +20,10 @@ import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
 import {
   applyDelayTestPostActionsToGroups,
+  buildV2rayNgNodeDescription,
   dedupeVisibleNodesInGroups,
   exportNodesText,
+  extractNodeEndpoint,
   filterNodes,
   removeVisibleNodesFromGroups,
   removeVisibleTestFailedNodesFromGroups,
@@ -1544,10 +1546,8 @@ struct Index {
   }
 
   private async measureNodeTcpDelay(node: ProxyNode, timeoutMs: number): Promise<DelayTestResult> {
-    const address = this.findJsonString(node.outboundJson, 'address');
-    const portText = this.findJsonNumber(node.outboundJson, 'port');
-    const port = Number(portText);
-    return DelayTester.measureTcp(address, port, timeoutMs);
+    const endpoint = extractNodeEndpoint(node.outboundJson);
+    return DelayTester.measureTcp(endpoint.address, Number(endpoint.port), timeoutMs);
   }
 
   private async measureNodeRealDelay(node: ProxyNode, context: common.Context, timeoutMs: number): Promise<DelayTestResult> {
@@ -1747,69 +1747,11 @@ struct Index {
   }
 
   private nodeEndpointText(node: ProxyNode): string {
-    const address = this.findJsonString(node.outboundJson, 'address');
-    const port = this.findJsonNumber(node.outboundJson, 'port');
-    if (address.length > 0 && port.length > 0) {
-      return `${address}:${port}`;
+    const description = buildV2rayNgNodeDescription(node);
+    if (description.length > 0) {
+      return description;
     }
     return node.sourceUrl.length > 0 ? this.t('node.source.subscription') : this.t('node.source.manual');
-  }
-
-  private findJsonString(value: string, key: string): string {
-    const start = this.findJsonPropertyValueStart(value, key);
-    if (start < 0) {
-      return '';
-    }
-    let contentStart = start;
-    while (contentStart < value.length && this.isJsonWhitespace(value.charAt(contentStart))) {
-      contentStart++;
-    }
-    if (contentStart >= value.length || value.charAt(contentStart) !== '"') {
-      return '';
-    }
-    contentStart++;
-    const contentEnd = value.indexOf('"', contentStart);
-    if (contentEnd < contentStart) {
-      return '';
-    }
-    return value.substring(contentStart, contentEnd);
-  }
-
-  private findJsonNumber(value: string, key: string): string {
-    const start = this.findJsonPropertyValueStart(value, key);
-    if (start < 0) {
-      return '';
-    }
-    let contentStart = start;
-    while (contentStart < value.length && this.isJsonWhitespace(value.charAt(contentStart))) {
-      contentStart++;
-    }
-    let contentEnd = contentStart;
-    while (contentEnd < value.length && this.isJsonNumberChar(value.charAt(contentEnd))) {
-      contentEnd++;
-    }
-    if (contentEnd <= contentStart) {
-      return '';
-    }
-    return value.substring(contentStart, contentEnd);
-  }
-
-  private findJsonPropertyValueStart(value: string, key: string): number {
-    const property = `"${key}"`;
-    const propertyStart = value.indexOf(property);
-    if (propertyStart < 0) {
-      return -1;
-    }
-    const colon = value.indexOf(':', propertyStart + property.length);
-    return colon < 0 ? -1 : colon + 1;
-  }
-
-  private isJsonWhitespace(value: string): boolean {
-    return value === ' ' || value === '\n' || value === '\r' || value === '\t';
-  }
-
-  private isJsonNumberChar(value: string): boolean {
-    return value >= '0' && value <= '9';
   }
 
   private openRoute(route: AppRoute): void {

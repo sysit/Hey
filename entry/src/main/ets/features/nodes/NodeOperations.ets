@@ -31,6 +31,11 @@ export interface NodeBatchMutationResult {
   sortedGroupCount: number;
 }
 
+export interface NodeEndpoint {
+  address: string;
+  port: string;
+}
+
 interface NodeTestDelaySortEntry {
   node: ProxyNode;
   delay: number;
@@ -100,6 +105,7 @@ function nodeSearchFields(node: ProxyNode): Array<string> {
   const fields = new Array<string>();
   appendSearchField(fields, node.name);
   appendSearchField(fields, node.sourceUrl);
+  appendSearchField(fields, buildV2rayNgNodeDescription(node));
   appendSearchField(fields, extractOutboundServer(node.outboundJson));
   appendSearchField(fields, node.protocol);
   return fields;
@@ -112,24 +118,57 @@ function appendSearchField(fields: Array<string>, value: string): void {
   }
 }
 
-function extractOutboundServer(outboundJson: string): string {
+export function extractNodeEndpoint(outboundJson: string): NodeEndpoint {
   try {
     const outbound = JSON.parse(outboundJson) as Record<string, Object>;
     const protocol = stringValue(outbound['protocol']).toLowerCase();
     const settings = objectValue(outbound['settings']);
     if (settings === null) {
-      return '';
+      return emptyNodeEndpoint();
     }
     if (protocol === 'vless' || protocol === 'vmess') {
-      return stringValue(firstRecord(settings['vnext'])?.['address']);
+      const server = firstRecord(settings['vnext']);
+      return {
+        address: stringValue(server?.['address']),
+        port: stringValue(server?.['port'])
+      };
     }
     if (protocol === 'wireguard') {
-      return endpointHost(stringValue(firstRecord(settings['peers'])?.['endpoint']));
+      return parseEndpointAddressAndPort(stringValue(firstRecord(settings['peers'])?.['endpoint']));
     }
-    return stringValue(firstRecord(settings['servers'])?.['address']);
+    const server = firstRecord(settings['servers']);
+    return {
+      address: stringValue(server?.['address']),
+      port: stringValue(server?.['port'])
+    };
   } catch (_error) {
+    return emptyNodeEndpoint();
+  }
+}
+
+export function buildV2rayNgNodeDescription(node: ProxyNode): string {
+  const endpoint = extractNodeEndpoint(node.outboundJson);
+  return formatV2rayNgEndpointDescription(endpoint.address, endpoint.port);
+}
+
+export function formatV2rayNgEndpointDescription(address: string, port: string): string {
+  const server = address.trim();
+  const serverPort = port.trim();
+  if (server.length === 0 && serverPort.length === 0) {
     return '';
   }
+  return `${maskV2rayNgEndpointAddress(server)} : ${serverPort}`;
+}
+
+function extractOutboundServer(outboundJson: string): string {
+  return extractNodeEndpoint(outboundJson).address;
+}
+
+function emptyNodeEndpoint(): NodeEndpoint {
+  return {
+    address: '',
+    port: ''
+  };
 }
 
 function firstRecord(value: Object | undefined): Record<string, Object> | null {
@@ -157,15 +196,48 @@ function stringValue(value: Object | undefined): string {
   return '';
 }
 
-function endpointHost(endpoint: string): string {
+function parseEndpointAddressAndPort(endpoint: string): NodeEndpoint {
   if (endpoint.startsWith('[')) {
     const endIndex = endpoint.indexOf(']');
     if (endIndex > 0) {
-      return endpoint.substring(1, endIndex);
+      const portStart = endpoint.indexOf(':', endIndex);
+      return {
+        address: endpoint.substring(1, endIndex),
+        port: portStart >= 0 ? endpoint.substring(portStart + 1) : ''
+      };
     }
   }
   const portIndex = endpoint.lastIndexOf(':');
-  return portIndex > 0 ? endpoint.substring(0, portIndex) : endpoint;
+  if (portIndex <= 0) {
+    return {
+      address: endpoint,
+      port: ''
+    };
+  }
+  return {
+    address: endpoint.substring(0, portIndex),
+    port: endpoint.substring(portIndex + 1)
+  };
+}
+
+function maskV2rayNgEndpointAddress(address: string): string {
+  if (address.length === 0) {
+    return '';
+  }
+  if (address.indexOf(':') >= 0) {
+    const parts = address.split(':');
+    const visibleParts = new Array<string>();
+    for (let index = 0; index < parts.length && index < 2; index++) {
+      visibleParts.push(parts[index]);
+    }
+    return `${visibleParts.join(':')}:***`;
+  }
+  const parts = address.split('.');
+  const visibleParts = new Array<string>();
+  for (let index = 0; index < parts.length - 1; index++) {
+    visibleParts.push(parts[index]);
+  }
+  return `${visibleParts.join('.')}.***`;
 }
 
 export function dedupeNodes(nodes: Array<ProxyNode>): Array<ProxyNode> {

@@ -8,7 +8,7 @@ import { AppLanguage, AppSettings, ProxyNode, SubscriptionGroup } from '../core/
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { isManualEditProtocol, normalizeManualEditProtocol } from '../core/ManualOutboundEditState';
 import { formatOutboundJsonToShareLink } from '../core/ShareLinkParser';
-import { buildNodeFullConfigModel, NodeFullConfigModel } from '../features/nodes/NodeOperations';
+import { buildNodeFullConfigModel, buildV2rayNgNodeDescription, NodeFullConfigModel } from '../features/nodes/NodeOperations';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -68,13 +68,17 @@ struct NodeDetailPage {
         Column({ space: Space.lg }) {
 
           // 节点信息组
-          SectionHeader({ title: '节点信息' })
+          SectionHeader({ title: this.t('node.detail.info') })
           Column() {
-            this.InfoRow('名称', this.node.name.length > 0 ? this.node.name : this.t('node.detail.missing'))
+            this.InfoRow(this.t('node.detail.name'), this.node.name.length > 0 ? this.node.name : this.t('node.detail.missing'))
             this.RowDivider()
-            this.InfoRow('协议', this.node.protocol.length > 0 ? this.node.protocol.toUpperCase() : '—')
+            this.InfoRow(this.t('node.detail.protocol'), this.node.protocol.length > 0 ? this.node.protocol.toUpperCase() : '—')
+            if (this.nodeEndpointText().length > 0) {
+              this.RowDivider()
+              this.InfoRow(this.t('node.detail.endpoint'), this.nodeEndpointText())
+            }
             this.RowDivider()
-            this.InfoRow('来源', this.node.sourceUrl.length > 0 ? this.t('node.source.subscription') : this.t('node.source.manual'))
+            this.InfoRow(this.t('node.detail.source'), this.node.sourceUrl.length > 0 ? this.t('node.source.subscription') : this.t('node.source.manual'))
           }
           .width('100%')
           .backgroundColor(AppColor.surface)
@@ -336,6 +340,10 @@ struct NodeDetailPage {
       return raw;
     }
     return formatOutboundJsonToShareLink(this.node.outboundJson, this.node.name);
+  }
+
+  private nodeEndpointText(): string {
+    return buildV2rayNgNodeDescription(this.node);
   }
 
   private async generateQr(): Promise<void> {

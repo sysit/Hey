@@ -190,13 +190,14 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 
 **进展（2026-06-20 续）**：节点列表搜索语义已对齐 v2rayNG：
 - 搜索：非空关键词先按大小写不敏感正则匹配，正则非法时退回大小写不敏感字面量包含匹配
-- 字段：匹配节点名、订阅/来源 URL、普通 outbound 的服务器地址和协议，补齐 v2rayNG 对 remarks/server/protocol 的搜索体验，同时保留 Hey 现有来源搜索
-- 测试：新增单测覆盖正则 alternation、锚点匹配、server 地址匹配和非法正则回退
+- 字段：匹配节点名、订阅/来源 URL、普通 outbound 的服务器地址、v2rayNG `generateDescription` 同款 `addrPart : port` 脱敏描述和协议，补齐 v2rayNG 对 remarks/description/server/protocol 的搜索体验，同时保留 Hey 现有来源搜索
+- 展示：首页节点列表与节点详情显示同一脱敏端点描述，TCP 延迟测速也复用结构化 endpoint 解析，避免从 JSON 文本里误取第一个 `address`/`port`
+- 测试：新增单测覆盖正则 alternation、锚点匹配、server 地址匹配、脱敏描述匹配、IPv4/域名/IPv6 描述格式和非法正则回退
 
 **任务**
 - **订阅自动更新**：WorkScheduler 后台任务代码已接入并按 v2rayNG 升级为每订阅独立任务；下一步真机验证应用不打开时的周期唤醒与网络拉取
 - **正则过滤** `filter`：按节点名筛选导入（2026-06-15 已完成）
-- **节点列表搜索**：按 v2rayNG `MainViewModel.updateCache` 语义支持正则优先、非法正则回退字面量匹配（2026-06-20 已完成）
+- **节点列表搜索/描述**：按 v2rayNG `MainViewModel.updateCache` 与 `AngConfigManager.generateDescription` 语义支持正则优先、非法正则回退字面量匹配，并在列表/详情/搜索中使用脱敏端点描述（2026-06-20 已完成）
 - **自定义 User-Agent**、订阅级 `allowInsecureUrl`、`prevProfile`/`nextProfile` 备注字段已完成
 - **订阅分组重排**：上移/下移并持久化顺序（2026-06-18 已完成）
 - **批量更新全部**：订阅页顶部刷新按钮更新全部启用订阅分组（已完成）
@@ -419,7 +420,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-15 | M3 | ✅ 订阅正则过滤 `filter` 全链路（分组字段 + 编辑页 + 更新/更新全部按节点名筛选，零匹配/无效回退全部） |
 | 2026-06-15 | M3 | ✅ 测速后自动操作（`autoSortAfterTest`/`autoRemoveInvalidAfterTest` 设置项 + 设置页「节点测速」开关 + 批量测速后排序/删超时） |
 | 2026-06-19 | M3 | ✅ 手动按测试结果排序菜单完成；对齐 v2rayNG `sort_by_test_results`，按当前订阅分组或 All 虚拟分组分别排序并持久化 |
-| 2026-06-20 | M3 | ✅ 节点列表搜索语义完成；对齐 v2rayNG 正则优先、非法正则退回字面量匹配，并补普通 outbound server 地址搜索 |
+| 2026-06-20 | M3 | ✅ 节点列表搜索与地址描述完成；对齐 v2rayNG 正则优先、非法正则退回字面量匹配，并在列表/详情/搜索中使用 `generateDescription` 同款 `addrPart : port` 脱敏端点 |
 | 2026-06-15 | M4 | ✅ 二维码生成（节点详情页 `generateBarcode.createBarcode` 渲染分享链接 QR + 复制链接） |
 | 2026-06-15 | M4 | ✅ URL Scheme / Want 深链导入（`hey://install-sub`/`install-config` scheme + EntryAbility 暂存 + Index 解析导入订阅/节点） |
 | 2026-06-19 | M4 | ✅ 深链 fragment 名称兜底对齐 v2rayNG（`install-sub`/`install-config` 的外层 URI fragment 仅在内层 URL 缺少 fragment 时补入；补解析单测） |

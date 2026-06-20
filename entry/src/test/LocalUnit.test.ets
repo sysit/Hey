@@ -42,11 +42,14 @@ import {
   applyDelayTestPostActionsToGroups,
   buildNodeExportModel,
   buildNodeFullConfigModel,
+  buildV2rayNgNodeDescription,
   dedupeNodes,
   dedupeVisibleNodesInGroups,
   exportNodesText,
+  extractNodeEndpoint,
   filterNodes,
   findInvalidNodes,
+  formatV2rayNgEndpointDescription,
   removeVisibleNodesFromGroups,
   removeVisibleTestFailedNodesFromGroups,
   sortGroupsByDelayTargets,
@@ -2318,12 +2321,32 @@ export default function localUnitTest() {
       expect(filterNodes(nodes, 'Alpha|Beta').length).assertEqual(2);
       expect(filterNodes(nodes, '^Alpha$')[0].name).assertEqual('Alpha');
       expect(filterNodes(nodes, 'relay\\.example\\.com')[0].name).assertEqual('Beta');
+      expect(filterNodes(nodes, 'relay.example.***')[0].name).assertEqual('Beta');
 
       const bracketNode: ProxyNode = copyNode(nodes[0], 'node-bracket');
       bracketNode.name = 'Regex [literal]';
       const bracketResult = filterNodes(nodes.concat([bracketNode]), '[');
       expect(bracketResult.length).assertEqual(1);
       expect(bracketResult[0].name).assertEqual('Regex [literal]');
+    });
+
+    it('formats node endpoint descriptions like v2rayNG', 0, () => {
+      const nodes = buildNodeFixture();
+      const vlessEndpoint = extractNodeEndpoint(VLESS_REALITY_OUTBOUND);
+      expect(vlessEndpoint.address).assertEqual('example.com');
+      expect(vlessEndpoint.port).assertEqual('443');
+      expect(buildV2rayNgNodeDescription(nodes[0])).assertEqual('relay.example.*** : 443');
+      expect(formatV2rayNgEndpointDescription('1.2.3.4', '443')).assertEqual('1.2.3.*** : 443');
+      expect(formatV2rayNgEndpointDescription('example.com', '443')).assertEqual('example.*** : 443');
+      expect(formatV2rayNgEndpointDescription('2001:db8::1', '51820')).assertEqual('2001:db8:*** : 51820');
+
+      const wireGuardNode = copyNode(nodes[1], 'node-wireguard-ipv6');
+      wireGuardNode.protocol = 'wireguard';
+      wireGuardNode.outboundJson = '{"protocol":"wireguard","settings":{"peers":[{"endpoint":"[2001:db8::1]:51820"}]}}';
+      const wireGuardEndpoint = extractNodeEndpoint(wireGuardNode.outboundJson);
+      expect(wireGuardEndpoint.address).assertEqual('2001:db8::1');
+      expect(wireGuardEndpoint.port).assertEqual('51820');
+      expect(buildV2rayNgNodeDescription(wireGuardNode)).assertEqual('2001:db8:*** : 51820');
     });
 
     it('sorts nodes by delay name and protocol', 0, () => {
