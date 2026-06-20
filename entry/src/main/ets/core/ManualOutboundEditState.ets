@@ -10,6 +10,7 @@ import {
   V2RAYNG_VMESS_SECURITY_OPTIONS,
   V2RAYNG_XHTTP_MODE_OPTIONS,
   normalizeV2rayNgBrowserDialerMode,
+  normalizeV2rayNgHysteria2Security,
   normalizeV2rayNgStreamAlpn
 } from './V2rayNgOptions';
 
@@ -189,7 +190,7 @@ function createDefaultManualOutboundEditState(protocol: string): ManualOutboundE
     transportXhttpMode: 'auto',
     transportXhttpExtra: '',
     browserDialerMode: V2RAYNG_DEFAULT_BROWSER_DIALER_MODE,
-    tlsSecurity: 'none',
+    tlsSecurity: protocol === 'hysteria2' ? 'tls' : 'none',
     tlsSni: '',
     tlsAlpn: protocol === 'hysteria2' ? 'h3' : '',
     tlsAllowInsecure: false,
@@ -256,6 +257,7 @@ function applyHysteria2State(state: ManualOutboundEditState, settings: JsonRecor
     return;
   }
   state.userIdOrPassword = stringValue(server, 'password', '');
+  state.tlsSecurity = normalizeV2rayNgHysteria2Security(stringValue(server, 'security', 'tls'));
   state.tlsSni = stringValue(server, 'sni', '');
   state.tlsAlpn = normalizeV2rayNgStreamAlpn(stringValue(server, 'alpn', 'h3'), 'h3');
   state.tlsAllowInsecure = booleanValue(server, 'insecure', false);

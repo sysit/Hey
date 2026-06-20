@@ -24,6 +24,7 @@ export interface ManualHysteria2Input {
   host: string;
   port: string;
   password: string;
+  security: string;
   sni: string;
   alpn: string;
   allowInsecure: boolean;
@@ -53,6 +54,7 @@ interface ManualHysteria2Server {
   address: string;
   port: number;
   password: string;
+  security?: string;
   sni?: string;
   alpn?: string;
   insecure?: boolean;
@@ -135,6 +137,7 @@ export function buildManualHysteria2Outbound(input: ManualHysteria2Input): Manua
     password,
     insecure: input.allowInsecure
   };
+  assignIfPresent(server, 'security', input.security);
   assignIfPresent(server, 'sni', input.sni);
   assignIfPresent(server, 'alpn', normalizeV2rayNgStreamAlpnWithFallback(input.alpn, 'h3'));
   assignIfPresent(server, 'obfsPassword', input.obfsPassword);
@@ -238,6 +241,8 @@ function assignIfPresent(server: ManualHysteria2Server, key: string, value: stri
   }
   if (key === 'sni') {
     server.sni = trimmed;
+  } else if (key === 'security') {
+    server.security = trimmed;
   } else if (key === 'alpn') {
     server.alpn = trimmed;
   } else if (key === 'obfsPassword') {

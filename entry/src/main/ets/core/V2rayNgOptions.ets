@@ -129,6 +129,27 @@ export const V2RAYNG_STREAM_ALPN_OPTIONS: Array<string> = [
 
 export const V2RAYNG_DEFAULT_STREAM_ALPN: string = '';
 
+export const V2RAYNG_HYSTERIA2_SECURITY_OPTIONS: Array<string> = [
+  'none',
+  'tls'
+];
+
+export const V2RAYNG_DEFAULT_HYSTERIA2_SECURITY: string = 'tls';
+
+export function normalizeV2rayNgHysteria2Security(
+  value: string,
+  fallback: string = V2RAYNG_DEFAULT_HYSTERIA2_SECURITY
+): string {
+  const trimmed = value.trim();
+  if (V2RAYNG_HYSTERIA2_SECURITY_OPTIONS.indexOf(trimmed) >= 0) {
+    return trimmed;
+  }
+  if (V2RAYNG_HYSTERIA2_SECURITY_OPTIONS.indexOf(fallback) >= 0) {
+    return fallback;
+  }
+  return V2RAYNG_DEFAULT_HYSTERIA2_SECURITY;
+}
+
 export function normalizeV2rayNgStreamAlpn(value: string, fallback: string = V2RAYNG_DEFAULT_STREAM_ALPN): string {
   const trimmed = value.trim();
   if (V2RAYNG_STREAM_ALPN_OPTIONS.indexOf(trimmed) >= 0) {

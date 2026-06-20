@@ -4,7 +4,7 @@ import { toIdnDomain } from './IdnUrl';
 import { shouldExposeLocalHttpProxy } from './LocalProxy';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
-import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from './V2rayNgOptions';
+import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgHysteria2Security, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from './V2rayNgOptions';
 
 interface XrayOutbound {
   protocol?: string;
@@ -22,6 +22,7 @@ interface XrayHysteria2Server {
   address?: string;
   port?: number;
   password?: string;
+  security?: string;
   sni?: string;
   alpn?: string;
   insecure?: boolean;
@@ -1442,7 +1443,13 @@ function applyHysteria2FinalMaskSettings(outbound: XrayOutbound): void {
   if (outbound.streamSettings === undefined) {
     streamSettings = {};
   } else {
-    streamSettings = outbound.streamSettings as Record<string, Object | string | number | boolean | undefined>;
+    const existing = outbound.streamSettings as Record<string, Object | string | number | boolean | undefined>;
+    streamSettings = {};
+    Object.keys(existing).forEach((key: string) => {
+      if (key !== 'tlsSettings') {
+        streamSettings[key] = existing[key];
+      }
+    });
   }
   const existingFinalMask = streamSettings['finalmask'];
   let finalMask: XrayFinalMaskConfig;
@@ -1527,8 +1534,13 @@ function applyHysteria2RuntimeShape(outbound: XrayOutbound): void {
     auth: server.password ?? ''
   };
   streamSettings['hysteriaSettings'] = hysteriaRuntimeSettings as Object;
-  streamSettings['security'] = 'tls';
-  streamSettings['tlsSettings'] = buildHysteria2TlsSettings(server) as Object;
+  const security = normalizeV2rayNgHysteria2Security(optionalTrim(server.security) ?? 'tls');
+  streamSettings['security'] = security;
+  if (security === 'tls') {
+    streamSettings['tlsSettings'] = buildHysteria2TlsSettings(server) as Object;
+  } else {
+    streamSettings['tlsSettings'] = undefined;
+  }
 
   outbound.protocol = 'hysteria';
   outbound.settings = runtimeSettings as Object;

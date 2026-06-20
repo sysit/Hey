@@ -7,7 +7,7 @@ import { isManualEditProtocol, ManualOutboundEditState, normalizeManualEditProto
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgStreamAlpn, normalizeV2rayNgXhttpMode } from '../core/V2rayNgOptions';
+import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_HYSTERIA2_SECURITY_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgHysteria2Security, normalizeV2rayNgStreamAlpn, normalizeV2rayNgXhttpMode } from '../core/V2rayNgOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -259,6 +259,7 @@ interface FormHysteria2Server {
   address: string;
   port: number;
   password: string;
+  security?: string;
   sni?: string;
   alpn?: string;
   insecure?: boolean;
@@ -590,24 +591,32 @@ struct NodeEditPage {
                 this.EditorRow('端口跳跃间隔 (mportHopInt - 可选)', this.hy2PortHoppingInterval, '秒，例如 30 或 10-60', (value: string) => {
                   this.hy2PortHoppingInterval = value;
                 })
-                this.EditorRow('证书钉住 SHA256 (pinSHA256 - 可选)', this.hy2PinSha256, 'Hysteria2 pinSHA256', (value: string) => {
-                  this.hy2PinSha256 = value;
-                })
                 this.EditorRow('下载带宽 (Bandwidth Down - 可选)', this.hy2BandwidthDown, '例如 100 mbps', (value: string) => {
                   this.hy2BandwidthDown = value;
                 })
                 this.EditorRow('上传带宽 (Bandwidth Up - 可选)', this.hy2BandwidthUp, '例如 20 mbps', (value: string) => {
                   this.hy2BandwidthUp = value;
                 })
-                
+
+                PickerRow({
+                  label: '安全传输层 (security)',
+                  options: V2RAYNG_HYSTERIA2_SECURITY_OPTIONS,
+                  selectedValue: $tlsSecurity
+                })
+
                 // Hysteria 2 的 TLS 配置
-                this.EditorRow('SNI (Server Name Indication)', this.tlsSni, 'TLS 握手域名', (value: string) => {
-                  this.tlsSni = value;
-                })
-                ToggleRow({
-                  label: '允许不安全证书 (Allow Insecure)',
-                  isOn: $tlsAllowInsecure
-                })
+                if (this.tlsSecurity === 'tls') {
+                  this.EditorRow('SNI (Server Name Indication)', this.tlsSni, 'TLS 握手域名', (value: string) => {
+                    this.tlsSni = value;
+                  })
+                  this.EditorRow('证书钉住 SHA256 (pinSHA256 - 可选)', this.hy2PinSha256, 'Hysteria2 pinSHA256', (value: string) => {
+                    this.hy2PinSha256 = value;
+                  })
+                  ToggleRow({
+                    label: '允许不安全证书 (Allow Insecure)',
+                    isOn: $tlsAllowInsecure
+                  })
+                }
               }
               .width('100%')
               .padding(Space.lg)
@@ -985,6 +994,7 @@ struct NodeEditPage {
           host,
           port: this.serverPort,
           password: this.userIdOrPassword,
+          security: normalizeV2rayNgHysteria2Security(this.tlsSecurity),
           sni: this.tlsSni,
           alpn: this.tlsAlpn,
           allowInsecure: this.tlsAllowInsecure,
@@ -1284,7 +1294,7 @@ struct NodeEditPage {
       this.tlsSecurity = 'none';
     } else if (protocol === 'hysteria2') {
       this.serverPort = '443';
-      this.tlsSecurity = 'none';
+      this.tlsSecurity = 'tls';
       this.tlsAlpn = 'h3';
     }
   }

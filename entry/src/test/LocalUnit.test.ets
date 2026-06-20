@@ -36,7 +36,7 @@ import { findMatchedSubscriptionNode, resolveRetainedSelectedNodeId } from '../m
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
 import { DEFAULT_WEBDAV_BACKUP_FILE_NAME, buildWebDavAuthorizationHeader, buildWebDavMkcolUrls, buildWebDavRemoteUrl, isWebDavMkcolAcceptedStatus, normalizeWebDavConfig, validateWebDavConfig } from '../main/ets/core/WebDav';
 import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
-import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_STREAM_ALPN, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpn, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from '../main/ets/core/V2rayNgOptions';
+import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_FRAGMENT_PACKETS, V2RAYNG_DEFAULT_HYSTERIA2_SECURITY, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, V2RAYNG_DEFAULT_STREAM_ALPN, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_HYSTERIA2_SECURITY_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgHysteria2Security, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpn, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from '../main/ets/core/V2rayNgOptions';
 import { filterLogItems, formatLogcatText } from '../main/ets/features/logs/LogOperations';
 import {
   applyDelayTestPostActionsToGroups,
@@ -411,6 +411,7 @@ export default function localUnitTest() {
         host: 'hy2.example.com',
         port: '443',
         password: 'secret',
+        security: 'tls',
         sni: 'cdn.example.com',
         alpn: 'h3',
         allowInsecure: true,
@@ -423,6 +424,7 @@ export default function localUnitTest() {
       });
       expect(hysteria2.success).assertTrue();
       expect(hysteria2.outboundJson).assertContain('"protocol": "hysteria2"');
+      expect(hysteria2.outboundJson).assertContain('"security": "tls"');
       expect(hysteria2.outboundJson).assertContain('"alpn": "h3"');
       expect(hysteria2.outboundJson).assertContain('"portHopping": "20000-50000"');
       expect(hysteria2.outboundJson).assertContain('"portHoppingInterval": "10-60"');
@@ -436,6 +438,7 @@ export default function localUnitTest() {
         host: 'hy2.example.com',
         port: '443',
         password: '',
+        security: 'tls',
         sni: '',
         alpn: '',
         allowInsecure: false,
@@ -452,6 +455,7 @@ export default function localUnitTest() {
         host: 'hy2.example.com',
         port: '443',
         password: 'secret',
+        security: 'tls',
         sni: '',
         alpn: '',
         allowInsecure: false,
@@ -520,12 +524,13 @@ export default function localUnitTest() {
       expect(wireguard.wgLocalAddress).assertEqual('172.16.0.2/32,fd00::2/128');
 
       const hysteria2 = parseManualOutboundEditState(
-        '{"protocol":"hysteria2","tag":"HY2","settings":{"servers":[{"address":"hy.example.com","port":443,"password":"secret","sni":"sni.example.com","alpn":"h3","insecure":true,"obfsPassword":"obfs","portHopping":"20000-50000","portHoppingInterval":"10-60","pinSHA256":"pin","bandwidthDown":"100 mbps","bandwidthUp":"20 mbps"}]}}',
+        '{"protocol":"hysteria2","tag":"HY2","settings":{"servers":[{"address":"hy.example.com","port":443,"password":"secret","security":"none","sni":"sni.example.com","alpn":"h3","insecure":true,"obfsPassword":"obfs","portHopping":"20000-50000","portHoppingInterval":"10-60","pinSHA256":"pin","bandwidthDown":"100 mbps","bandwidthUp":"20 mbps"}]}}',
         '',
         'hysteria2'
       );
       expect(hysteria2.valid).assertTrue();
       expect(hysteria2.protocol).assertEqual('hysteria2');
+      expect(hysteria2.tlsSecurity).assertEqual('none');
       expect(hysteria2.tlsSni).assertEqual('sni.example.com');
       expect(hysteria2.tlsAllowInsecure).assertTrue();
       expect(hysteria2.hy2ObfsPassword).assertEqual('obfs');
@@ -783,6 +788,7 @@ export default function localUnitTest() {
         host: 'hy2.example.com',
         port: '443',
         password: 'secret',
+        security: 'tls',
         sni: '',
         alpn: '',
         allowInsecure: false,
@@ -1381,6 +1387,7 @@ export default function localUnitTest() {
         host: 'hy2.example.com',
         port: '443',
         password: 'secret',
+        security: 'tls',
         sni: 'cdn.example.com',
         alpn: 'h3',
         allowInsecure: true,
@@ -1423,6 +1430,7 @@ export default function localUnitTest() {
         host: 'fallback.hy2.example.com',
         port: '443',
         password: 'secret',
+        security: 'tls',
         sni: '',
         alpn: '',
         allowInsecure: false,
@@ -1449,6 +1457,19 @@ export default function localUnitTest() {
       expect(invalidAlpnResult.configJson).assertContain('"alpn"');
       expect(invalidAlpnResult.configJson).assertContain('"h3"');
       expect(invalidAlpnResult.configJson.indexOf('"bad"')).assertEqual(-1);
+
+      const importedNoTlsHy2 =
+        '{"protocol":"hysteria2","tag":"hy2-import","settings":{"servers":[{"address":"plain.hy2.example.com","port":443,"password":"secret","security":"none","sni":"plain.hy"}]}}';
+      const noTlsResult = buildXrayConfigWithSettings(importedNoTlsHy2, buildSettingsFixture());
+      expect(noTlsResult.configJson).assertContain('"security": "none"');
+      expect(noTlsResult.configJson.indexOf('"tlsSettings"')).assertEqual(-1);
+      expect(noTlsResult.configJson.indexOf('"serverName": "plain.hy"')).assertEqual(-1);
+
+      const importedInvalidSecurityHy2 =
+        '{"protocol":"hysteria2","tag":"hy2-import","settings":{"servers":[{"address":"invalid-security.hy2.example.com","port":443,"password":"secret","security":"bad"}]}}';
+      const invalidSecurityResult = buildXrayConfigWithSettings(importedInvalidSecurityHy2, buildSettingsFixture());
+      expect(invalidSecurityResult.configJson).assertContain('"security": "tls"');
+      expect(invalidSecurityResult.configJson).assertContain('"tlsSettings"');
     });
 
     it('applies prefer ipv6 to outbound happy eyeballs', 0, () => {
@@ -2675,6 +2696,10 @@ export default function localUnitTest() {
       expect(V2RAYNG_BROWSER_DIALER_MODE_OPTIONS.join('|')).assertEqual('Disable|OkHttp|WebView');
       expect(normalizeV2rayNgBrowserDialerMode('webview')).assertEqual('WebView');
       expect(normalizeV2rayNgBrowserDialerMode('bad')).assertEqual('Disable');
+      expect(V2RAYNG_HYSTERIA2_SECURITY_OPTIONS.join('|')).assertEqual('none|tls');
+      expect(V2RAYNG_DEFAULT_HYSTERIA2_SECURITY).assertEqual('tls');
+      expect(normalizeV2rayNgHysteria2Security('none')).assertEqual('none');
+      expect(normalizeV2rayNgHysteria2Security('bad')).assertEqual('tls');
       expect(V2RAYNG_DEFAULT_STREAM_ALPN).assertEqual('');
       expect(V2RAYNG_STREAM_ALPN_OPTIONS.join('|')).assertEqual('|h3|h2|http/1.1|h3,h2,http/1.1|h3,h2|h2,http/1.1');
       expect(normalizeV2rayNgStreamAlpn('h3,h2')).assertEqual('h3,h2');
