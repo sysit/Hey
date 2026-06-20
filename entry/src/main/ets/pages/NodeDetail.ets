@@ -40,7 +40,7 @@ const EMPTY_NODE: ProxyNode = {
 @Entry
 @Component
 struct NodeDetailPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private nodeId: string = '';
   @State private node: ProxyNode = EMPTY_NODE;
   @State private selectedNodeId: string = '';

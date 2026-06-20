@@ -76,7 +76,7 @@ struct Index {
 
   @State private currentTab: number = 0;
   @State private showSearch: boolean = false;
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private outboundJson: string = '';
   @State private validationMessage: string = translate(DEFAULT_LANGUAGE, 'validation.initial');
   @State private validationOk: boolean = false;

@@ -24,7 +24,7 @@ import { shareText, TextShareResult } from '../services/SystemShare';
 @Entry
 @Component
 struct SubscriptionDetailPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private groupId: string = '';
   @State private groupName: string = translate(DEFAULT_LANGUAGE, 'subscription.detail.title');
   @State private subscriptionUrl: string = '';

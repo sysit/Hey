@@ -8,6 +8,7 @@
     "pages/SubscriptionEdit",
     "pages/Routing",
     "pages/Settings",
+    "pages/Language",
     "pages/PerApp",
     "pages/Assets",
     "pages/Logs",

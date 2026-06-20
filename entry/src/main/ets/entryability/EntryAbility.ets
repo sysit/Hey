@@ -5,6 +5,7 @@ import { applyColorMode } from '../core/ColorMode';
 import { deepLinkUriFromWant } from '../core/DeepLink';
 import { UI_MODE_NIGHT_SYSTEM } from '../core/Profile';
 import { extractSharedTextFromWant } from '../core/SharedTextImport';
+import { APP_LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE } from '../core/I18n';
 import { SettingsStore } from '../storage/SettingsStore';
 
 const DOMAIN = 0x0000;
@@ -63,12 +64,28 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
-    windowStage.loadContent('pages/Index', (err) => {
-      if (err.code) {
-        hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
-        return;
-      }
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+    // Seed the globally-observable app language (AppStorage 'appLanguage') from
+    // the persisted settings BEFORE loading the first page, so every page's
+    // @StorageProp/@StorageLink('appLanguage') renders in the saved language on
+    // the very first frame instead of the default. Once seeded, switching the
+    // language anywhere updates this single source and re-renders all pages live.
+    this.seedLanguageThenLoad(windowStage);
+  }
+
+  private seedLanguageThenLoad(windowStage: window.WindowStage): void {
+    SettingsStore.load(this.context).then((settings) => {
+      AppStorage.setOrCreate(APP_LANGUAGE_STORAGE_KEY, settings.language);
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, 'testTag', 'Failed to seed language. Cause: %{public}s', JSON.stringify(err));
+      AppStorage.setOrCreate(APP_LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE);
+    }).then(() => {
+      windowStage.loadContent('pages/Index', (err) => {
+        if (err.code) {
+          hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
+          return;
+        }
+        hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+      });
     });
   }
 

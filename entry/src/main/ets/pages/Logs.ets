@@ -28,7 +28,7 @@ const EMPTY_STATS: RuntimeStats = {
 struct LogsPage {
   private timerId: number = -1;
 
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private status: ConnectionStatus = ConnectionStatus.IDLE;
   @State private elapsedText: string = '00:00';
   @State private logs: Array<string> = [];

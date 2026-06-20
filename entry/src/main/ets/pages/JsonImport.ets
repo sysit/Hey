@@ -26,7 +26,7 @@ interface JsonImportParams {
 @Entry
 @Component
 struct JsonImportPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private nodeName: string = '';
   @State private outboundJson: string = '';
   @State private validationMessage: string = '';

@@ -1,13 +1,11 @@
 import { common } from '@kit.AbilityKit';
-import { promptAction } from '@kit.ArkUI';
-import { SectionHeader } from '../components/SectionHeader';
+import { router } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import {
   APP_LANGUAGE_AUTO,
   APP_LANGUAGE_EN,
   APP_LANGUAGE_ZH_CN,
   APP_LANGUAGE_ZH_TW,
-  APP_MODE_PROXY_ONLY,
   APP_MODE_VPN,
   AppLanguage,
   DEFAULT_DELAY_TEST_URL,
@@ -15,41 +13,40 @@ import {
   DEFAULT_HEV_TUN_RW_TIMEOUT,
   DEFAULT_IP_API_URL,
   DEFAULT_VPN_MTU,
-  HEV_TUN_LOG_LEVEL_OPTIONS,
   normalizeAppRuntimeMode,
   normalizeHevTunLogLevel,
   OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
-  OUTBOUND_DOMAIN_RESOLVE_NONE,
-  OUTBOUND_DOMAIN_RESOLVE_REPLACE,
   OutboundDomainResolveMethod,
   resolveVpnInterfaceAddressConfig,
   RoutingRule,
-  UI_MODE_NIGHT_DARK,
-  UI_MODE_NIGHT_LIGHT,
   UI_MODE_NIGHT_SYSTEM,
   VPN_BYPASS_LAN_BYPASS,
-  VPN_BYPASS_LAN_FOLLOW_CONFIG,
-  VPN_BYPASS_LAN_PROXY,
-  VPN_INTERFACE_ADDRESS_CONFIGS,
-  V2RAYNG_LANGUAGE_OPTIONS
+  VPN_INTERFACE_ADDRESS_CONFIGS
 } from '../core/Profile';
 import { applyColorMode } from '../core/ColorMode';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { V2RAYNG_CORE_LOG_LEVEL_OPTIONS, V2RAYNG_FRAGMENT_PACKET_OPTIONS, V2RAYNG_MUX_XUDP_QUIC_OPTIONS, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic } from '../core/V2rayNgOptions';
-import {
-  SettingInputRow,
-  SettingToggleRow
-} from '../features/settings/SettingsControls';
+import { V2RAYNG_FRAGMENT_PACKET_OPTIONS, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic } from '../core/V2rayNgOptions';
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
+import { filterSettings, SETTINGS_CATALOG, SettingGroup, SettingInputKind, SettingItem } from '../features/settings/SettingsCatalog';
+import { findInputSpec, findSelectSpec, SettingInputSpec, SettingSelectSpec } from '../features/settings/SettingsOptions';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
+import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
+/** 底部抽屉里渲染的单个选择项（已按当前值算好高亮）。 */
+interface SheetOptionVM {
+  value: string;
+  label: string;
+  desc: string;
+  selected: boolean;
+}
+
 @Entry
 @Component
 struct SettingsPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageLink('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private settingUiModeNight: string = UI_MODE_NIGHT_SYSTEM;
   @State private settingSpeedEnabled: boolean = false;
   @State private settingConfirmRemove: boolean = false;
@@ -110,6 +107,19 @@ struct SettingsPage {
   @State private lastError: string = '';
   @State private perAppProxyList: string[] = [];
   @State private perAppProxyBypass: boolean = false;
+  // 单页长滚动 · 搜索
+  @State private searchQuery: string = '';
+  // 设置项弹窗（底部抽屉）· '' 关闭 / 'select' 选择 / 'input' 输入
+  @State private sheetKind: string = '';
+  @State private sheetKey: string = '';
+  @State private sheetTitle: string = '';
+  @State private sheetHint: string = '';
+  @State private sheetOptions: SheetOptionVM[] = [];
+  @State private sheetDraft: string = '';
+  @State private sheetInputKind: SettingInputKind = 'text';
+  @State private sheetUnit: string = '';
+  @State private sheetRange: string = '';
+  @State private sheetDefault: string = '';
 
   aboutToAppear(): void {
     this.loadState();
@@ -122,199 +132,41 @@ struct SettingsPage {
         showBack: true
       })
 
-      Scroll() {
-        Column({ space: Space.lg }) {
-          // 界面
-          SectionHeader({ title: this.t('settings.language.section') })
-          Column() {
-            this.LanguageToggle()
-            this.RowDivider()
-            this.SettingOption('settings.uiModeNight', 'uiModeNight')
-            this.RowDivider()
-            this.SettingToggle('settings.speedEnabled', this.settingSpeedEnabled, 'speedEnabled')
-            this.RowDivider()
-            this.SettingToggle('settings.confirmRemove', this.settingConfirmRemove, 'confirmRemove')
-            this.RowDivider()
-            this.SettingToggle('settings.startScanImmediate', this.settingStartScanImmediate, 'startScanImmediate')
-            this.RowDivider()
-            this.SettingToggle('settings.startOnBoot', this.settingStartOnBoot, 'startOnBoot')
-            this.RowDivider()
-            this.SettingToggle('settings.checkUpdatePreRelease', this.settingCheckUpdatePreRelease, 'checkUpdatePreRelease')
-            this.RowDivider()
-            this.SettingToggle('settings.groupAllDisplay', this.settingGroupAllDisplay, 'groupAllDisplay')
-            this.RowDivider()
-            this.SettingToggle('settings.doubleColumnDisplay', this.settingDoubleColumnDisplay, 'doubleColumnDisplay')
+      Stack({ alignContent: Alignment.TopStart }) {
+        List() {
+          ListItem() {
+            this.SearchBar()
           }
-          .width('100%')
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
 
-          // 核心
-          SectionHeader({ title: this.t('settings.core'), detail: this.t('settings.core.detail') })
-          Column() {
-            this.SettingOption('settings.mode', 'mode')
-            this.RowDivider()
-            this.SettingToggle('settings.sniffing', this.settingSniffing, 'sniffing')
-            this.RowDivider()
-            this.SettingToggle('settings.routeOnly', this.settingRouteOnly, 'routeOnly')
-            this.RowDivider()
-            this.SettingToggle('settings.allowInsecure', this.settingAllowInsecure, 'allowInsecure')
-          }
-          .width('100%')
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          // VPN
-          SectionHeader({ title: this.t('settings.vpn'), detail: this.t('settings.vpn.detail') })
-          Column() {
-            this.SettingToggle('settings.perAppProxy', this.settingPerAppProxy, 'perApp')
-            this.RowDivider()
-            this.SettingToggle('settings.localDns', this.settingLocalDns, 'localDns')
-            this.RowDivider()
-            this.SettingToggle('settings.fakeDns', this.settingFakeDns, 'fakeDns')
-            this.RowDivider()
-            this.SettingInput('settings.localDnsPort', this.settingLocalDnsPort, 'localDnsPort')
-            this.RowDivider()
-            this.SettingToggle('settings.proxySharing', this.settingProxySharing, 'proxySharing')
-            this.RowDivider()
-            this.SettingToggle('settings.appendHttpProxy', this.settingAppendHttpProxy, 'appendHttpProxy')
-            this.RowDivider()
-            this.SettingToggle('settings.localSocks', this.settingLocalSocks, 'localSocks')
-            this.RowDivider()
-            this.SettingInput('settings.localSocksPort', this.settingLocalSocksPort, 'localSocksPort')
-            this.RowDivider()
-            this.SettingToggle('settings.localSocksDynamicPort', this.settingLocalSocksDynamicPort, 'localSocksDynamicPort')
-            this.RowDivider()
-            this.SettingToggle('settings.localSocksUdp', this.settingLocalSocksUdp, 'localSocksUdp')
-            this.RowDivider()
-            this.SettingInput('settings.localSocksUsername', this.settingLocalSocksUsername, 'localSocksUsername')
-            this.RowDivider()
-            this.SettingInput('settings.localSocksPassword', this.settingLocalSocksPassword, 'localSocksPassword')
-            this.RowDivider()
-            this.SettingToggle('settings.useHevTun', this.settingUseHevTun, 'useHevTun')
-            if (this.settingUseHevTun) {
-              this.RowDivider()
-              this.SettingOption('settings.hevTunLogLevel', 'hevTunLogLevel')
-              this.RowDivider()
-              this.SettingInput('settings.hevTunRwTimeout', this.settingHevTunRwTimeout, 'hevTunRwTimeout')
-            }
-            this.RowDivider()
-            this.SettingToggle('settings.ipv6Enabled', this.settingIpv6Enabled, 'ipv6Enabled')
-            this.RowDivider()
-            this.SettingToggle('settings.preferIpv6', this.settingPreferIpv6, 'preferIpv6')
-            this.RowDivider()
-            this.SettingOption('settings.vpnBypassLan', 'vpnBypassLan')
-            this.RowDivider()
-            this.SettingOption('settings.vpnInterfaceAddress', 'vpnInterfaceAddress')
-            this.RowDivider()
-            this.SettingInput('settings.vpnDns', this.settingVpnDns, 'vpnDns')
-            this.RowDivider()
-            this.SettingInput('settings.vpnMtu', this.settingVpnMtu, 'vpnMtu')
-          }
-          .width('100%')
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          // 传输
-          SectionHeader({ title: this.t('settings.transport'), detail: this.t('settings.transport.detail') })
-          Column() {
-            this.SettingToggle('settings.mux', this.settingMux, 'mux')
-            if (this.settingMux) {
-              this.RowDivider()
-              this.SettingInput('settings.muxConcurrency', this.settingMuxConcurrency, 'muxConcurrency')
-              this.RowDivider()
-              this.SettingInput('settings.muxXudpConcurrency', this.settingMuxXudpConcurrency, 'muxXudpConcurrency')
-              if (this.isMuxXudpQuicAvailable()) {
-                this.RowDivider()
-                this.SettingOption('settings.muxXudpQuic', 'muxXudpQuic')
+          ForEach(this.visibleSections(), (sec: SettingGroup) => {
+            ListItemGroup({ header: this.GroupHeader(sec) }) {
+              ListItem() {
+                Column() {
+                  ForEach(sec.items, (item: SettingItem, index: number) => {
+                    this.SettingRow(item, index !== sec.items.length - 1)
+                  }, (item: SettingItem) => item.key)
+                }
+                .width('100%')
+                .backgroundColor(AppColor.surface)
+                .borderRadius(Radius.lg)
+                .border({ width: 0.5, color: AppColor.border })
+                .clip(true)
               }
+              .padding({ left: Space.lg, right: Space.lg, bottom: Space.md })
             }
-            this.RowDivider()
-            this.SettingToggle('settings.fragment', this.settingFragment, 'fragment')
-            if (this.settingFragment) {
-              this.RowDivider()
-              this.SettingOption('settings.fragmentPackets', 'fragmentPackets')
-              this.RowDivider()
-              this.SettingInput('settings.fragmentLength', this.settingFragmentLength, 'fragmentLength')
-              this.RowDivider()
-              this.SettingInput('settings.fragmentInterval', this.settingFragmentInterval, 'fragmentInterval')
-            }
-          }
-          .width('100%')
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
+          }, (sec: SettingGroup) => sec.id + '|' + sec.items.map((it: SettingItem) => it.key).join(','))
 
-          // 进阶
-          SectionHeader({ title: this.t('settings.advanced'), detail: this.t('settings.advanced.detail') })
-          Column() {
-            this.SettingInput('settings.remoteDns', this.settingRemoteDns, 'remoteDns')
-            this.RowDivider()
-            this.SettingInput('settings.domesticDns', this.settingDomesticDns, 'domesticDns')
-            this.RowDivider()
-            this.SettingInput('settings.dnsHosts', this.settingDnsHosts, 'dnsHosts')
-            this.RowDivider()
-            this.SettingOption('settings.outboundDomainResolveMethod', 'outboundDomainResolveMethod')
-            this.RowDivider()
-            this.SettingInput('settings.delayTestUrl', this.settingDelayTestUrl, 'delayTestUrl')
-            this.RowDivider()
-            this.SettingInput('settings.ipApiUrl', this.settingIpApiUrl, 'ipApiUrl')
-            this.RowDivider()
-            this.SettingOption('settings.logLevel', 'logLevel')
+          ListItem() {
+            this.FooterArea()
           }
-          .width('100%')
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          // 节点测速
-          SectionHeader({ title: this.t('settings.testing') })
-          Column() {
-            this.SettingInput('settings.realPingConcurrency', this.settingRealPingConcurrency, 'realPingConcurrency')
-            this.RowDivider()
-            this.SettingToggle('settings.autoSortAfterTest', this.settingAutoSortAfterTest, 'autoSortAfterTest')
-            this.RowDivider()
-            this.SettingToggle('settings.autoRemoveAfterTest', this.settingAutoRemoveAfterTest, 'autoRemoveAfterTest')
-          }
-          .width('100%')
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          if (this.lastError.length > 0) {
-            Text(this.lastError)
-              .fontSize(FontSz.footnote)
-              .fontColor(AppColor.danger)
-              .width('100%')
-              .padding(Space.md)
-              .backgroundColor(AppColor.dangerTint)
-              .borderRadius(Radius.md)
-              .margin({ left: Space.lg, right: Space.lg })
-          }
-
-          Button(this.t('action.saveSettings'))
-            .height(46)
-            .width('100%')
-            .backgroundColor(AppColor.brand)
-            .fontColor(AppColor.onBrand)
-            .fontWeight(FontWeight.Medium)
-            .borderRadius(Radius.pill)
-            .margin({ left: Space.lg, right: Space.lg, top: Space.sm })
-            .onClick(() => {
-              this.persistSettings(true);
-            })
         }
+        .sticky(StickyStyle.Header)
+        .scrollBar(BarState.Off)
         .width('100%')
-        .padding({ top: Space.sm, bottom: Space.xxl })
+        .height('100%')
+        .backgroundColor(AppColor.bg)
+
+        this.SettingSheet()
       }
       .layoutWeight(1)
       .width('100%')
@@ -325,97 +177,312 @@ struct SettingsPage {
   }
 
   @Builder
-  private RowDivider() {
-    Divider()
-      .strokeWidth(0.5)
-      .color(AppColor.divider)
-      .margin({ left: Space.lg })
-  }
-
-  @Builder
-  private LanguageToggle() {
-    this.SettingOption('settings.language.title', 'language')
-  }
-
-  @Builder
-  private SettingToggle(titleKey: string, enabled: boolean, action: string) {
-    SettingToggleRow({
-      title: this.t(titleKey),
-      settingKey: '',
-      isEnabled: enabled,
-      action,
-      onLabel: this.t('action.on'),
-      offLabel: this.t('action.off'),
-      onToggle: (nextAction: string) => {
-        this.toggleSetting(nextAction);
-      }
-    })
-  }
-
-  @Builder
-  private SettingInput(titleKey: string, value: string, action: string) {
-    SettingInputRow({
-      title: this.t(titleKey),
-      settingKey: '',
-      value,
-      action,
-      onChange: (nextAction: string, nextValue: string) => {
-        this.updateSettingInput(nextAction, nextValue);
-      }
-    })
-  }
-
-  @Builder
-  private SettingOption(titleKey: string, action: string) {
-    Row({ space: Space.md }) {
-      Text(this.t(titleKey))
-        .fontSize(FontSz.callout)
-        .fontColor(AppColor.textPrimary)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+  private SearchBar() {
+    Row({ space: Space.sm }) {
+      Image($r('app.media.ic_search'))
+        .width(18)
+        .height(18)
+        .fillColor(AppColor.textTertiary)
+      TextInput({ text: this.searchQuery, placeholder: this.t('settings.search.placeholder') })
         .layoutWeight(1)
+        .backgroundColor(Color.Transparent)
+        .padding(0)
+        .borderRadius(0)
+        .fontSize(FontSz.body)
+        .fontColor(AppColor.textPrimary)
+        .placeholderColor(AppColor.textTertiary)
+        .onChange((value: string) => {
+          this.searchQuery = value;
+        })
+      if (this.searchQuery.length > 0) {
+        Stack() {
+          Text('✕')
+            .fontSize(11)
+            .fontColor(AppColor.surfaceAlt)
+        }
+        .width(18)
+        .height(18)
+        .borderRadius(9)
+        .backgroundColor(AppColor.textTertiary)
+        .onClick(() => {
+          this.searchQuery = '';
+        })
+      }
+    }
+    .height(40)
+    .padding({ left: Space.md, right: Space.md })
+    .backgroundColor(AppColor.surfaceAlt)
+    .borderRadius(Radius.md)
+    .margin({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.xs })
+  }
 
-      Text(this.settingOptionValue(action))
+  @Builder
+  private GroupHeader(group: SettingGroup) {
+    Row({ space: Space.md }) {
+      Stack() {
+        Image(this.groupIconRes(group.id))
+          .width(16)
+          .height(16)
+      }
+      .width(26)
+      .height(26)
+      .borderRadius(8)
+      .backgroundColor(group.color)
+
+      Text(this.t(group.titleKey))
         .fontSize(FontSz.footnote)
-        .fontColor(AppColor.textSecondary)
-        .textAlign(TextAlign.End)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .fontWeight(FontWeight.Bold)
+        .fontColor(AppColor.textPrimary)
     }
     .width('100%')
-    .height(54)
-    .padding({ left: Space.lg, right: Space.lg })
-    .backgroundColor(AppColor.surface)
-    .onClick(() => {
-      this.showSettingOptionMenu(action);
-    })
+    .alignItems(VerticalAlign.Center)
+    .padding({ left: Space.lg + Space.xs, right: Space.lg, top: Space.md, bottom: Space.sm })
+    .backgroundColor(AppColor.bg)
+  }
+
+  @Builder
+  private SettingRow(item: SettingItem, showDivider: boolean) {
+    Column() {
+      Row({ space: Space.md }) {
+        Column({ space: 3 }) {
+          Text(this.t(item.titleKey))
+            .fontSize(FontSz.callout)
+            .fontColor(item.danger === true ? AppColor.danger : AppColor.textPrimary)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          if (item.descKey !== undefined) {
+            Text(this.t(item.descKey))
+              .fontSize(FontSz.footnote)
+              .fontColor(AppColor.textTertiary)
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+
+        if (item.type === 'toggle') {
+          Toggle({ type: ToggleType.Switch, isOn: this.toggleValue(item.key) })
+            .selectedColor(AppColor.brand)
+            .switchPointColor(AppColor.onBrand)
+            .hitTestBehavior(HitTestMode.None)
+        } else if (item.type === 'option') {
+          Row({ space: 2 }) {
+            Text(this.settingOptionValue(item.key))
+              .fontSize(FontSz.body)
+              .fontColor(AppColor.textSecondary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Image($r('app.media.ic_chevron_right'))
+              .width(18)
+              .height(18)
+              .fillColor(AppColor.textTertiary)
+          }
+          .constraintSize({ maxWidth: '55%' })
+        } else if (item.type === 'input') {
+          Text(this.inputDisplay(item.key))
+            .fontSize(FontSz.body)
+            .fontColor(this.currentInputValue(item.key).length > 0 ? AppColor.textSecondary : AppColor.textTertiary)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .constraintSize({ maxWidth: '55%' })
+        } else {
+          Image($r('app.media.ic_chevron_right'))
+            .width(18)
+            .height(18)
+            .fillColor(AppColor.textTertiary)
+        }
+      }
+      .width('100%')
+      .constraintSize({ minHeight: 54 })
+      .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: Space.sm })
+      .onClick(() => {
+        this.onRowTap(item);
+      })
+
+      if (showDivider) {
+        Divider()
+          .strokeWidth(0.5)
+          .color(AppColor.divider)
+          .margin({ left: Space.lg })
+      }
+    }
+    .width('100%')
+  }
+
+  @Builder
+  private FooterArea() {
+    Column({ space: Space.sm }) {
+      if (this.searchQuery.trim().length > 0 && this.visibleSections().length === 0) {
+        Text(this.f1('settings.search.empty', 'query', this.searchQuery.trim()))
+          .fontSize(FontSz.callout)
+          .fontColor(AppColor.textTertiary)
+        Text(this.t('settings.search.emptyHint'))
+          .fontSize(FontSz.footnote)
+          .fontColor(AppColor.textTertiary)
+      } else if (this.searchQuery.trim().length === 0) {
+        Text(this.t('settings.instantEffectFooter'))
+          .fontSize(FontSz.footnote)
+          .fontColor(AppColor.textTertiary)
+      }
+
+      if (this.lastError.length > 0) {
+        Text(this.lastError)
+          .fontSize(FontSz.footnote)
+          .fontColor(AppColor.danger)
+          .width('100%')
+          .padding(Space.md)
+          .backgroundColor(AppColor.dangerTint)
+          .borderRadius(Radius.md)
+          .margin({ left: Space.lg, right: Space.lg })
+      }
+    }
+    .width('100%')
+    .padding({ top: Space.lg, bottom: Space.xxl })
+  }
+
+  private groupIconRes(id: string): Resource {
+    switch (id) {
+      case 'ui':
+        return $r('app.media.ic_set_grp_ui');
+      case 'core':
+        return $r('app.media.ic_set_grp_core');
+      case 'vpn':
+        return $r('app.media.ic_set_grp_vpn');
+      case 'transport':
+        return $r('app.media.ic_set_grp_transport');
+      case 'advanced':
+        return $r('app.media.ic_set_grp_advanced');
+      default:
+        return $r('app.media.ic_set_grp_testing');
+    }
+  }
+
+  private onRowTap(item: SettingItem): void {
+    if (item.type === 'toggle') {
+      this.toggleSetting(item.key);
+      return;
+    }
+    if (item.type === 'option') {
+      this.openSelectSheet(item);
+      return;
+    }
+    if (item.type === 'input') {
+      this.openInputSheet(item);
+      return;
+    }
+    if (item.route !== undefined && item.route.length > 0) {
+      router.pushUrl({ url: item.route });
+    }
+  }
+
+  private inputDisplay(key: string): string {
+    const value = this.currentInputValue(key);
+    return value.length > 0 ? value : this.t('settings.value.unset');
+  }
+
+  private visibleSections(): SettingGroup[] {
+    const sections = filterSettings(
+      SETTINGS_CATALOG,
+      (key: string): boolean => this.isEnabled(key),
+      this.searchQuery,
+      (key: string): string => this.t(key)
+    );
+    if (this.isMuxXudpQuicAvailable()) {
+      return sections;
+    }
+    const result: SettingGroup[] = [];
+    for (const group of sections) {
+      if (group.id !== 'transport') {
+        result.push(group);
+        continue;
+      }
+      const items: SettingItem[] = group.items.filter((it: SettingItem): boolean => it.key !== 'muxXudpQuic');
+      if (items.length > 0) {
+        result.push({ id: group.id, titleKey: group.titleKey, color: group.color, items: items });
+      }
+    }
+    return result;
+  }
+
+  private isEnabled(key: string): boolean {
+    return this.toggleValue(key);
+  }
+
+  private toggleValue(key: string): boolean {
+    switch (key) {
+      case 'speedEnabled': return this.settingSpeedEnabled;
+      case 'confirmRemove': return this.settingConfirmRemove;
+      case 'startScanImmediate': return this.settingStartScanImmediate;
+      case 'startOnBoot': return this.settingStartOnBoot;
+      case 'checkUpdatePreRelease': return this.settingCheckUpdatePreRelease;
+      case 'groupAllDisplay': return this.settingGroupAllDisplay;
+      case 'doubleColumnDisplay': return this.settingDoubleColumnDisplay;
+      case 'sniffing': return this.settingSniffing;
+      case 'routeOnly': return this.settingRouteOnly;
+      case 'allowInsecure': return this.settingAllowInsecure;
+      case 'localDns': return this.settingLocalDns;
+      case 'fakeDns': return this.settingFakeDns;
+      case 'proxySharing': return this.settingProxySharing;
+      case 'appendHttpProxy': return this.settingAppendHttpProxy;
+      case 'localSocks': return this.settingLocalSocks;
+      case 'localSocksDynamicPort': return this.settingLocalSocksDynamicPort;
+      case 'localSocksUdp': return this.settingLocalSocksUdp;
+      case 'useHevTun': return this.settingUseHevTun;
+      case 'ipv6Enabled': return this.settingIpv6Enabled;
+      case 'preferIpv6': return this.settingPreferIpv6;
+      case 'mux': return this.settingMux;
+      case 'fragment': return this.settingFragment;
+      case 'autoSortAfterTest': return this.settingAutoSortAfterTest;
+      case 'autoRemoveAfterTest': return this.settingAutoRemoveAfterTest;
+      default: return false;
+    }
+  }
+
+  private currentInputValue(key: string): string {
+    switch (key) {
+      case 'localDnsPort': return this.settingLocalDnsPort;
+      case 'localSocksPort': return this.settingLocalSocksPort;
+      case 'localSocksUsername': return this.settingLocalSocksUsername;
+      case 'localSocksPassword': return this.settingLocalSocksPassword;
+      case 'hevTunRwTimeout': return this.settingHevTunRwTimeout;
+      case 'vpnDns': return this.settingVpnDns;
+      case 'vpnMtu': return this.settingVpnMtu;
+      case 'muxConcurrency': return this.settingMuxConcurrency;
+      case 'muxXudpConcurrency': return this.settingMuxXudpConcurrency;
+      case 'fragmentLength': return this.settingFragmentLength;
+      case 'fragmentInterval': return this.settingFragmentInterval;
+      case 'remoteDns': return this.settingRemoteDns;
+      case 'domesticDns': return this.settingDomesticDns;
+      case 'dnsHosts': return this.settingDnsHosts;
+      case 'delayTestUrl': return this.settingDelayTestUrl;
+      case 'ipApiUrl': return this.settingIpApiUrl;
+      case 'realPingConcurrency': return this.settingRealPingConcurrency;
+      default: return '';
+    }
   }
 
   private settingOptionValue(action: string): string {
-    switch (action) {
-      case 'language':
-        return this.languageLabel(this.language);
-      case 'uiModeNight':
-        return this.uiModeNightLabel();
-      case 'mode':
-        return this.modeLabel();
-      case 'hevTunLogLevel':
-        return this.hevTunLogLevelLabel();
-      case 'vpnBypassLan':
-        return this.vpnBypassLanLabel();
-      case 'vpnInterfaceAddress':
-        return this.vpnInterfaceAddressLabel();
-      case 'muxXudpQuic':
-        return this.muxXudpQuicLabel();
-      case 'fragmentPackets':
-        return this.fragmentPacketsLabel();
-      case 'outboundDomainResolveMethod':
-        return this.outboundDomainResolveMethodLabel();
-      case 'logLevel':
-        return this.logLevelLabel();
-      default:
-        return '';
+    if (action === 'language') {
+      return this.languageLabel(this.language);
     }
+    if (action === 'vpnInterfaceAddress') {
+      return this.vpnInterfaceAddressLabel();
+    }
+    if (action === 'fragmentPackets') {
+      return this.fragmentPacketsLabel();
+    }
+    const spec: SettingSelectSpec | undefined = findSelectSpec(action);
+    if (spec === undefined) {
+      return '';
+    }
+    const current = this.currentOptionValue(action);
+    for (let index = 0; index < spec.choices.length; index++) {
+      if (spec.choices[index].value === current) {
+        return this.t(spec.choices[index].labelKey);
+      }
+    }
+    return '';
   }
 
   private async loadState(): Promise<void> {
@@ -603,16 +670,6 @@ struct SettingsPage {
     }
   }
 
-  private async changeLanguage(language: AppLanguage): Promise<void> {
-    if (this.language === language) {
-      return;
-    }
-    this.language = language;
-    await this.persistSettings(false);
-    const label = this.languageLabel(this.language);
-    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.languageChanged', 'language', label));
-  }
-
   private languageLabel(language: AppLanguage): string {
     if (language === APP_LANGUAGE_AUTO) {
       return this.t('settings.language.auto');
@@ -789,387 +846,383 @@ struct SettingsPage {
     return result;
   }
 
-  private showSettingOptionMenu(action: string): void {
-    if (action === 'language') {
-      this.showLanguageMenu();
+  // ===== 选择 / 输入 弹窗（底部抽屉）=====
+
+  private openSelectSheet(item: SettingItem): void {
+    const key = item.key;
+    if (key === 'language') {
+      router.pushUrl({ url: AppRoute.LANGUAGE });
       return;
     }
-    if (action === 'vpnBypassLan') {
-      this.showVpnBypassLanMenu();
+    const options = this.buildSheetOptions(key);
+    if (options.length === 0) {
       return;
     }
-    if (action === 'uiModeNight') {
-      this.showUiModeNightMenu();
-      return;
+    this.sheetKey = key;
+    this.sheetTitle = this.t(item.titleKey);
+    this.sheetHint = this.sheetHintFor(key);
+    this.sheetOptions = options;
+    this.sheetKind = 'select';
+  }
+
+  private openInputSheet(item: SettingItem): void {
+    const key = item.key;
+    const spec: SettingInputSpec | undefined = findInputSpec(key);
+    this.sheetKey = key;
+    this.sheetTitle = this.t(item.titleKey);
+    this.sheetHint = spec !== undefined && spec.hintKey.length > 0 ? this.t(spec.hintKey) : '';
+    this.sheetUnit = spec !== undefined ? spec.unit : '';
+    this.sheetRange = spec !== undefined ? spec.range : '';
+    this.sheetDefault = spec !== undefined ? spec.defaultValue : '';
+    this.sheetInputKind = item.inputKind ?? 'text';
+    this.sheetDraft = this.currentInputValue(key);
+    this.sheetKind = 'input';
+  }
+
+  private sheetHintFor(key: string): string {
+    if (key === 'vpnInterfaceAddress') {
+      return this.t('settings.vpnInterfaceAddress.hint');
     }
-    if (action === 'mode') {
-      this.showModeMenu();
-      return;
+    if (key === 'fragmentPackets') {
+      return this.t('settings.fragmentPackets.hint');
     }
-    if (action === 'vpnInterfaceAddress') {
-      this.showVpnInterfaceAddressMenu();
-      return;
+    const spec: SettingSelectSpec | undefined = findSelectSpec(key);
+    return spec !== undefined && spec.hintKey.length > 0 ? this.t(spec.hintKey) : '';
+  }
+
+  private buildSheetOptions(key: string): SheetOptionVM[] {
+    const result: SheetOptionVM[] = [];
+    if (key === 'vpnInterfaceAddress') {
+      for (let index = 0; index < VPN_INTERFACE_ADDRESS_CONFIGS.length; index++) {
+        result.push({
+          value: index.toString(),
+          label: VPN_INTERFACE_ADDRESS_CONFIGS[index].displayName,
+          desc: '',
+          selected: index === this.settingVpnInterfaceAddressIndex
+        });
+      }
+      return result;
     }
-    if (action === 'logLevel') {
-      this.showLogLevelMenu();
-      return;
+    if (key === 'fragmentPackets') {
+      const current = normalizeV2rayNgFragmentPackets(this.settingFragmentPackets);
+      for (let index = 0; index < V2RAYNG_FRAGMENT_PACKET_OPTIONS.length; index++) {
+        const value = V2RAYNG_FRAGMENT_PACKET_OPTIONS[index];
+        result.push({ value: value, label: value, desc: '', selected: value === current });
+      }
+      return result;
     }
-    if (action === 'hevTunLogLevel') {
-      this.showHevTunLogLevelMenu();
-      return;
+    const spec: SettingSelectSpec | undefined = findSelectSpec(key);
+    if (spec === undefined) {
+      return result;
     }
-    if (action === 'outboundDomainResolveMethod') {
-      this.showOutboundDomainResolveMethodMenu();
-      return;
+    const current = this.currentOptionValue(key);
+    for (let index = 0; index < spec.choices.length; index++) {
+      const choice = spec.choices[index];
+      result.push({
+        value: choice.value,
+        label: this.t(choice.labelKey),
+        desc: choice.descKey.length > 0 ? this.t(choice.descKey) : '',
+        selected: choice.value === current
+      });
     }
-    if (action === 'muxXudpQuic') {
-      this.showMuxXudpQuicMenu();
-      return;
-    }
-    if (action === 'fragmentPackets') {
-      this.showFragmentPacketsMenu();
+    return result;
+  }
+
+  private currentOptionValue(key: string): string {
+    switch (key) {
+      case 'mode': return this.settingMode;
+      case 'uiModeNight': return this.settingUiModeNight;
+      case 'vpnBypassLan': return this.settingVpnBypassLan;
+      case 'logLevel': return normalizeV2rayNgCoreLogLevel(this.settingLogLevel);
+      case 'hevTunLogLevel': return normalizeHevTunLogLevel(this.settingHevTunLogLevel);
+      case 'outboundDomainResolveMethod': return this.settingOutboundDomainResolveMethod;
+      case 'muxXudpQuic': return normalizeV2rayNgMuxXudpQuic(this.settingMuxXudpQuic);
+      default: return '';
     }
   }
 
-  private showLanguageMenu(startIndex: number = 0): void {
-    const values: AppLanguage[] = V2RAYNG_LANGUAGE_OPTIONS.slice();
-    const buttons = new Array<promptAction.Button>();
-    const actions = new Array<number>();
-    const hasPrevious = startIndex > 0;
-    let itemLimit = 6 - (hasPrevious ? 1 : 0);
-    if (startIndex + itemLimit < values.length) {
-      itemLimit -= 1;
+  private applyOptionValue(key: string, value: string): void {
+    switch (key) {
+      case 'mode':
+        this.settingMode = value;
+        break;
+      case 'uiModeNight':
+        this.settingUiModeNight = value;
+        break;
+      case 'vpnBypassLan':
+        this.settingVpnBypassLan = value;
+        break;
+      case 'logLevel':
+        this.settingLogLevel = value;
+        break;
+      case 'hevTunLogLevel':
+        this.settingHevTunLogLevel = value;
+        break;
+      case 'outboundDomainResolveMethod':
+        this.settingOutboundDomainResolveMethod = value as OutboundDomainResolveMethod;
+        break;
+      case 'muxXudpQuic':
+        this.settingMuxXudpQuic = value;
+        break;
+      case 'vpnInterfaceAddress':
+        this.settingVpnInterfaceAddressIndex = Number(value);
+        break;
+      case 'fragmentPackets':
+        this.settingFragmentPackets = value;
+        break;
+      default:
+        break;
     }
-    const endIndex = Math.min(values.length, startIndex + itemLimit);
-    for (let index = startIndex; index < endIndex; index++) {
-      buttons.push({ text: this.languageLabel(values[index]), color: AppColor.brand } as promptAction.Button);
-      actions.push(index);
+  }
+
+  private pickOption(value: string): void {
+    const key = this.sheetKey;
+    this.applyOptionValue(key, value);
+    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.sheetTitle));
+    this.closeSheet();
+    this.persistSettings(false);
+  }
+
+  private commitInput(): void {
+    const key = this.sheetKey;
+    this.updateSettingInput(key, this.sheetDraft);
+    this.closeSheet();
+    this.persistSettings(false);
+  }
+
+  private resetInput(): void {
+    this.sheetDraft = this.sheetDefault;
+  }
+
+  private closeSheet(): void {
+    this.sheetKind = '';
+  }
+
+  private defaultRangeText(): string {
+    const parts: string[] = [];
+    if (this.sheetDefault.length > 0) {
+      parts.push(this.t('settings.sheet.defaultPrefix') + ' ' + this.sheetDefault);
     }
-    if (endIndex < values.length) {
-      buttons.push({ text: this.t('action.more'), color: AppColor.brand } as promptAction.Button);
-      actions.push(-2);
+    if (this.sheetRange.length > 0) {
+      parts.push(this.sheetRange);
     }
-    if (hasPrevious) {
-      buttons.push({ text: this.t('action.previous'), color: AppColor.textSecondary } as promptAction.Button);
-      actions.push(-1);
+    return parts.join(' · ');
+  }
+
+  private sheetInputType(): InputType {
+    if (this.sheetInputKind === 'number') {
+      return InputType.Number;
     }
-
-    promptAction.showActionMenu({
-      title: this.t('settings.language.title'),
-      buttons: this.toActionMenuButtons(buttons)
-    }).then((result) => {
-      if (result.index < 0 || result.index >= actions.length) {
-        return;
-      }
-      const actionIndex = actions[result.index];
-      if (actionIndex === -2) {
-        this.showLanguageMenu(endIndex);
-        return;
-      }
-      if (actionIndex === -1) {
-        this.showLanguageMenu(Math.max(0, startIndex - 5));
-        return;
-      }
-      if (actionIndex >= 0 && actionIndex < values.length) {
-        this.changeLanguage(values[actionIndex]);
-      }
-    });
-  }
-
-  private showVpnBypassLanMenu(): void {
-    const values: string[] = [VPN_BYPASS_LAN_FOLLOW_CONFIG, VPN_BYPASS_LAN_BYPASS, VPN_BYPASS_LAN_PROXY];
-    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.vpnBypassLan.followConfig'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.vpnBypassLan.bypass'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.vpnBypassLan.proxy'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.vpnBypassLan'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingVpnBypassLan = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.vpnBypassLan')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showUiModeNightMenu(): void {
-    const values: string[] = [UI_MODE_NIGHT_SYSTEM, UI_MODE_NIGHT_LIGHT, UI_MODE_NIGHT_DARK];
-    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.uiModeNight.system'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.uiModeNight.light'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.uiModeNight.dark'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.uiModeNight'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingUiModeNight = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.uiModeNight')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showModeMenu(): void {
-    const values: string[] = [APP_MODE_VPN, APP_MODE_PROXY_ONLY];
-    const buttons: [promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.mode.vpn'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.mode.proxyOnly'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.mode'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingMode = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.mode')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showVpnInterfaceAddressMenu(startIndex: number = 0): void {
-    const buttons = new Array<promptAction.Button>();
-    const actions = new Array<number>();
-    const hasPrevious = startIndex > 0;
-    let itemLimit = 6 - (hasPrevious ? 1 : 0);
-    if (startIndex + itemLimit < VPN_INTERFACE_ADDRESS_CONFIGS.length) {
-      itemLimit -= 1;
+    if (this.sheetInputKind === 'password') {
+      return InputType.Password;
     }
-    const endIndex = Math.min(VPN_INTERFACE_ADDRESS_CONFIGS.length, startIndex + itemLimit);
-    for (let index = startIndex; index < endIndex; index++) {
-      buttons.push({ text: VPN_INTERFACE_ADDRESS_CONFIGS[index].displayName, color: AppColor.brand } as promptAction.Button);
-      actions.push(index);
+    return InputType.Normal;
+  }
+
+  @Builder
+  private SettingSheet() {
+    if (this.sheetKind.length > 0) {
+      Stack({ alignContent: Alignment.Bottom }) {
+        Column()
+          .width('100%')
+          .height('100%')
+          .backgroundColor(AppColor.scrim)
+          .onClick(() => {
+            this.closeSheet();
+          })
+          .transition(TransitionEffect.OPACITY.animation({ duration: 240, curve: Curve.EaseOut }))
+
+        Column() {
+          Row()
+            .width(38)
+            .height(5)
+            .borderRadius(Radius.pill)
+            .backgroundColor(AppColor.border)
+            .margin({ top: 9, bottom: Space.xs })
+
+          Row({ space: Space.md }) {
+            Column({ space: 2 }) {
+              Text(this.sheetTitle)
+                .fontSize(FontSz.headline)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(AppColor.textPrimary)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+              if (this.sheetHint.length > 0) {
+                Text(this.sheetHint)
+                  .fontSize(FontSz.footnote)
+                  .fontColor(AppColor.textTertiary)
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+
+            Stack() {
+              Text('✕')
+                .fontSize(13)
+                .fontColor(AppColor.textSecondary)
+            }
+            .width(30)
+            .height(30)
+            .borderRadius(Radius.pill)
+            .backgroundColor(AppColor.surfaceAlt)
+            .onClick(() => {
+              this.closeSheet();
+            })
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Top)
+          .padding({ left: Space.lg, right: Space.lg, top: Space.xs, bottom: Space.md })
+
+          if (this.sheetKind === 'select') {
+            this.SheetSelectBody()
+          } else if (this.sheetKind === 'input') {
+            this.SheetInputBody()
+          }
+        }
+        .width('100%')
+        .backgroundColor(AppColor.surface)
+        .borderRadius({ topLeft: 22, topRight: 22 })
+        .padding({ bottom: Space.xl })
+        .gesture(
+          SwipeGesture({ direction: SwipeDirection.Vertical })
+            .onAction((event: GestureEvent) => {
+              if (event.angle > 45 && event.angle < 135) {
+                this.closeSheet();
+              }
+            })
+        )
+        .transition(TransitionEffect.OPACITY
+          .combine(TransitionEffect.translate({ y: 480 }))
+          .animation({ duration: 300, curve: Curve.FastOutSlowIn }))
+      }
+      .width('100%')
+      .height('100%')
     }
-    if (endIndex < VPN_INTERFACE_ADDRESS_CONFIGS.length) {
-      buttons.push({ text: this.t('action.more'), color: AppColor.brand } as promptAction.Button);
-      actions.push(-2);
+  }
+
+  @Builder
+  private SheetSelectBody() {
+    Column({ space: Space.xs }) {
+      ForEach(this.sheetOptions, (opt: SheetOptionVM) => {
+        Row({ space: Space.md }) {
+          Column({ space: 2 }) {
+            Text(opt.label)
+              .fontSize(FontSz.callout)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(opt.selected ? AppColor.brand : AppColor.textPrimary)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            if (opt.desc.length > 0) {
+              Text(opt.desc)
+                .fontSize(FontSz.footnote)
+                .fontColor(AppColor.textTertiary)
+                .maxLines(2)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+
+          if (opt.selected) {
+            Image($r('app.media.ic_check'))
+              .width(22)
+              .height(22)
+              .fillColor(AppColor.brand)
+          }
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .padding({ left: 14, right: 14, top: Space.md, bottom: Space.md })
+        .borderRadius(14)
+        .backgroundColor(opt.selected ? AppColor.brandTint : Color.Transparent)
+        .onClick(() => {
+          this.pickOption(opt.value);
+        })
+      }, (opt: SheetOptionVM) => opt.value)
     }
-    if (hasPrevious) {
-      buttons.push({ text: this.t('action.previous'), color: AppColor.textSecondary } as promptAction.Button);
-      actions.push(-1);
+    .width('100%')
+    .padding({ left: Space.md, right: Space.md })
+  }
+
+  @Builder
+  private SheetInputBody() {
+    Column() {
+      Row({ space: Space.sm }) {
+        TextInput({ text: this.sheetDraft, placeholder: this.sheetTitle })
+          .type(this.sheetInputType())
+          .layoutWeight(1)
+          .backgroundColor(Color.Transparent)
+          .padding(0)
+          .borderRadius(0)
+          .fontSize(FontSz.title)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppColor.textPrimary)
+          .placeholderColor(AppColor.textTertiary)
+          .showPasswordIcon(this.sheetInputKind === 'password')
+          .passwordIcon({
+            onIconSrc: $r('app.media.ic_eye'),
+            offIconSrc: $r('app.media.ic_eye_off')
+          })
+          .onChange((value: string) => {
+            this.sheetDraft = value;
+          })
+        if (this.sheetUnit.length > 0) {
+          Text(this.sheetUnit)
+            .fontSize(FontSz.body)
+            .fontColor(AppColor.textTertiary)
+        }
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Bottom)
+      .padding({ bottom: Space.sm })
+      .border({ width: { bottom: 2 }, color: { bottom: AppColor.brand } })
+
+      if (this.sheetDefault.length > 0 || this.sheetRange.length > 0) {
+        Row({ space: Space.sm }) {
+          Text(this.defaultRangeText())
+            .fontSize(FontSz.footnote)
+            .fontColor(AppColor.textTertiary)
+            .layoutWeight(1)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          if (this.sheetDefault.length > 0) {
+            Text(this.t('settings.sheet.restoreDefault'))
+              .fontSize(FontSz.body)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(AppColor.brand)
+              .onClick(() => {
+                this.resetInput();
+              })
+          }
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+        .margin({ top: Space.md })
+      }
+
+      Button(this.t('settings.sheet.done'))
+        .width('100%')
+        .height(46)
+        .backgroundColor(AppColor.brand)
+        .fontColor(AppColor.onBrand)
+        .fontSize(FontSz.callout)
+        .fontWeight(FontWeight.Medium)
+        .borderRadius(Radius.pill)
+        .margin({ top: Space.lg })
+        .onClick(() => {
+          this.commitInput();
+        })
     }
-    promptAction.showActionMenu({
-      title: this.t('settings.vpnInterfaceAddress'),
-      buttons: this.toActionMenuButtons(buttons)
-    }).then((result) => {
-      if (result.index < 0 || result.index >= actions.length) {
-        return;
-      }
-      const actionIndex = actions[result.index];
-      if (actionIndex === -2) {
-        this.showVpnInterfaceAddressMenu(endIndex);
-        return;
-      }
-      if (actionIndex === -1) {
-        this.showVpnInterfaceAddressMenu(Math.max(0, startIndex - 5));
-        return;
-      }
-      if (actionIndex >= 0 && actionIndex < VPN_INTERFACE_ADDRESS_CONFIGS.length) {
-        this.settingVpnInterfaceAddressIndex = actionIndex;
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.vpnInterfaceAddress')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showLogLevelMenu(): void {
-    const values: string[] = V2RAYNG_CORE_LOG_LEVEL_OPTIONS;
-    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button, promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.logLevel.debug'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.logLevel.info'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.logLevel.warning'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.logLevel.error'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.logLevel.none'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.logLevel'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingLogLevel = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.logLevel')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showHevTunLogLevelMenu(): void {
-    const values: string[] = HEV_TUN_LOG_LEVEL_OPTIONS.slice();
-    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.hevTunLogLevel.error'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.hevTunLogLevel.warn'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.hevTunLogLevel.info'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.hevTunLogLevel.debug'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.hevTunLogLevel'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingHevTunLogLevel = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.hevTunLogLevel')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showOutboundDomainResolveMethodMenu(): void {
-    const values: OutboundDomainResolveMethod[] = [
-      OUTBOUND_DOMAIN_RESOLVE_NONE,
-      OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
-      OUTBOUND_DOMAIN_RESOLVE_REPLACE
-    ];
-    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.outboundDomainResolveMethod.none'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.outboundDomainResolveMethod.dnsHosts'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.outboundDomainResolveMethod.replace'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.outboundDomainResolveMethod'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingOutboundDomainResolveMethod = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.outboundDomainResolveMethod')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showMuxXudpQuicMenu(): void {
-    const values: string[] = V2RAYNG_MUX_XUDP_QUIC_OPTIONS;
-    const buttons: [promptAction.Button, promptAction.Button, promptAction.Button] = [
-      { text: this.t('settings.muxXudpQuic.reject'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.muxXudpQuic.allow'), color: AppColor.brand } as promptAction.Button,
-      { text: this.t('settings.muxXudpQuic.skip'), color: AppColor.brand } as promptAction.Button
-    ];
-
-    promptAction.showActionMenu({
-      title: this.t('settings.muxXudpQuic'),
-      buttons
-    }).then((result) => {
-      if (result.index >= 0 && result.index < values.length) {
-        this.settingMuxXudpQuic = values[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.muxXudpQuic')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private showFragmentPacketsMenu(): void {
-    const buttons = new Array<promptAction.Button>();
-    for (let index = 0; index < V2RAYNG_FRAGMENT_PACKET_OPTIONS.length; index++) {
-      buttons.push({ text: V2RAYNG_FRAGMENT_PACKET_OPTIONS[index], color: AppColor.brand } as promptAction.Button);
-    }
-
-    promptAction.showActionMenu({
-      title: this.t('settings.fragmentPackets'),
-      buttons: this.toActionMenuButtons(buttons)
-    }).then((result) => {
-      if (result.index >= 0 && result.index < V2RAYNG_FRAGMENT_PACKET_OPTIONS.length) {
-        this.settingFragmentPackets = V2RAYNG_FRAGMENT_PACKET_OPTIONS[result.index];
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('settings.fragmentPackets')));
-        this.persistSettings(false);
-      }
-    });
-  }
-
-  private toActionMenuButtons(buttons: Array<promptAction.Button>): [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?] {
-    return buttons as [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?];
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: Space.lg, right: Space.lg })
   }
 
   private vpnInterfaceAddressLabel(): string {
     return resolveVpnInterfaceAddressConfig(this.settingVpnInterfaceAddressIndex).displayName;
-  }
-
-  private vpnBypassLanLabel(): string {
-    if (this.settingVpnBypassLan === VPN_BYPASS_LAN_FOLLOW_CONFIG) {
-      return this.t('settings.vpnBypassLan.followConfig');
-    }
-    if (this.settingVpnBypassLan === VPN_BYPASS_LAN_PROXY) {
-      return this.t('settings.vpnBypassLan.proxy');
-    }
-    return this.t('settings.vpnBypassLan.bypass');
-  }
-
-  private uiModeNightLabel(): string {
-    if (this.settingUiModeNight === UI_MODE_NIGHT_LIGHT) {
-      return this.t('settings.uiModeNight.light');
-    }
-    if (this.settingUiModeNight === UI_MODE_NIGHT_DARK) {
-      return this.t('settings.uiModeNight.dark');
-    }
-    return this.t('settings.uiModeNight.system');
-  }
-
-  private modeLabel(): string {
-    if (this.settingMode === APP_MODE_PROXY_ONLY) {
-      return this.t('settings.mode.proxyOnly');
-    }
-    return this.t('settings.mode.vpn');
-  }
-
-  private logLevelLabel(): string {
-    const logLevel = normalizeV2rayNgCoreLogLevel(this.settingLogLevel);
-    if (logLevel === 'debug') {
-      return this.t('settings.logLevel.debug');
-    }
-    if (logLevel === 'info') {
-      return this.t('settings.logLevel.info');
-    }
-    if (logLevel === 'error') {
-      return this.t('settings.logLevel.error');
-    }
-    if (logLevel === 'none') {
-      return this.t('settings.logLevel.none');
-    }
-    return this.t('settings.logLevel.warning');
-  }
-
-  private hevTunLogLevelLabel(): string {
-    const logLevel = normalizeHevTunLogLevel(this.settingHevTunLogLevel);
-    if (logLevel === 'error') {
-      return this.t('settings.hevTunLogLevel.error');
-    }
-    if (logLevel === 'info') {
-      return this.t('settings.hevTunLogLevel.info');
-    }
-    if (logLevel === 'debug') {
-      return this.t('settings.hevTunLogLevel.debug');
-    }
-    return this.t('settings.hevTunLogLevel.warn');
-  }
-
-  private outboundDomainResolveMethodLabel(): string {
-    if (this.settingOutboundDomainResolveMethod === OUTBOUND_DOMAIN_RESOLVE_NONE) {
-      return this.t('settings.outboundDomainResolveMethod.none');
-    }
-    if (this.settingOutboundDomainResolveMethod === OUTBOUND_DOMAIN_RESOLVE_REPLACE) {
-      return this.t('settings.outboundDomainResolveMethod.replace');
-    }
-    return this.t('settings.outboundDomainResolveMethod.dnsHosts');
-  }
-
-  private muxXudpQuicLabel(): string {
-    const muxXudpQuic = normalizeV2rayNgMuxXudpQuic(this.settingMuxXudpQuic);
-    if (muxXudpQuic === 'allow') {
-      return this.t('settings.muxXudpQuic.allow');
-    }
-    if (muxXudpQuic === 'skip') {
-      return this.t('settings.muxXudpQuic.skip');
-    }
-    return this.t('settings.muxXudpQuic.reject');
   }
 
   private fragmentPacketsLabel(): string {

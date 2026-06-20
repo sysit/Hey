@@ -58,6 +58,7 @@ import {
   sortNodes
 } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
+import { filterSettings, SettingGroup, SettingItem, SETTINGS_CATALOG } from '../main/ets/features/settings/SettingsCatalog';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
 import { canMeasureRuntimeDelayProfile, resolveRuntimeDelayTestUrls } from '../main/ets/services/RuntimeDelay';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
@@ -93,6 +94,70 @@ const WIREGUARD_CONF_WITHOUT_MTU: string =
   '[Interface]\nPrivateKey = private-key\nAddress = 172.16.0.2/32\n\n[Peer]\nPublicKey = peer-key\nEndpoint = wg.example.com:51820\nAllowedIPs = 0.0.0.0/0\n';
 
 export default function localUnitTest() {
+  describe('settingsCatalog', () => {
+    const enabled: Record<string, boolean> = {
+      localDns: true, localSocks: true, useHevTun: true, mux: true, fragment: true
+    };
+    const isEnabled = (k: string): boolean => enabled[k] ?? false;
+    const noneEnabled = (k: string): boolean => false;
+    const idText = (k: string): string => k; // 用 key 充当文本：搜索走 key 英文别名
+    const allKeys = (groups: SettingGroup[]): string[] => {
+      const ks: string[] = [];
+      groups.forEach((g: SettingGroup) => g.items.forEach((it: SettingItem) => ks.push(it.key)));
+      return ks;
+    };
+
+    it('hides dependent items when their toggle is off', 0, () => {
+      const keys = allKeys(filterSettings(SETTINGS_CATALOG, noneEnabled, '', idText));
+      expect(keys.includes('localSocksPort')).assertFalse();
+      expect(keys.includes('fakeDns')).assertFalse();
+      expect(keys.includes('muxConcurrency')).assertFalse();
+      expect(keys.includes('hevTunRwTimeout')).assertFalse();
+      // 非依赖项仍在
+      expect(keys.includes('localSocks')).assertTrue();
+      expect(keys.includes('mux')).assertTrue();
+    });
+
+    it('shows dependent items when their toggle is on', 0, () => {
+      const keys = allKeys(filterSettings(SETTINGS_CATALOG, isEnabled, '', idText));
+      expect(keys.includes('localSocksPort')).assertTrue();
+      expect(keys.includes('fakeDns')).assertTrue();
+      expect(keys.includes('muxConcurrency')).assertTrue();
+    });
+
+    it('filters by english key alias (socks / dns / mux)', 0, () => {
+      const socks = allKeys(filterSettings(SETTINGS_CATALOG, isEnabled, 'socks', idText));
+      expect(socks.includes('localSocksUsername')).assertTrue();
+      expect(socks.includes('mux')).assertFalse();
+
+      const dns = allKeys(filterSettings(SETTINGS_CATALOG, isEnabled, 'dns', idText));
+      expect(dns.includes('remoteDns')).assertTrue();
+      expect(dns.includes('vpnDns')).assertTrue();
+
+      const mux = allKeys(filterSettings(SETTINGS_CATALOG, isEnabled, 'mux', idText));
+      expect(mux.includes('muxXudpQuic')).assertTrue();
+      expect(mux.includes('localDns')).assertFalse();
+    });
+
+    it('matches localized title text', 0, () => {
+      const textMap: Record<string, string> = { 'settings.localDns': '本地 DNS' };
+      const text = (k: string): string => textMap[k] ?? k;
+      const keys = allKeys(filterSettings(SETTINGS_CATALOG, isEnabled, '本地', text));
+      expect(keys.includes('localDns')).assertTrue();
+    });
+
+    it('returns empty when nothing matches', 0, () => {
+      const res = filterSettings(SETTINGS_CATALOG, isEnabled, 'zzz-nomatch', idText);
+      expect(res.length).assertEqual(0);
+    });
+
+    it('keeps only non-empty groups (socks → vpn only)', 0, () => {
+      const res = filterSettings(SETTINGS_CATALOG, isEnabled, 'socks', idText);
+      expect(res.length).assertEqual(1);
+      expect(res[0].id).assertEqual('vpn');
+    });
+  });
+
   describe('settingsChange', () => {
     it('decides when runtime settings changes should restart the service', 0, () => {
       const idle = decideRuntimeSettingsRestart(false, true, false);

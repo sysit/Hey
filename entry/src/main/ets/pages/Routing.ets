@@ -26,7 +26,7 @@ import { RoutingRuleDialog } from './routing/RoutingRuleDialog';
 @Entry
 @Component
 struct RoutingPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private trafficMode: string = 'rules';
   @State private routingStrategy: string = 'AsIs';
   @State private routeOnlyEnabled: boolean = false;

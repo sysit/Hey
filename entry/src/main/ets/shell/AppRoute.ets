@@ -7,6 +7,7 @@ export enum AppRoute {
   SUBSCRIPTION_EDIT = 'pages/SubscriptionEdit',
   ROUTING = 'pages/Routing',
   SETTINGS = 'pages/Settings',
+  LANGUAGE = 'pages/Language',
   PER_APP = 'pages/PerApp',
   ASSETS = 'pages/Assets',
   LOGS = 'pages/Logs',

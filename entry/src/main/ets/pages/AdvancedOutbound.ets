@@ -28,7 +28,7 @@ interface AdvancedOutboundParams {
 @Entry
 @Component
 struct AdvancedOutboundPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private mode: string = 'proxy-chain';
   @State private editNodeId: string = '';
   @State private nodeName: string = '';

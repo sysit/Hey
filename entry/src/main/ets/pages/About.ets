@@ -17,7 +17,7 @@ const V2RAYNG_SOURCE_URL: string = 'https://github.com/2dust/v2rayNG';
 @Entry
 @Component
 struct AboutPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private isCheckingUpdate: boolean = false;
   @State private coreVersion: string = '';
   @State private checkUpdatePreRelease: boolean = false;

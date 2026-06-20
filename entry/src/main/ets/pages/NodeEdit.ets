@@ -374,7 +374,7 @@ interface NodeEditParams {
 @Entry
 @Component
 struct NodeEditPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private protocol: string = 'vless';
   @State private nodeName: string = '';
   @State private serverHost: string = '';

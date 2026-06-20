@@ -17,7 +17,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Entry
 @Component
 struct ExportPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private nodes: Array<ProxyNode> = [];
   @State private exportTitle: string = '';
   @State private exportContent: string = '';

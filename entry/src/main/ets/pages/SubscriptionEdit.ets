@@ -20,7 +20,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Entry
 @Component
 struct SubscriptionEditPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private groupId: string = '';
   @State private groupName: string = '';
   @State private subscriptionUrl: string = '';

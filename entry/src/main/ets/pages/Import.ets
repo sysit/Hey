@@ -17,7 +17,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Entry
 @Component
 struct ImportPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private importBuffer: string = '';
   @State private lastError: string = '';
   @State private isBusy: boolean = false;

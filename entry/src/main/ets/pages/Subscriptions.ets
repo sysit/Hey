@@ -17,7 +17,7 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 @Entry
 @Component
 struct SubscriptionsPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private subscriptionGroups: Array<SubscriptionGroup> = [];
   @State private selectedGroupId: string = '';
   @State private isUpdatingAll: boolean = false;

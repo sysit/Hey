@@ -20,7 +20,7 @@ import { formatOne } from '../utils/LocalizationPresenter';
 @Entry
 @Component
 struct AssetsPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
 
   // 文件状态信息
   @State private geositeStatus: string = '';

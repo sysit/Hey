@@ -24,7 +24,7 @@ import { AppColor } from '../theme/Theme';
 @Entry
 @Component
 struct ScannerPage {
-  @State private language: AppLanguage = DEFAULT_LANGUAGE;
+  @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private importBuffer: string = '';
   @State private lastError: string = '';
   @State private isBusy: boolean = false;
