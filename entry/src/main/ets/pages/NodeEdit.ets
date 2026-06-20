@@ -519,10 +519,8 @@ struct NodeEditPage {
 
               // 特有加密与流控选项
               if (this.protocol === 'vless') {
-                PickerRow({
-                  label: '加密算法 (encryption)',
-                  options: ['none', 'aes-128-gcm', 'chacha20-ietf-poly1305'],
-                  selectedValue: $securityOrMethod
+                this.EditorRow('加密算法 (encryption)', this.securityOrMethod, 'none', (value: string) => {
+                  this.securityOrMethod = value;
                 })
                 PickerRow({
                   label: '流控协议 (flow)',

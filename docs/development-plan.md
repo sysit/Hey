@@ -310,6 +310,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 不单列里程碑，随手补齐：
 
 - ✅ Reality 全参数（`spiderX`、`mldsa65Verify`/`pqv`）解析与下发：分享链接导入/导出、Clash.Meta 订阅解析和 NodeEdit Reality 表单均会保留后量子验签公钥（2026-06-18）
+- ✅ VLESS encryption 手动编辑：NodeEdit 按 v2rayNG `activity_server_vless` 的 `et_security` 形态改为自由文本输入，默认 `none`，编辑已有手动节点时保留任意 stored encryption 值（2026-06-20）
 - ✅ `flow`（`xtls-rprx-vision` / `xtls-rprx-vision-udp443`）字段：分享链接导入导出保留，NodeEdit 手动编辑选项对齐 v2rayNG（2026-06-19）
 - ✅ uTLS fingerprint（`fp`）：分享链接导入导出保留，NodeEdit 指纹选项对齐 v2rayNG `chrome/firefox/safari/ios/android/edge/360/qq/random/randomized`（2026-06-19）
 - ✅ TLS/Reality ALPN：NodeEdit 手动编辑按 v2rayNG `streamsecurity_alpn` 固定为 `none/h3/h2/http/1.1/h3,h2,http/1.1/h3,h2/h2,http/1.1`；Hysteria2 手动与运行配置缺省/非法 ALPN 兜底为 v2rayNG runtime 默认 `h3`（2026-06-19）
@@ -566,6 +567,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | 协议点检 | ✅ HTTPUpgrade/XHTTP 传输参数完成（分享链接 `type=httpupgrade` 的 host/path 导出不再丢失，NodeEdit 可选择 httpupgrade；XHTTP `mode/extra` 可手动填写并 round-trip 保留；补传输选项与参数单测） |
 | 2026-06-19 | 协议点检 | ✅ XHTTP mode 枚举完成（分享链接导入/导出、NodeEdit 保存与运行配置生成均按 v2rayNG `auto/packet-up/stream-up/stream-one` 限定，非法值兜底 `auto`；补归一化单测） |
 | 2026-06-20 | 协议点检 | ✅ Browser Dialer profile 模式完成（WS/XHTTP 手动节点支持 v2rayNG `Disable/OkHttp/WebView` 选择与回填，运行/延迟/完整配置输出剥离 profile 元数据；补编辑回填、选项和运行配置单测） |
+| 2026-06-20 | 协议点检 | ✅ VLESS encryption 手动编辑完成（NodeEdit 从固定 picker 改为 v2rayNG `et_security` 同款自由文本输入，默认 `none`，已有手动 VLESS 任意 encryption 值可回填保留） |
 | 2026-06-20 | 协议点检 | ✅ H2 传输 Host 列表完成（NodeEdit 手动 `h2` 保存时按 v2rayNG 拆分逗号 Host 列表，空 Path 回退 `/`；补纯函数单测） |
 | 2026-06-19 | M4 | ✅ 开机自启安装兼容修正（移除受限 `ohos.permission.RECEIVER_STARTUP_COMPLETED` manifest 声明，保留 `AUTO_STARTUP` 启动原因下的 `startOnBoot` 处理，避免普通调试签名 HAP 安装被授权 ACL 拦截） |
 | 2026-06-19 | M3 | ✅ 节点去重 profile 语义完成（普通节点去重忽略备注、分享链接 fragment 与 runtime tag 差异；full/proxy-chain/policy-group 复杂节点按 v2rayNG 跳过；订阅保存去重与 Nodes 批量去重共用同一 helper；补单测） |

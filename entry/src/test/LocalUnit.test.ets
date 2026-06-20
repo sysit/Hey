@@ -468,7 +468,7 @@ export default function localUnitTest() {
 
     it('parses manual outbound configs back into NodeEdit state', 0, () => {
       const vless = parseManualOutboundEditState(
-        '{"protocol":"vless","tag":"Manual VLESS","browserDialerMode":"WebView","settings":{"vnext":[{"address":"edit.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none","flow":"xtls-rprx-vision-udp443"}]}]},"streamSettings":{"network":"xhttp","security":"reality","xhttpSettings":{"path":"/x","host":"cdn.example.com","mode":"packet-up","extra":{"headers":{"x-test":"1"}}},"realitySettings":{"serverName":"reality.example.com","publicKey":"pub","shortId":"abcd","spiderX":"/bot","mldsa65Verify":"pqv","fingerprint":"randomized","echConfigList":"ech","pinnedPeerCertSha256":"pcs"},"finalmask":{"tcp":[{"type":"custom"}]}}}',
+        '{"protocol":"vless","tag":"Manual VLESS","browserDialerMode":"WebView","settings":{"vnext":[{"address":"edit.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"custom-experimental","flow":"xtls-rprx-vision-udp443"}]}]},"streamSettings":{"network":"xhttp","security":"reality","xhttpSettings":{"path":"/x","host":"cdn.example.com","mode":"packet-up","extra":{"headers":{"x-test":"1"}}},"realitySettings":{"serverName":"reality.example.com","publicKey":"pub","shortId":"abcd","spiderX":"/bot","mldsa65Verify":"pqv","fingerprint":"randomized","echConfigList":"ech","pinnedPeerCertSha256":"pcs"},"finalmask":{"tcp":[{"type":"custom"}]}}}',
         'Node Name',
         'vless'
       );
@@ -476,6 +476,7 @@ export default function localUnitTest() {
       expect(vless.protocol).assertEqual('vless');
       expect(vless.nodeName).assertEqual('Node Name');
       expect(vless.serverHost).assertEqual('edit.example.com');
+      expect(vless.securityOrMethod).assertEqual('custom-experimental');
       expect(vless.vlessFlow).assertEqual('xtls-rprx-vision-udp443');
       expect(vless.transportType).assertEqual('xhttp');
       expect(vless.transportXhttpMode).assertEqual('packet-up');
