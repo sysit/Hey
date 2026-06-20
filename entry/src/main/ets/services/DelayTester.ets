@@ -1,4 +1,5 @@
 import { http, socket } from '@kit.NetworkKit';
+import { XrayConfigType } from '../core/Profile';
 import { DEFAULT_SOCKS_HOST, DELAY_TEST_SOCKS_PORT, buildDelayTestConfig } from '../core/XrayConfig';
 import { NativePingResult, getNativeFreePorts, pingNativeOutbound } from '../native/HeyNative';
 
@@ -53,11 +54,11 @@ export class DelayTester {
     }
   }
 
-  static async measureNodeOutbound(outboundJson: string, datDir: string, url: string, timeoutMs: number = 8000): Promise<DelayTestResult> {
+  static async measureNodeOutbound(outboundJson: string, datDir: string, url: string, timeoutMs: number = 8000, configType?: XrayConfigType): Promise<DelayTestResult> {
     let configJson = '';
     const socksPort = DelayTester.resolveDelayTestSocksPort();
     try {
-      configJson = buildDelayTestConfig(outboundJson, socksPort).configJson;
+      configJson = buildDelayTestConfig(outboundJson, socksPort, configType).configJson;
     } catch (error) {
       return {
         ok: false,

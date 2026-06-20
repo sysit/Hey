@@ -1793,19 +1793,76 @@ function buildXrayConfigFromOutbounds(
   };
 }
 
-export function buildDelayTestConfig(outboundJson: string, socksPort: number = DELAY_TEST_SOCKS_PORT): GeneratedXrayConfig {
-  const validation = validateOutboundJson(outboundJson);
+export function buildDelayTestConfig(configJson: string, socksPort: number = DELAY_TEST_SOCKS_PORT, configType?: XrayConfigType): GeneratedXrayConfig {
+  const validation = normalizeConfigInput(configJson, configType);
   if (!validation.valid) {
     throw new Error(validation.message);
+  }
+  if (validation.configType === 'full') {
+    throw new Error('完整自定义配置暂不支持真连接测速。');
+  }
+  if (validation.configType === 'proxy-chain') {
+    return buildProxyChainDelayTestConfig(validation.normalizedJson, socksPort);
+  }
+  if (validation.configType === 'policy-group') {
+    return buildPolicyGroupDelayTestConfig(validation.normalizedJson, socksPort);
   }
 
   const outbound = parseOutbound(validation.normalizedJson);
   if (outbound.tag === undefined || outbound.tag.length === 0) {
     outbound.tag = 'proxy';
   }
+  applyDelayTestOutboundSettings(outbound);
+  return buildDelayTestConfigFromOutbounds([outbound], socksPort);
+}
+
+function buildProxyChainDelayTestConfig(chainJson: string, socksPort: number): GeneratedXrayConfig {
+  const config = parseProxyChainConfig(chainJson);
+  const outbounds = new Array<XrayOutbound>();
+  for (let index = 0; index < config.outbounds.length; index++) {
+    const outbound = cloneOutbound(config.outbounds[index]);
+    outbound.tag = index === 0 ? 'proxy' : `proxy-chain-${index}`;
+    outbounds.push(outbound);
+  }
+  for (let index = 0; index < outbounds.length - 1; index++) {
+    const sockopt = ensureOutboundSockopt(outbounds[index]);
+    sockopt['dialerProxy'] = outbounds[index + 1].tag;
+  }
+  applyDelayTestOutboundsSettings(outbounds);
+  return buildDelayTestConfigFromOutbounds(outbounds, socksPort);
+}
+
+function buildPolicyGroupDelayTestConfig(groupJson: string, socksPort: number): GeneratedXrayConfig {
+  const config = parsePolicyGroupConfig(groupJson);
+  const runtime = buildPolicyGroupRuntime(config, undefined);
+  applyDelayTestOutboundsSettings(runtime.outbounds);
+  return buildDelayTestConfigFromOutbounds(runtime.outbounds, socksPort, runtime.balancer, runtime.observatory, runtime.burstObservatory);
+}
+
+function applyDelayTestOutboundsSettings(outbounds: Array<XrayOutbound>): void {
+  for (let index = 0; index < outbounds.length; index++) {
+    applyDelayTestOutboundSettings(outbounds[index]);
+  }
+}
+
+function applyDelayTestOutboundSettings(outbound: XrayOutbound): void {
   stripOutboundProfileMetadata(outbound);
+  applyXhttpModeParity(outbound);
+  applyTlsServerNameFallbackParity(outbound);
+  applyPinnedCertificateAllowInsecureParity(outbound);
+  applyHysteria2FinalMaskSettings(outbound);
+  applyHysteria2RuntimeShape(outbound);
   outbound.mux = undefined;
-  applyOutboundIdnHostParity([outbound]);
+}
+
+function buildDelayTestConfigFromOutbounds(
+  proxyOutbounds: Array<XrayOutbound>,
+  socksPort: number,
+  balancer?: XrayBalancerConfig,
+  observatory?: XrayObservatoryConfig,
+  burstObservatory?: XrayBurstObservatoryConfig
+): GeneratedXrayConfig {
+  applyOutboundIdnHostParity(proxyOutbounds);
 
   const socksInbound: XrayInboundConfig = {
     tag: 'socks-in',
@@ -1824,18 +1881,32 @@ export function buildDelayTestConfig(outboundJson: string, socksPort: number = D
     protocol: 'blackhole',
     settings: new EmptySettings()
   };
+  const proxyRule: XrayRoutingRule = {
+    type: 'field',
+    inboundTag: ['socks-in']
+  };
+  applyRoutingTarget(proxyRule, buildProxyRoutingTarget(balancer?.tag));
 
   const config: XrayFullConfig = {
     log: {
       loglevel: 'none'
     },
     inbounds: [socksInbound],
-    outbounds: [outbound, directOutbound, blockOutbound],
+    outbounds: proxyOutbounds.concat([directOutbound, blockOutbound]),
     routing: {
       domainStrategy: 'AsIs',
-      rules: []
+      rules: [proxyRule]
     }
   };
+  if (balancer !== undefined) {
+    config.routing.balancers = [balancer];
+  }
+  if (observatory !== undefined) {
+    config.observatory = observatory;
+  }
+  if (burstObservatory !== undefined) {
+    config.burstObservatory = burstObservatory;
+  }
 
   return {
     configJson: JSON.stringify(config),

@@ -1332,6 +1332,25 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"tag":"proxy"');
     });
 
+    it('builds v2rayNG-style delay test configs for advanced outbounds', 0, () => {
+      const chain = buildDelayTestConfig(PROXY_CHAIN_CONFIG, 19084, 'proxy-chain');
+      expect(chain.configJson).assertContain('"tag":"socks-in"');
+      expect(chain.configJson).assertContain('"tag":"proxy-chain-1"');
+      expect(chain.configJson).assertContain('"dialerProxy":"proxy-chain-1"');
+      expect(chain.configJson).assertContain('"inboundTag":["socks-in"]');
+      expect(chain.configJson).assertContain('"outboundTag":"proxy"');
+      expect(chain.configJson.indexOf('"tun-in"')).assertEqual(-1);
+      expect(chain.configJson.indexOf('"mux"')).assertEqual(-1);
+
+      const policy = buildDelayTestConfig(POLICY_GROUP_CONFIG, 19085, 'policy-group');
+      expect(policy.configJson).assertContain('"tag":"socks-in"');
+      expect(policy.configJson).assertContain('"tag":"proxy-policy-group-1"');
+      expect(policy.configJson).assertContain('"balancerTag":"balancer"');
+      expect(policy.configJson).assertContain('"balancers":[{"tag":"balancer"');
+      expect(policy.configJson.indexOf('"tun-in"')).assertEqual(-1);
+      expect(policy.configJson.indexOf('"mux"')).assertEqual(-1);
+    });
+
     it('applies hysteria2 bandwidth and masks to runtime finalmask', 0, () => {
       const hysteria2 = buildManualHysteria2Outbound({
         tag: 'HY2',

@@ -1,4 +1,4 @@
-import { DEFAULT_DELAY_TEST_URL_SECONDARY, ProxyProfile, resolveDelayTestUrl } from '../core/Profile';
+import { DEFAULT_DELAY_TEST_URL_SECONDARY, ProxyProfile, XrayConfigType, resolveDelayTestUrl } from '../core/Profile';
 import { DelayTester, DelayTestResult } from './DelayTester';
 
 export interface RuntimeDelayResult extends DelayTestResult {
@@ -29,14 +29,15 @@ export async function measureRuntimeProfileDelay(
   if (!canMeasureRuntimeDelayProfile(profile)) {
     return failedRuntimeDelay('unsupported-config', [], '', false);
   }
-  return measureRuntimeOutboundDelay(profile.outboundJson, datDir, delayTestUrl, timeoutMs);
+  return measureRuntimeOutboundDelay(profile.outboundJson, datDir, delayTestUrl, timeoutMs, profile.configType);
 }
 
 export async function measureRuntimeOutboundDelay(
   outboundJson: string,
   datDir: string,
   delayTestUrl: string,
-  timeoutMs: number = 8000
+  timeoutMs: number = 8000,
+  configType?: XrayConfigType
 ): Promise<RuntimeDelayResult> {
   const urls = resolveRuntimeDelayTestUrls(delayTestUrl);
   let lastResult: DelayTestResult = {
@@ -46,7 +47,7 @@ export async function measureRuntimeOutboundDelay(
   };
   for (let index = 0; index < urls.length; index++) {
     const url = urls[index];
-    lastResult = await DelayTester.measureNodeOutbound(outboundJson, datDir, url, timeoutMs);
+    lastResult = await DelayTester.measureNodeOutbound(outboundJson, datDir, url, timeoutMs, configType);
     if (lastResult.ok) {
       return {
         ok: true,

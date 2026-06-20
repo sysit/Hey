@@ -1492,7 +1492,7 @@ struct Index {
 
   private async measureNodeRealDelay(node: ProxyNode, context: common.Context, timeoutMs: number): Promise<DelayTestResult> {
     const url = resolveDelayTestUrl(this.currentSettings.delayTestUrl);
-    return DelayTester.measureNodeOutbound(node.outboundJson, context.filesDir, url, timeoutMs);
+    return DelayTester.measureNodeOutbound(node.outboundJson, context.filesDir, url, timeoutMs, node.configType);
   }
 
   private async measureNodeDelayBatch(batch: Array<ProxyNode>, context: common.Context, mode: NodeDelayTestMode): Promise<Array<NodeDelayBatchResult>> {
