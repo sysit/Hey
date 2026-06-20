@@ -6,7 +6,6 @@ import { AppLanguage } from '../core/Profile';
 import { CURRENT_APP_VERSION, HEY_RELEASES_PAGE_URL } from '../core/UpdateChecker';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
-import { nativeXrayVersion } from '../native/HeyNative';
 import { UPDATE_CHECKER_MANAGER } from '../services/UpdateCheckerManager';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
@@ -22,6 +21,7 @@ struct AboutPage {
   @State private isCheckingUpdate: boolean = false;
   @State private coreVersion: string = '';
   @State private checkUpdatePreRelease: boolean = false;
+  @State private isStateLoaded: boolean = false;
 
   aboutToAppear(): void {
     this.loadState();
@@ -29,163 +29,176 @@ struct AboutPage {
 
   build() {
     Column() {
-      PageHeader({
-        title: this.t('screen.about.title'),
-        showBack: true
-      })
-      Scroll() {
-        Column({ space: Space.lg }) {
-          // Logo 与版本区
-          Column({ space: Space.sm }) {
-            Column() {
-              Image($r('app.media.startIcon'))
-                .width(64)
-                .height(64)
-                .borderRadius(14)
+      if (this.isStateLoaded) {
+        PageHeader({
+          title: this.t('screen.about.title'),
+          showBack: true
+        })
+        Scroll() {
+          Column({ space: Space.lg }) {
+            // Logo 与版本区
+            Column({ space: Space.sm }) {
+              Column() {
+                Image($r('app.media.startIcon'))
+                  .width(64)
+                  .height(64)
+                  .borderRadius(14)
+              }
+              .width(88)
+              .height(88)
+              .backgroundColor(AppColor.surface)
+              .borderRadius(Radius.xl)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(HorizontalAlign.Center)
+              .margin({ bottom: Space.sm })
+
+              Text('Hey')
+                .fontSize(FontSz.title)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(AppColor.textPrimary)
+
+              Text(this.t('about.section.detail'))
+                .fontSize(FontSz.body)
+                .fontColor(AppColor.textSecondary)
+                .textAlign(TextAlign.Center)
+                .padding({ left: Space.xxl, right: Space.xxl })
             }
-            .width(88)
-            .height(88)
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.xl)
-            .justifyContent(FlexAlign.Center)
             .alignItems(HorizontalAlign.Center)
-            .margin({ bottom: Space.sm })
+            .width('100%')
+            .padding({ top: Space.xxl, bottom: Space.sm })
 
-            Text('Hey')
-              .fontSize(FontSz.title)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(AppColor.textPrimary)
+            // 资源与更新
+            SectionHeader({ title: this.t('about.section.resources') })
+            Column() {
+              AboutItem({
+                title: this.t('about.official.title'),
+                detail: this.t('about.official.detail'),
+                onAction: () => {
+                  this.openUrl('https://github.com/popsiclelmlm/Hey', this.t('about.official.title'));
+                }
+              })
+              this.RowDivider()
+              AboutItem({
+                title: this.t('about.issues.title'),
+                detail: this.t('about.issues.detail'),
+                onAction: () => {
+                  this.openUrl('https://github.com/popsiclelmlm/Hey/issues', this.t('about.issues.title'));
+                }
+              })
+              this.RowDivider()
+              AboutItem({
+                title: this.t('about.update.title'),
+                detail: this.f1('about.update.detail', 'version', CURRENT_APP_VERSION),
+                isChecking: this.isCheckingUpdate,
+                onAction: () => {
+                  this.checkUpdate();
+                }
+              })
+              this.RowDivider()
+              AboutToggleItem({
+                title: this.t('about.update.preRelease'),
+                detail: this.t('about.update.preRelease.detail'),
+                isEnabled: this.checkUpdatePreRelease,
+                onToggle: () => {
+                  this.toggleCheckUpdatePreRelease();
+                }
+              })
+            }
+            .backgroundColor(AppColor.surface)
+            .borderRadius(Radius.lg)
+            .width('100%')
+            .clip(true)
+            .margin({ left: Space.lg, right: Space.lg })
 
-            Text(this.t('about.section.detail'))
-              .fontSize(FontSz.body)
-              .fontColor(AppColor.textSecondary)
-              .textAlign(TextAlign.Center)
-              .padding({ left: Space.xxl, right: Space.xxl })
+            // 技术规格
+            SectionHeader({ title: this.t('about.section.technical') })
+            Column() {
+              AboutItem({
+                title: this.t('about.source.title'),
+                detail: this.t('about.source.detail'),
+                onAction: () => {
+                  this.openUrl(V2RAYNG_SOURCE_URL, this.t('about.source.title'));
+                }
+              })
+              this.RowDivider()
+              AboutItem({
+                title: this.t('about.core.title'),
+                detail: this.coreVersion.length > 0 ? `Xray-core ${this.coreVersion}` : this.t('about.core.detail'),
+                onAction: () => {
+                  this.openUrl('https://github.com/XTLS/Xray-core', this.t('about.core.title'));
+                }
+              })
+              this.RowDivider()
+              AboutItem({
+                title: this.t('about.license.title'),
+                detail: this.t('about.license.detail'),
+                onAction: () => {
+                  SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.presetOpened', 'title', this.t('about.license.title')));
+                  promptAction.showToast({ message: this.t('about.license.detail') });
+                }
+              })
+            }
+            .backgroundColor(AppColor.surface)
+            .borderRadius(Radius.lg)
+            .width('100%')
+            .clip(true)
+            .margin({ left: Space.lg, right: Space.lg })
+
+            // 社区与开发者
+            SectionHeader({ title: this.t('about.section.community') })
+            Column() {
+              AboutItem({
+                title: this.t('about.telegram.title'),
+                detail: this.t('about.telegram.detail'),
+                onAction: () => {
+                  this.openUrl('https://t.me/HeyClient', this.t('about.telegram.title'));
+                }
+              })
+              this.RowDivider()
+              AboutItem({
+                title: this.t('about.author.title'),
+                detail: this.t('about.author.detail'),
+                onAction: () => {
+                  this.openUrl('https://github.com/popsiclelmlm', this.t('about.author.title'));
+                }
+              })
+            }
+            .backgroundColor(AppColor.surface)
+            .borderRadius(Radius.lg)
+            .width('100%')
+            .clip(true)
+            .margin({ left: Space.lg, right: Space.lg })
+
+            // 版权信息
+            Column({ space: Space.xs }) {
+              Text('Made with ❤️ for HarmonyOS NEXT')
+                .fontSize(FontSz.caption)
+                .fontColor(AppColor.textTertiary)
+              Text('Copyright © 2026 Hey Team. All rights reserved.')
+                .fontSize(FontSz.caption)
+                .fontColor(AppColor.textTertiary)
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Center)
+            .margin({ top: Space.sm, bottom: Space.lg })
           }
           .width('100%')
-          .alignItems(HorizontalAlign.Center)
-          .padding({ top: Space.xxl, bottom: Space.sm })
-
-          // 资源与更新
-          SectionHeader({ title: '资源与更新' })
-          Column() {
-            AboutItem({
-              title: this.t('about.official.title'),
-              detail: this.t('about.official.detail'),
-              onAction: () => {
-                this.openUrl('https://github.com/popsiclelmlm/Hey', this.t('about.official.title'));
-              }
-            })
-            this.RowDivider()
-            AboutItem({
-              title: this.t('about.issues.title'),
-              detail: this.t('about.issues.detail'),
-              onAction: () => {
-                this.openUrl('https://github.com/popsiclelmlm/Hey/issues', this.t('about.issues.title'));
-              }
-            })
-            this.RowDivider()
-            AboutItem({
-              title: this.t('about.update.title'),
-              detail: this.f1('about.update.detail', 'version', CURRENT_APP_VERSION),
-              isChecking: this.isCheckingUpdate,
-              onAction: () => {
-                this.checkUpdate();
-              }
-            })
-            this.RowDivider()
-            AboutToggleItem({
-              title: this.t('about.update.preRelease'),
-              detail: this.t('about.update.preRelease.detail'),
-              isEnabled: this.checkUpdatePreRelease,
-              onToggle: () => {
-                this.toggleCheckUpdatePreRelease();
-              }
-            })
-          }
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .width('100%')
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          // 技术规格
-          SectionHeader({ title: '技术规格' })
-          Column() {
-            AboutItem({
-              title: this.t('about.source.title'),
-              detail: this.t('about.source.detail'),
-              onAction: () => {
-                this.openUrl(V2RAYNG_SOURCE_URL, this.t('about.source.title'));
-              }
-            })
-            this.RowDivider()
-            AboutItem({
-              title: this.t('about.core.title'),
-              detail: this.coreVersion.length > 0 ? `Xray-core ${this.coreVersion}` : this.t('about.core.detail'),
-              onAction: () => {
-                this.openUrl('https://github.com/XTLS/Xray-core', this.t('about.core.title'));
-              }
-            })
-            this.RowDivider()
-            AboutItem({
-              title: this.t('about.license.title'),
-              detail: this.t('about.license.detail'),
-              onAction: () => {
-                SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.presetOpened', 'title', this.t('about.license.title')));
-                promptAction.showToast({ message: this.t('about.license.detail') });
-              }
-            })
-          }
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .width('100%')
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          // 社区与开发者
-          SectionHeader({ title: '社区与开发者' })
-          Column() {
-            AboutItem({
-              title: this.t('about.telegram.title'),
-              detail: this.t('about.telegram.detail'),
-              onAction: () => {
-                this.openUrl('https://t.me/HeyClient', this.t('about.telegram.title'));
-              }
-            })
-            this.RowDivider()
-            AboutItem({
-              title: this.t('about.author.title'),
-              detail: this.t('about.author.detail'),
-              onAction: () => {
-                this.openUrl('https://github.com/popsiclelmlm', this.t('about.author.title'));
-              }
-            })
-          }
-          .backgroundColor(AppColor.surface)
-          .borderRadius(Radius.lg)
-          .width('100%')
-          .clip(true)
-          .margin({ left: Space.lg, right: Space.lg })
-
-          // 版权信息
-          Column({ space: Space.xs }) {
-            Text('Made with ❤️ for HarmonyOS NEXT')
-              .fontSize(FontSz.caption)
-              .fontColor(AppColor.textTertiary)
-            Text('Copyright © 2026 Hey Team. All rights reserved.')
-              .fontSize(FontSz.caption)
-              .fontColor(AppColor.textTertiary)
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Center)
-          .margin({ top: Space.sm, bottom: Space.lg })
+          .padding({ top: Space.sm, bottom: Space.xxl })
         }
+        .layoutWeight(1)
         .width('100%')
-        .padding({ top: Space.sm, bottom: Space.xxl })
+      } else {
+        Column() {
+          LoadingProgress()
+            .width(48)
+            .height(48)
+            .color(AppColor.brand)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
       }
-      .layoutWeight(1)
-      .width('100%')
     }
     .height('100%')
     .width('100%')
@@ -218,7 +231,7 @@ struct AboutPage {
         systemPasteboard.setDataSync(pasteData);
         promptAction.showToast({ message: this.t('about.action.copied') });
       } catch (clipboardError) {
-        promptAction.showToast({ message: '操作失败，请重试' });
+        promptAction.showToast({ message: this.t('about.action.failed') });
       }
     }
   }
@@ -255,10 +268,7 @@ struct AboutPage {
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
     this.checkUpdatePreRelease = settings.checkUpdatePreRelease;
-    const version = nativeXrayVersion();
-    if (version.ok && version.message.length > 0) {
-      this.coreVersion = version.message;
-    }
+    this.isStateLoaded = true;
   }
 
   private async toggleCheckUpdatePreRelease(): Promise<void> {

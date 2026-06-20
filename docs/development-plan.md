@@ -24,7 +24,7 @@
 | 领域 | 现状 | 缺口 |
 | --- | --- | --- |
 | 真机 VPN 闭环 | ✅ **已真机验证通过（2026-06-15）**：`TUN fd → CGoSetTunFd → Xray native TUN → 出站` 端到端可上网 | 阻塞项解除，主线推进至 M1 |
-| Native 桥接 | M1 已接通当前打包库导出的 12 个 CGo 符号（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），且预构建 `libxray.so` 已重建并验证导出符号 | **待真机复测**流量、预检、版本、Geo 计数、动态端口与 native 分享转换；上游旧入口 `CGoRunXray` 不作为 Hey 运行目标 |
+| Native 桥接 | M1 已接通当前打包库导出的 12 个 CGo 符号（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），且预构建 `libxray.so` 已重建并验证导出符号；`CGoXrayVersion` 在当前模拟器会触发 native SIGSEGV，About 已先禁用直接调用并显示安全 fallback | **待真机复测/修复**流量、预检、版本、Geo 计数、动态端口与 native 分享转换；上游旧入口 `CGoRunXray` 不作为 Hey 运行目标 |
 | 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules`，规则集可按 v2rayNG 从剪贴板或二维码 JSON 导入并保留 locked 规则，`routeOnly` 会控制 sniffing routeOnly；process 规则输出按 v2rayNG `canUseProcessRouting` 受 `routeOnly` 与 Hev TUN 共同约束，并在可用时将包名解析为 Harmony app UID；生成 Xray routing 时会按 v2rayNG 将 `geoip:cn/private` 改写为 `geoip-only-cn-private.dat` ext 引用 | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + v2rayNG 风格每订阅独立 WorkScheduler 后台调度；订阅列表页摘要/空态/本地节点数量/未更新状态和批量/自动更新结果提示跟随当前语言；订阅详情页页头摘要、订阅链接区、更新按钮、节点列表和空态跟随当前语言；订阅编辑页保存/回填 v2rayNG `prevProfile`/`nextProfile` 备注字段，且字段、占位符、校验与保存按钮跟随当前语言；订阅请求保留自定义 User-Agent，按 v2rayNG 支持 URL 内嵌 `user:pass@host` Basic Auth，并会将非 ASCII host 转 punycode 后请求；本地 SOCKS 入口按 v2rayNG 默认开启，可供代理经由能力使用 | 待真机触发回归后台唤醒路径 |
 | 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情可按 v2rayNG `shareFullContent2Clipboard` 复制完整运行配置；URL-style 普通 TCP 节点导出会按 v2rayNG 写出 `security/type/headerType` 默认 query，并按 `FmtBase.toUri` 将 IDN server/endpoint host 转 punycode；剪贴板导入路径不声明受限 Harmony `READ_PASTEBOARD`，读取失败由各入口现有提示处理；运行中导入/扫码/新增/选择当前节点后会标记待重启，返回首页自动应用新配置 | 仍待真机回归不同分享目标兼容性 |
@@ -77,7 +77,9 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - 构建：`scripts/build_libxray_ohos.sh` 的 version-script 增导出三个符号（原仅导出 4 个）
 - Native：`napi_init.cpp` 新增 `queryStats`/`testXrayConfig`/`xrayVersion`，符号缺失时优雅降级
 - 配置：`XrayConfig.ets` 按 `speedEnabled` 增 `stats/metrics/policy` + `metrics_in` dokodemo inbound（127.0.0.1:10845）+ 路由规则
-- 消费：VPN 扩展 `recordStats()` 查 metrics 端点写真实上下行；启动前 `CGoTestXray` 预检；About 页显示内核版本
+- 消费：VPN 扩展 `recordStats()` 查 metrics 端点写真实上下行；启动前 `CGoTestXray` 预检；`CGoXrayVersion` 原计划供 About 显示内核版本，但当前模拟器调用会触发 native SIGSEGV，About 已先禁用直接调用并显示安全 fallback
+
+**进展（2026-06-20 续）**：About 页进入崩溃修复：进入 About 时不再直接调用 `CGoXrayVersion`，避免 `libxray.so` SIGSEGV 让应用退回上一前台应用；核心版本展示仍列为 native 复测/修复项。
 
 **进展（2026-06-18 续）**：`CGoReadGeoFiles`/`CGoCountGeoData` 接线完成：
 - 构建：version-script 继续导出 `CGoReadGeoFiles`/`CGoCountGeoData`
@@ -104,7 +106,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 **任务**（按性价比排序）
 1. `CGoQueryStats` → 真实上下行流量统计，替换当前 C++ 侧近似计数
 2. `CGoTestXray` → 连接前配置预检，减少启动失败、提前报错
-3. `CGoXrayVersion` → About 页显示真实内核版本
+3. `CGoXrayVersion` → About 页显示真实内核版本（当前已安全降级，待 native 调用稳定后恢复）
 4. ✅ `CGoReadGeoFiles` / `CGoCountGeoData` → geo 文件校验与计数（Assets 页展示条目数，2026-06-18）
 5. ✅ `CGoConvertShareLinksToXrayJson` / `CGOConvertXrayJsonToShareLinks` → 分享文本与 Xray JSON 互转（导入兜底已用，2026-06-18）
 
@@ -440,7 +442,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | --- | --- | --- |
 | 2026-06-05 | — | 基于实测建立"稳步推进版"开发计划；确认扫码/分应用已落地，标注内核接线、路由、订阅自动更新、深链、二维码为后续重点 |
 | 2026-06-15 | M0 | ✅ 真机数据通路闭环验证通过（TUN→Xray→出站→可上网），阻塞项解除；主线切至 M1 内核接线 |
-| 2026-06-15 | M1 | 🟡 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion` 全链路接线（构建脚本+native+XrayConfig metrics+扩展/About 消费）；`.so` 已重建，待真机复测 |
+| 2026-06-15 | M1 | 🟡 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion` 全链路接线（构建脚本+native+XrayConfig metrics+扩展；About 的 `CGoXrayVersion` 消费因模拟器 native crash 先安全降级）；`.so` 已重建，待真机复测 |
 | 2026-06-15 | M2 | ✅ 广告拦截路由真正生效（`adBlockEnabled` 开关 → `geosite:category-ads-all` → block）；纠正实测：去重/自定义 UA 早已落地 |
 | 2026-06-15 | M3 | ✅ 订阅正则过滤 `filter` 全链路（分组字段 + 编辑页 + 更新/更新全部按节点名筛选，零匹配/无效回退全部） |
 | 2026-06-15 | M3 | ✅ 测速后自动操作（`autoSortAfterTest`/`autoRemoveInvalidAfterTest` 设置项 + 设置页「节点测速」开关 + 批量测速后排序/删超时） |
@@ -560,6 +562,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-20 | M4 | ✅ JSON 导入页本地化完成（粘贴/选择文件/清除、占位符、说明、校验状态、文件读取和导入/保存错误均走 i18n；模拟器英文布局验证 `Choose file`、`Note: you can import` 且无旧中文按钮/说明残留） |
 | 2026-06-20 | M4 | ✅ 订阅详情页本地化完成（页头节点数、订阅链接分组、获取并更新按钮、节点列表分组和空态均走 i18n；模拟器英文布局验证 `Subscription URL`、`Update nodes`、`Node list` 且无旧中文文案残留） |
 | 2026-06-20 | M4 | ✅ 订阅列表页本地化完成（订阅分组页摘要/空态/本地节点数量/未更新状态与批量/自动更新结果 toast 均走 i18n；模拟器英文布局验证 `1 subscription group` 且无旧中文摘要残留） |
+| 2026-06-20 | M4 | ✅ About 页本地化补齐（资源更新、技术规格、社区开发者分区标题和打开链接失败提示均走 i18n；模拟器英文布局验证分区/条目同语种、无旧中文残留，且进入 About 不再触发 `CGoXrayVersion` native crash） |
 | 2026-06-18 | M4 | 🟡 常驻速度通知代码完成（`SpeedNotificationManager` 接 Harmony NotificationKit，运行中且 speedEnabled 开启时每 3 秒刷新速率/累计流量，停止或关闭设置时取消，补速率/节流文案单测）；待真机通知权限与通知中心展示回归 |
 | 2026-06-18 | M4 | 🟡 桌面服务卡片基础入口完成（`ControlCardAbility` + `form_config` + 2×2 ArkTS 卡片，提供 toggle/start/stop/scan 四个 `FormLink` 控制深链，补卡片 URI 单测）；待真机添加卡片、点击调起与运行态动态刷新回归 |
 | 2026-06-18 | M4 | 🟡 桌面服务卡片动态状态刷新代码完成（保存卡片 formId 与最近运行态，首页运行态变化同步状态文案、详情、主按钮动作并按 3 秒节流通过 `formProvider.updateForm` 刷新）；待真机添加卡片、点击调起与系统刷新回归 |
