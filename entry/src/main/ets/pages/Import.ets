@@ -11,6 +11,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { convertNativeShareTextToOutbounds } from '../services/NativeShareConverter';
+import { formatOne } from '../utils/LocalizationPresenter';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 @Entry
@@ -78,7 +79,7 @@ struct ImportPage {
   // 1. 扫码与链接导入区
   @Builder
   private LinkImportSection() {
-    SectionHeader({ title: '扫码与链接导入' })
+    SectionHeader({ title: this.t('import.linkSection') })
     Column() {
       Row() {
         Image($r('app.media.ic_link'))
@@ -88,7 +89,7 @@ struct ImportPage {
           .margin({ left: Space.lg, right: Space.sm })
 
         TextInput({
-          placeholder: '输入或粘贴节点连接 URL',
+          placeholder: this.t('import.linkPlaceholder'),
           text: this.importBuffer
         })
           .layoutWeight(1)
@@ -127,7 +128,7 @@ struct ImportPage {
     .clip(true)
     .margin({ left: Space.lg, right: Space.lg })
 
-    Text('粘贴分享链接（如 vless://、vmess://、ss://、socks5://、wireguard://、hy2:// 等）或点击扫码解析。')
+    Text(this.t('import.linkDetail'))
       .fontSize(FontSz.footnote)
       .fontColor(AppColor.textTertiary)
       .width('100%')
@@ -144,7 +145,7 @@ struct ImportPage {
               .color(AppColor.onBrand)
               .margin({ right: Space.xs + 2 })
           }
-          Text('解析并导入')
+          Text(this.t('import.parseButton'))
             .fontSize(FontSz.callout)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.importBuffer.trim().length > 0 ? AppColor.onBrand : AppColor.textTertiary)
@@ -165,7 +166,7 @@ struct ImportPage {
             .width(18)
             .height(18)
             .fillColor(AppColor.textSecondary)
-          Text('扫码')
+          Text(this.t('import.scanButton'))
             .fontSize(FontSz.callout)
             .fontWeight(FontWeight.Medium)
             .fontColor(AppColor.textSecondary)
@@ -186,7 +187,7 @@ struct ImportPage {
   // 2. 手动协议配置列表
   @Builder
   private ManualGridSection() {
-    SectionHeader({ title: '手动配置节点' })
+    SectionHeader({ title: this.t('import.manualSection') })
     Column() {
       this.ProtocolRow('vless')
       this.RowDivider()
@@ -215,11 +216,11 @@ struct ImportPage {
   private ProtocolRow(protocol: string) {
     Row({ space: Space.md }) {
       Column({ space: 3 }) {
-        Text(protocol === 'hysteria2' ? 'HY2' : protocol.toUpperCase())
+        Text(this.protocolDisplayTitle(protocol))
           .fontSize(FontSz.callout)
           .fontWeight(FontWeight.Medium)
           .fontColor(AppColor.textPrimary)
-        Text(`${protocol === 'ss' ? 'Shadowsocks' : (protocol === 'wireguard' ? 'WireGuard' : (protocol === 'hysteria2' ? 'Hysteria 2' : protocol.toUpperCase()))} 协议`)
+        Text(this.f1('import.protocolDetail', 'protocol', this.protocolDisplayName(protocol)))
           .fontSize(FontSz.footnote)
           .fontColor(AppColor.textTertiary)
       }
@@ -244,17 +245,17 @@ struct ImportPage {
   // 3. 代理链 / 策略组配置入口
   @Builder
   private AdvancedConfigSection() {
-    SectionHeader({ title: '高级配置' })
+    SectionHeader({ title: this.t('import.advancedSection') })
     Column() {
       this.AdvancedOutboundRow(
-        this.t('advancedOutbound.proxyChain'),
-        this.t('advancedOutbound.proxyChain.detail'),
+        'advancedOutbound.proxyChain',
+        'advancedOutbound.proxyChain.detail',
         'proxy-chain'
       )
       this.RowDivider()
       this.AdvancedOutboundRow(
-        this.t('advancedOutbound.policyGroup'),
-        this.t('advancedOutbound.policyGroup.detail'),
+        'advancedOutbound.policyGroup',
+        'advancedOutbound.policyGroup.detail',
         'policy-group'
       )
     }
@@ -266,7 +267,7 @@ struct ImportPage {
   }
 
   @Builder
-  private AdvancedOutboundRow(title: string, detail: string, mode: string) {
+  private AdvancedOutboundRow(titleKey: string, detailKey: string, mode: string) {
     Row({ space: Space.md }) {
       Image($r('app.media.ic_route'))
         .width(20)
@@ -274,11 +275,11 @@ struct ImportPage {
         .fillColor(AppColor.brand)
 
       Column({ space: 3 }) {
-        Text(title)
+        Text(this.t(titleKey))
           .fontSize(FontSz.callout)
           .fontWeight(FontWeight.Medium)
           .fontColor(AppColor.textPrimary)
-        Text(detail)
+        Text(this.t(detailKey))
           .fontSize(FontSz.footnote)
           .fontColor(AppColor.textTertiary)
           .maxLines(1)
@@ -305,15 +306,15 @@ struct ImportPage {
   // 4. 自定义 JSON 导入入口
   @Builder
   private JsonImportSection() {
-    SectionHeader({ title: '自定义配置' })
+    SectionHeader({ title: this.t('import.jsonSection') })
     Column() {
       Row({ space: Space.md }) {
         Column({ space: 3 }) {
-          Text('导入 JSON 配置')
+          Text(this.t('import.jsonTitle'))
             .fontSize(FontSz.callout)
             .fontWeight(FontWeight.Medium)
             .fontColor(AppColor.textPrimary)
-          Text('粘贴或选择文件导入 Xray outbound JSON / 完整配置。')
+          Text(this.t('import.jsonDetail'))
             .fontSize(FontSz.footnote)
             .fontColor(AppColor.textTertiary)
             .maxLines(1)
@@ -345,7 +346,7 @@ struct ImportPage {
       const context = getContext(this) as common.Context;
       this.language = (await SETTINGS_CONTROLLER.load(context)).language;
     } catch (error) {
-      this.lastError = '加载页面配置失败：' + JSON.stringify(error);
+      this.lastError = this.f1('import.loadStateFailed', 'error', JSON.stringify(error));
     }
   }
 
@@ -396,18 +397,20 @@ struct ImportPage {
         }
 
         markRuntimeSettingsRestartNeeded();
-        promptAction.showToast({ message: importedCount === 1 ? '节点解析成功' : `已导入 ${importedCount} 个节点` });
+        promptAction.showToast({
+          message: importedCount === 1 ? this.t('import.nodeImported') : this.f1('import.nodesImported', 'count', importedCount.toString())
+        });
         router.back();
         return;
       }
 
-      const nodeName = resolveImportedNodeName(saved.profile.outboundJson, '链接导入');
+      const nodeName = resolveImportedNodeName(saved.profile.outboundJson, this.t('import.linkNodeName'));
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
       markRuntimeSettingsRestartNeeded();
-      promptAction.showToast({ message: '节点解析成功' });
+      promptAction.showToast({ message: this.t('import.nodeImported') });
       router.back();
     } catch (error) {
-      this.lastError = '解析失败：' + JSON.stringify(error);
+      this.lastError = this.f1('import.parseFailed', 'error', JSON.stringify(error));
     } finally {
       this.isBusy = false;
     }
@@ -415,5 +418,26 @@ struct ImportPage {
 
   private t(key: string): string {
     return translate(this.language, key);
+  }
+
+  private f1(key: string, name: string, value: string): string {
+    return formatOne(this.language, key, name, value);
+  }
+
+  private protocolDisplayTitle(protocol: string): string {
+    return protocol === 'hysteria2' ? 'HY2' : protocol.toUpperCase();
+  }
+
+  private protocolDisplayName(protocol: string): string {
+    if (protocol === 'ss') {
+      return 'Shadowsocks';
+    }
+    if (protocol === 'wireguard') {
+      return 'WireGuard';
+    }
+    if (protocol === 'hysteria2') {
+      return 'Hysteria 2';
+    }
+    return protocol.toUpperCase();
   }
 }
