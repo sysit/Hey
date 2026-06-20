@@ -36,6 +36,7 @@ struct RoutingPage {
   @State private ruleDialogTitle: string = '';
   @State private editingRuleId: string = '';
   @State private advancedOutboundTargets: Array<string> = [];
+  @State private isStateLoaded: boolean = false;
   @State private initialRule: RoutingRule = {
     id: '',
     remarks: '',
@@ -62,108 +63,121 @@ struct RoutingPage {
   build() {
     Stack() {
       Column() {
-        PageHeader({
-          title: this.t('screen.routing.title'),
-          summary: this.t(`routing.mode.${this.trafficMode}`),
-          showBack: true
-        })
+        if (this.isStateLoaded) {
+          PageHeader({
+            title: this.t('screen.routing.title'),
+            summary: this.t(`routing.mode.${this.trafficMode}`),
+            showBack: true
+          })
 
-        Scroll() {
-          Column({ space: Space.lg }) {
+          Scroll() {
+            Column({ space: Space.lg }) {
 
-            // 流量模式
-            SectionHeader({ title: this.t('routing.trafficMode') })
-            Column() {
-              this.TrafficModeRow('global', this.t('routing.mode.global'), '所有流量代理', $r('app.media.ic_route'))
-              this.RowDivider()
-              this.TrafficModeRow('rules', this.t('routing.mode.rules'), '按规则智能分流', $r('app.media.ic_settings'))
-              this.RowDivider()
-              this.TrafficModeRow('direct', this.t('routing.mode.direct'), '所有流量直连', $r('app.media.ic_share'))
-
-              if (this.trafficMode === 'rules') {
+              // 流量模式
+              SectionHeader({ title: this.t('routing.trafficMode') })
+              Column() {
+                this.TrafficModeRow('global', this.t('routing.mode.global'), this.t('routing.mode.global.subtitle'), $r('app.media.ic_route'))
                 this.RowDivider()
-                this.RouteOnlyRow()
-              }
-            }
-            .width('100%')
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.lg)
-            .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
-
-            this.GroupFooter(this.getTrafficModeDescription())
-
-            // 域名策略
-            SectionHeader({ title: this.t('routing.domainStrategy') })
-            Column() {
-              this.StrategyRow('AsIs', '仅用域名 (AsIs)', '直接使用域名进行匹配分流，解析效率最高，但不匹配 IP 类规则。')
-              this.RowDivider()
-              this.StrategyRow('IPIfNonMatch', '未匹配时解析 (IPIfNonMatch)', '域名未命中任何规则时，解析为 IP 再次匹配。推荐配置，兼顾速度与准确性。')
-              this.RowDivider()
-              this.StrategyRow('IPOnDemand', '按需解析 (IPOnDemand)', '在规则匹配到 IP 规则时才发起 DNS 解析，适用于较严格的分流场景。')
-            }
-            .width('100%')
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.lg)
-            .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
-
-            // 预置规则集
-            SectionHeader({ title: '预置规则集' })
-            Column() {
-              this.PresetRow(
-                this.t('routing.global.title'),
-                this.t('routing.global.detail'),
-                $r('app.media.ic_route'),
-                '• 匹配规则：所有入站请求均被路由到代理出站(proxy)\n• 场景应用：不需要区分内外网，完全通过代理节点访问网络'
-              )
-              this.RowDivider()
-              this.PresetRow(
-                this.t('routing.bypassLanCn.title'),
-                this.t('routing.bypassLanCn.detail'),
-                $r('app.media.ic_link'),
-                '• 匹配规则：\n  - 局域网私有IP (geoip:private) -> 直连(direct)\n  - 境内IP网段 (geoip:cn) -> 直连(direct)\n  - 境内常见域名 (geosite:cn) -> 直连(direct)\n• 其它未匹配流量自动通过代理出站'
-              )
-              this.RowDivider()
-              this.AdBlockRow()
-            }
-            .width('100%')
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.lg)
-            .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
-
-            SectionHeader({ title: this.t('routing.customRulesets.title') })
-            Column() {
-              this.CustomRulesHeader()
-              if (this.routingRules.length === 0) {
+                this.TrafficModeRow('rules', this.t('routing.mode.rules'), this.t('routing.mode.rules.subtitle'), $r('app.media.ic_settings'))
                 this.RowDivider()
-                this.EmptyCustomRulesRow()
-              } else {
-                ForEach(this.routingRules, (rule: RoutingRule, index: number) => {
+                this.TrafficModeRow('direct', this.t('routing.mode.direct'), this.t('routing.mode.direct.subtitle'), $r('app.media.ic_share'))
+
+                if (this.trafficMode === 'rules') {
                   this.RowDivider()
-                  this.CustomRuleRow(rule, index)
-                }, (rule: RoutingRule) => rule.id)
+                  this.RouteOnlyRow()
+                }
               }
+              .width('100%')
+              .backgroundColor(AppColor.surface)
+              .borderRadius(Radius.lg)
+              .clip(true)
+              .margin({ left: Space.lg, right: Space.lg })
+
+              this.GroupFooter(this.getTrafficModeDescription())
+
+              // 域名策略
+              SectionHeader({ title: this.t('routing.domainStrategy') })
+              Column() {
+                this.StrategyRow('AsIs', this.t('routing.strategy.asIs.title'), this.t('routing.strategy.asIs.detail'))
+                this.RowDivider()
+                this.StrategyRow('IPIfNonMatch', this.t('routing.strategy.ipIfNonMatch.title'), this.t('routing.strategy.ipIfNonMatch.detail'))
+                this.RowDivider()
+                this.StrategyRow('IPOnDemand', this.t('routing.strategy.ipOnDemand.title'), this.t('routing.strategy.ipOnDemand.detail'))
+              }
+              .width('100%')
+              .backgroundColor(AppColor.surface)
+              .borderRadius(Radius.lg)
+              .clip(true)
+              .margin({ left: Space.lg, right: Space.lg })
+
+              // 预置规则集
+              SectionHeader({ title: this.t('routing.preset.section') })
+              Column() {
+                this.PresetRow(
+                  this.t('routing.global.title'),
+                  this.t('routing.global.detail'),
+                  $r('app.media.ic_route'),
+                  this.t('routing.preset.global.rules')
+                )
+                this.RowDivider()
+                this.PresetRow(
+                  this.t('routing.bypassLanCn.title'),
+                  this.t('routing.bypassLanCn.detail'),
+                  $r('app.media.ic_link'),
+                  this.t('routing.preset.bypassLanCn.rules')
+                )
+                this.RowDivider()
+                this.AdBlockRow()
+              }
+              .width('100%')
+              .backgroundColor(AppColor.surface)
+              .borderRadius(Radius.lg)
+              .clip(true)
+              .margin({ left: Space.lg, right: Space.lg })
+
+              SectionHeader({ title: this.t('routing.customRulesets.title') })
+              Column() {
+                this.CustomRulesHeader()
+                if (this.routingRules.length === 0) {
+                  this.RowDivider()
+                  this.EmptyCustomRulesRow()
+                } else {
+                  ForEach(this.routingRules, (rule: RoutingRule, index: number) => {
+                    this.RowDivider()
+                    this.CustomRuleRow(rule, index)
+                  }, (rule: RoutingRule) => rule.id)
+                }
+              }
+              .width('100%')
+              .backgroundColor(AppColor.surface)
+              .borderRadius(Radius.lg)
+              .clip(true)
+              .margin({ left: Space.lg, right: Space.lg })
+
             }
             .width('100%')
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.lg)
-            .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
-
+            .padding({ top: Space.sm, bottom: Space.xxl })
           }
+          .layoutWeight(1)
           .width('100%')
-          .padding({ top: Space.sm, bottom: Space.xxl })
+        } else {
+          Column() {
+            LoadingProgress()
+              .width(48)
+              .height(48)
+              .color(AppColor.brand)
+          }
+          .layoutWeight(1)
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
         }
-        .layoutWeight(1)
-        .width('100%')
       }
       .height('100%')
       .width('100%')
       .backgroundColor(AppColor.bg)
 
-      if (this.showRuleDialog) {
+      if (this.isStateLoaded && this.showRuleDialog) {
         RoutingRuleDialog({
           language: this.language,
           title: this.ruleDialogTitle,
@@ -251,7 +265,7 @@ struct RoutingPage {
           .fontSize(FontSz.callout)
           .fontWeight(FontWeight.Medium)
           .fontColor(AppColor.textPrimary)
-        Text('局域网和中国境内流量将直接连接。')
+        Text(this.t('routing.routeOnly.detail'))
           .fontSize(FontSz.footnote)
           .fontColor(AppColor.textTertiary)
       }
@@ -564,23 +578,23 @@ struct RoutingPage {
 
   private getTrafficModeDescription(): string {
     if (this.trafficMode === 'global') {
-      return '全局代理模式下，未命中广告拦截或自定义规则的流量都会导向代理节点。';
+      return this.t('routing.mode.global.description');
     } else if (this.trafficMode === 'rules') {
-      return '规则分流模式下，客户端会解析域名和 IP，并对照路由规则集，符合绕过条件的直连，其余流量通过代理出站。';
+      return this.t('routing.mode.rules.description');
     } else {
-      return '全局直连模式下，所有网络流量均绕过代理服务器直接出站。此时代理服务不会对您的流量进行中转。';
+      return this.t('routing.mode.direct.description');
     }
   }
 
   private showPresetDetails(title: string, detail: string, rules: string): void {
     AlertDialog.show({
       title: title,
-      message: detail + "\n\n【核心规则配置】\n" + rules,
+      message: detail + "\n\n" + this.t('routing.preset.detailHeader') + "\n" + rules,
       autoCancel: true,
       alignment: DialogAlignment.Bottom,
       offset: { dx: 0, dy: -20 },
       primaryButton: {
-        value: this.t('action.use') + ' / ' + '启用预设',
+        value: this.t('action.use') + ' / ' + this.t('routing.preset.enable'),
         fontColor: AppColor.onBrand,
         backgroundColor: AppColor.brand,
         action: () => {
@@ -588,7 +602,7 @@ struct RoutingPage {
         }
       },
       secondaryButton: {
-        value: '关闭',
+        value: this.t('action.close'),
         fontColor: AppColor.textSecondary,
         backgroundColor: AppColor.bg,
         action: () => {}
@@ -597,6 +611,7 @@ struct RoutingPage {
   }
 
   private async loadState(): Promise<void> {
+    this.isStateLoaded = false;
     const context = getContext(this) as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.draft = SETTINGS_CONTROLLER.toDraft(settings);
@@ -608,6 +623,7 @@ struct RoutingPage {
     this.routingRules = this.copyRules(this.draft.routingRules);
     const profile = await SubscriptionStore.load(context);
     this.advancedOutboundTargets = this.resolveAdvancedOutboundTargets(profile.nodes, profile.selectedNodeId);
+    this.isStateLoaded = true;
   }
 
   private async persistSettings(logMessage: string): Promise<void> {

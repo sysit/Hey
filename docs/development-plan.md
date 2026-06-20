@@ -15,7 +15,7 @@
 
 自 2026-06-03 路线图以来已落地：
 
-- ✅ 相机扫码与相册图片二维码导入：`pages/Scanner.ets` 已接入 `@kit.ScanKit`（`scanBarcode.startScanForResult` / `detectBarcode.decode`），共享页头会随异步语言状态刷新，深链进入扫码页时标题与内容语言一致；首页统计标签、添加节点页主入口与 JSON 导入页也会随当前语言刷新，避免英文界面残留中文文案
+- ✅ 相机扫码与相册图片二维码导入：`pages/Scanner.ets` 已接入 `@kit.ScanKit`（`scanBarcode.startScanForResult` / `detectBarcode.decode`），共享页头会随异步语言状态刷新，深链进入扫码页时标题与内容语言一致；首页统计标签、添加节点页主入口、JSON 导入页与路由设置页可见说明也会随当前语言刷新，避免英文界面残留中文文案
 - ✅ 分应用代理：`pages/PerApp.ets` 已用 `bundleManager` 枚举已安装应用，并补齐全选/清除/反选、自动选择代理应用、剪贴板导入/导出包名列表；自动选择会先拉取 v2rayNG `androidpackagenamelist` 远程清单，失败回退内置列表；过滤策略、应用列表、搜索/手动添加、关闭态和预置应用标签已跟随当前语言
 - ✅ Assets 页模块化、NodeEdit 组件化、8 协议手动配置与解析；内置 Geo 下载已包含 v2rayNG 强制更新的 `geoip-only-cn-private.dat`，下载源包含 v2rayNG 的 Loyalsoldier / Russia / Iran 三组规则源，资源下载已按 v2rayNG 优先经本地 HTTP 代理并直连兜底
 
@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | 真机 VPN 闭环 | ✅ **已真机验证通过（2026-06-15）**：`TUN fd → CGoSetTunFd → Xray native TUN → 出站` 端到端可上网 | 阻塞项解除，主线推进至 M1 |
 | Native 桥接 | M1 已接通当前打包库导出的 12 个 CGo 符号（含 `CGoQueryStats`/`CGoTestXray`/`CGoXrayVersion`/`CGoReadGeoFiles`/`CGoCountGeoData`/`CGoGetFreePorts`/`CGoConvertShareLinksToXrayJson`/`CGOConvertXrayJsonToShareLinks`），且预构建 `libxray.so` 已重建并验证导出符号；`CGoXrayVersion` 在当前模拟器会触发 native SIGSEGV，About 已先禁用直接调用并显示安全 fallback | **待真机复测/修复**流量、预检、版本、Geo 计数、动态端口与 native 分享转换；上游旧入口 `CGoRunXray` 不作为 Hey 运行目标 |
-| 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules`，规则集可按 v2rayNG 从剪贴板或二维码 JSON 导入并保留 locked 规则，`routeOnly` 会控制 sniffing routeOnly；process 规则输出按 v2rayNG `canUseProcessRouting` 受 `routeOnly` 与 Hev TUN 共同约束，并在可用时将包名解析为 Harmony app UID；生成 Xray routing 时会按 v2rayNG 将 `geoip:cn/private` 改写为 `geoip-only-cn-private.dat` ext 引用 | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
+| 路由规则 | ✅ 广告拦截、自定义规则、预设规则集导入/导出均已写入 `routing.rules`，规则集可按 v2rayNG 从剪贴板或二维码 JSON 导入并保留 locked 规则，`routeOnly` 会控制 sniffing routeOnly；process 规则输出按 v2rayNG `canUseProcessRouting` 受 `routeOnly` 与 Hev TUN 共同约束，并在可用时将包名解析为 Harmony app UID；生成 Xray routing 时会按 v2rayNG 将 `geoip:cn/private` 改写为 `geoip-only-cn-private.dat` ext 引用；Routing 页流量模式、routeOnly、域名策略、预置规则集和预设详情弹窗已跟随当前语言 | 仍待真机验证规则实效；高级出站目标（策略组/负载均衡）归入 M5 |
 | 订阅 | 多分组 + 手动/批量更新 + 前台到期刷新 + 本地 HTTP 代理经由更新 + v2rayNG 风格每订阅独立 WorkScheduler 后台调度；订阅列表页摘要/空态/本地节点数量/未更新状态和批量/自动更新结果提示跟随当前语言；订阅详情页页头摘要、订阅链接区、更新按钮、节点列表和空态跟随当前语言；订阅编辑页保存/回填 v2rayNG `prevProfile`/`nextProfile` 备注字段，且字段、占位符、校验与保存按钮跟随当前语言；订阅请求保留自定义 User-Agent，按 v2rayNG 支持 URL 内嵌 `user:pass@host` Basic Auth，并会将非 ASCII host 转 punycode 后请求；本地 SOCKS 入口按 v2rayNG 默认开启，可供代理经由能力使用 | 待真机触发回归后台唤醒路径 |
 | 分享导出 | 文本/文件导出 + 节点二维码 + 订阅链接二维码 + 系统分享面板；批量导出已按 v2rayNG `shareNonCustomConfigsToClipboard` 只输出可分享普通节点并跳过自定义/高级/无效配置；节点详情可按 v2rayNG `shareFullContent2Clipboard` 复制完整运行配置；URL-style 普通 TCP 节点导出会按 v2rayNG 写出 `security/type/headerType` 默认 query，并按 `FmtBase.toUri` 将 IDN server/endpoint host 转 punycode；剪贴板导入路径不声明受限 Harmony `READ_PASTEBOARD`，读取失败由各入口现有提示处理；运行中导入/扫码/新增/选择当前节点后会标记待重启，返回首页自动应用新配置 | 仍待真机回归不同分享目标兼容性 |
 | 速度通知 | 🟡 常驻通知代码完成；连接运行且速度显示开启时每 3 秒刷新上传/下载速率与累计流量，停止或关闭设置时取消 | 待真机通知权限弹窗、通知中心展示与后台留存回归 |
@@ -563,6 +563,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-20 | M4 | ✅ 订阅详情页本地化完成（页头节点数、订阅链接分组、获取并更新按钮、节点列表分组和空态均走 i18n；模拟器英文布局验证 `Subscription URL`、`Update nodes`、`Node list` 且无旧中文文案残留） |
 | 2026-06-20 | M4 | ✅ 订阅列表页本地化完成（订阅分组页摘要/空态/本地节点数量/未更新状态与批量/自动更新结果 toast 均走 i18n；模拟器英文布局验证 `1 subscription group` 且无旧中文摘要残留） |
 | 2026-06-20 | M4 | ✅ About 页本地化补齐（资源更新、技术规格、社区开发者分区标题和打开链接失败提示均走 i18n；模拟器英文布局验证分区/条目同语种、无旧中文残留，且进入 About 不再触发 `CGoXrayVersion` native crash） |
+| 2026-06-20 | M4 | ✅ 路由设置页本地化补齐（流量模式说明、routeOnly、域名策略、预置规则集和预设详情弹窗均走 i18n；模拟器英文规则模式和预置区域布局验证无旧中文残留） |
 | 2026-06-18 | M4 | 🟡 常驻速度通知代码完成（`SpeedNotificationManager` 接 Harmony NotificationKit，运行中且 speedEnabled 开启时每 3 秒刷新速率/累计流量，停止或关闭设置时取消，补速率/节流文案单测）；待真机通知权限与通知中心展示回归 |
 | 2026-06-18 | M4 | 🟡 桌面服务卡片基础入口完成（`ControlCardAbility` + `form_config` + 2×2 ArkTS 卡片，提供 toggle/start/stop/scan 四个 `FormLink` 控制深链，补卡片 URI 单测）；待真机添加卡片、点击调起与运行态动态刷新回归 |
 | 2026-06-18 | M4 | 🟡 桌面服务卡片动态状态刷新代码完成（保存卡片 formId 与最近运行态，首页运行态变化同步状态文案、详情、主按钮动作并按 3 秒节流通过 `formProvider.updateForm` 刷新）；待真机添加卡片、点击调起与系统刷新回归 |
