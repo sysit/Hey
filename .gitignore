@@ -16,3 +16,4 @@ openspec/
 /docs/ui/
 *.dc.html
 /.vscode
+/docs/specs

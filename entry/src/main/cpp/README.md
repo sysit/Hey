@@ -29,5 +29,3 @@ Note: the current Go toolchain does not expose `GOOS=ohos`. The build uses
 the cgo compiler, plus a tiny Android log stub for `android/log.h` and `-llog`.
 This avoids the `R_AARCH64_TLS_*` relocations produced by the Linux Go runtime
 that Harmony's loader rejects.
-
-See `docs/vpn-native-runtime-fix.md` for the current native runtime notes.

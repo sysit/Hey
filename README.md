@@ -140,9 +140,6 @@ Watch VPN and native bridge logs:
 DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk ./scripts/device_vpn_smoke_test.sh logs
 ```
 
-For the manual closed-loop checklist, see
-[`docs/real-device-vpn-test.md`](docs/real-device-vpn-test.md).
-
 ## Native Core
 
 The native bridge builds `libheyvpn.so` and loads one packaged Go shared
