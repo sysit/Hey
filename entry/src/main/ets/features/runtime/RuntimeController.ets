@@ -6,6 +6,7 @@ import { LOCAL_HTTP_PROXY_PORT } from '../../core/XrayConfig';
 import { ConnectionController, ConnectionSnapshot } from '../../services/ConnectionController';
 import { DiagnosticEvent, DiagnosticLog } from '../../services/DiagnosticLog';
 import { fetchRemoteIpInfo, RemoteIpInfoResult } from '../../services/RemoteIpInfo';
+import { measureRuntimeProfileDelay, RuntimeDelayResult } from '../../services/RuntimeDelay';
 import { connectionStatusBackground, connectionStatusColor, formatClockTime, formatDuration } from '../../utils/Formatters';
 import { formatOne, localizedConnectionStatus, localizeCoreMessage } from '../../utils/LocalizationPresenter';
 
@@ -48,7 +49,7 @@ export class RuntimeController {
     } else {
       this.appendLog(this.status === ConnectionStatus.RUNNING ? translate(language, 'log.vpnStarted') : translate(language, 'log.vpnStartIncomplete'));
     }
-    await this.appendRemoteIpInfo(profile, settings, language);
+    this.scheduleRuntimeConnectivityInfo(context, profile, settings, language, this.startedAt);
     return this.refresh(context, language);
   }
 
@@ -138,13 +139,51 @@ export class RuntimeController {
     this.lastError = localizeCoreMessage(language, snapshot.lastError);
   }
 
-  private async appendRemoteIpInfo(profile: ProxyProfile, settings: AppSettings, language: AppLanguage): Promise<void> {
-    if (this.status !== ConnectionStatus.RUNNING || !shouldExposeLocalHttpProxy(settings) ||
+  private scheduleRuntimeConnectivityInfo(
+    context: common.Context,
+    profile: ProxyProfile,
+    settings: AppSettings,
+    language: AppLanguage,
+    startedAt: number
+  ): void {
+    this.appendRuntimeConnectivityInfo(context, profile, settings, language, startedAt).catch((error: Object) => {
+      this.appendLog(formatOne(language, 'log.connectionDelayError', 'error', JSON.stringify(error)));
+    });
+  }
+
+  private async appendRuntimeConnectivityInfo(
+    context: common.Context,
+    profile: ProxyProfile,
+    settings: AppSettings,
+    language: AppLanguage,
+    startedAt: number
+  ): Promise<void> {
+    if (this.status !== ConnectionStatus.RUNNING || this.startedAt !== startedAt) {
+      return;
+    }
+    const delayResult: RuntimeDelayResult = await measureRuntimeProfileDelay(profile, context.filesDir, settings.delayTestUrl);
+    if (this.status !== ConnectionStatus.RUNNING || this.startedAt !== startedAt) {
+      return;
+    }
+    if (delayResult.ok) {
+      this.appendLog(formatOne(language, 'log.connectionDelay', 'delay', delayResult.delayMs.toString()));
+      await this.appendRemoteIpInfo(profile, settings, language, startedAt);
+      return;
+    }
+    if (delayResult.status === 'unsupported-config') {
+      await this.appendRemoteIpInfo(profile, settings, language, startedAt);
+      return;
+    }
+    this.appendLog(formatOne(language, 'log.connectionDelayError', 'error', delayResult.status));
+  }
+
+  private async appendRemoteIpInfo(profile: ProxyProfile, settings: AppSettings, language: AppLanguage, startedAt: number): Promise<void> {
+    if (this.status !== ConnectionStatus.RUNNING || this.startedAt !== startedAt || !shouldExposeLocalHttpProxy(settings) ||
       (profile.configType ?? 'outbound') === 'full') {
       return;
     }
     const result: RemoteIpInfoResult = await fetchRemoteIpInfo(settings.ipApiUrl, LOCAL_HTTP_PROXY_PORT);
-    if (result.ok && result.summary.length > 0) {
+    if (this.status === ConnectionStatus.RUNNING && this.startedAt === startedAt && result.ok && result.summary.length > 0) {
       this.appendLog(formatOne(language, 'log.remoteIpInfo', 'info', result.summary));
     }
   }

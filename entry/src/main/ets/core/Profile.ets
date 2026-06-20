@@ -103,6 +103,7 @@ export const VPN_INTERFACE_ADDRESS_CONFIGS: Array<VpnInterfaceAddressConfig> = [
 
 export const DEFAULT_VPN_INTERFACE_ADDRESS_INDEX: number = 0;
 export const DEFAULT_DELAY_TEST_URL: string = 'https://www.gstatic.com/generate_204';
+export const DEFAULT_DELAY_TEST_URL_SECONDARY: string = 'https://www.google.com/generate_204';
 export const DEFAULT_IP_API_URL: string = 'https://api.ip.sb/geoip';
 export const VPN_BYPASS_LAN_FOLLOW_CONFIG: string = '0';
 export const VPN_BYPASS_LAN_BYPASS: string = '1';

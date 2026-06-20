@@ -15,7 +15,7 @@ import { parseManualOutboundEditState } from '../main/ets/core/ManualOutboundEdi
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../main/ets/core/ManualOutboundBuilder';
 import { ANDROID_PACKAGE_NAME_LIST_URL, clearVisiblePerAppPackages, exportPerAppProxyList, importPerAppProxyList, invertVisiblePerAppPackages, normalizePerAppPackageList, resolveAutoProxyPackageListContent, selectAllPerAppPackages, selectAutoProxyPackages } from '../main/ets/core/PerAppProxy';
 import { shouldShowProxySharingStartWarning } from '../main/ets/core/ProxySharingWarning';
-import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_HEV_TUN_LOG_LEVEL, DEFAULT_HEV_TUN_RW_TIMEOUT, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
+import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_DELAY_TEST_URL_SECONDARY, DEFAULT_HEV_TUN_LOG_LEVEL, DEFAULT_HEV_TUN_RW_TIMEOUT, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { BUILTIN_GEO_DATA_FILE_NAMES, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, GEOIP_ONLY_CN_PRIVATE_URL, GEO_FILE_SOURCES, V2RAYNG_GEO_FILE_SOURCE_REPOS, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, UNIDENTIFIED_PROCESS_PACKAGE, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, canUseProcessRouting, collectOutboundDomainPreResolveHosts, normalizeFullConfigRoutingProcesses, normalizeOutboundInput, normalizeRoutingRuleProcesses, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
 import { CONTROL_SHORTCUT_ACTION_PARAM, CONTROL_SHORTCUT_URI_PARAM, controlUriFromShortcutParameters, deepLinkUriFromWant, parseDeepLink } from '../main/ets/core/DeepLink';
@@ -54,6 +54,7 @@ import {
 } from '../main/ets/features/nodes/NodeOperations';
 import { SETTINGS_CONTROLLER } from '../main/ets/features/settings/SettingsController';
 import { normalizeIpApiUrl, parseRemoteIpInfoContent } from '../main/ets/services/RemoteIpInfo';
+import { canMeasureRuntimeDelayProfile, resolveRuntimeDelayTestUrls } from '../main/ets/services/RuntimeDelay';
 import { SubscriptionManager } from '../main/ets/services/SubscriptionManager';
 import { buildTextShareWant } from '../main/ets/services/SystemShare';
 import { DEFAULT_APP_SETTINGS } from '../main/ets/storage/SettingsStore';
@@ -1931,6 +1932,28 @@ export default function localUnitTest() {
       expect(resolveDelayTestUrl(undefined)).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('')).assertEqual(DEFAULT_DELAY_TEST_URL);
       expect(resolveDelayTestUrl('  https://probe.example/ping  ')).assertEqual('https://probe.example/ping');
+      const defaultUrls = resolveRuntimeDelayTestUrls('');
+      expect(defaultUrls.length).assertEqual(2);
+      expect(defaultUrls[0]).assertEqual(DEFAULT_DELAY_TEST_URL);
+      expect(defaultUrls[1]).assertEqual(DEFAULT_DELAY_TEST_URL_SECONDARY);
+      const customUrls = resolveRuntimeDelayTestUrls('https://probe.example/ping');
+      expect(customUrls[0]).assertEqual('https://probe.example/ping');
+      expect(customUrls[1]).assertEqual(DEFAULT_DELAY_TEST_URL_SECONDARY);
+      const duplicateFallbackUrls = resolveRuntimeDelayTestUrls(DEFAULT_DELAY_TEST_URL_SECONDARY);
+      expect(duplicateFallbackUrls.length).assertEqual(1);
+      expect(canMeasureRuntimeDelayProfile({
+        id: 'p1',
+        name: 'ordinary',
+        outboundJson: VLESS_REALITY_OUTBOUND,
+        updatedAt: 1
+      })).assertTrue();
+      expect(canMeasureRuntimeDelayProfile({
+        id: 'p2',
+        name: 'custom',
+        outboundJson: FULL_XRAY_CONFIG,
+        configType: 'full',
+        updatedAt: 1
+      })).assertFalse();
     });
 
     it('warns on successful start when proxy sharing is enabled like v2rayNG', 0, () => {
