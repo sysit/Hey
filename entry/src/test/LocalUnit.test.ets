@@ -78,6 +78,8 @@ const POLICY_GROUP_CONFIG: string =
   `{"type":"policy-group","remarks":"group-demo","strategy":"roundRobin","outbounds":[${VLESS_REALITY_OUTBOUND},${TROJAN_OUTBOUND}]}`;
 const FULL_XRAY_CONFIG: string =
   '{"remarks":"Custom full config","log":{"loglevel":"info"},"inbounds":[{"tag":"tun-in","protocol":"tun","settings":{"name":"vpn-tun","mtu":1400}}],"outbounds":[{"tag":"direct","protocol":"freedom","settings":{}}],"routing":{"domainStrategy":"AsIs","rules":[]}}';
+const FULL_XRAY_SPEEDTEST_CONFIG: string =
+  '{"remarks":"Custom speedtest config","log":{"loglevel":"info"},"dns":{"servers":["1.1.1.1"]},"fakedns":[{}],"stats":{},"policy":{"system":{"statsOutboundUplink":true}},"inbounds":[{"tag":"tun-in","protocol":"tun","settings":{"name":"vpn-tun","mtu":1400}},{"tag":"old-socks","protocol":"socks","settings":{"auth":"noauth","udp":true}}],"outbounds":[{"tag":"direct","protocol":"freedom","settings":{}},{"tag":"proxy","protocol":"vmess","settings":{"vnext":[{"address":"vmess.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tlsSettings":{"serverName":"vmess.example.com"}},"mux":{"enabled":true,"concurrency":32,"xudpConcurrency":16,"xudpProxyUDP443":"allow"}}],"routing":{"domainStrategy":"IPIfNonMatch","rules":[{"type":"field","inboundTag":["old-socks"],"outboundTag":"direct"}]}}';
 const WIREGUARD_CONF: string =
   '[Interface]\nPrivateKey = private-key\nAddress = 172.16.0.2/32, fd00::2/128\nMTU = 1420\n\n[Peer]\nPublicKey = peer-key\nPresharedKey = shared-key\nEndpoint = wg.example.com:51820\nReserved = 1,2,3\nAllowedIPs = 0.0.0.0/0, ::/0\n';
 const WIREGUARD_CONF_WITHOUT_RESERVED: string =
@@ -1351,6 +1353,23 @@ export default function localUnitTest() {
       expect(policy.configJson.indexOf('"mux"')).assertEqual(-1);
     });
 
+    it('builds a v2rayNG-style delay test config for full custom configs', 0, () => {
+      const full = buildDelayTestConfig(FULL_XRAY_SPEEDTEST_CONFIG, 19086, 'full');
+      expect(full.configJson).assertContain('"tag":"socks-in"');
+      expect(full.configJson).assertContain('"port":19086');
+      expect(full.configJson).assertContain('"domainStrategy":"IPIfNonMatch"');
+      expect(full.configJson).assertContain('"outboundTag":"proxy"');
+      expect(full.configJson).assertContain('"tag":"direct"');
+      expect(full.configJson).assertContain('"tag":"proxy"');
+      expect(full.configJson.indexOf('"tun-in"')).assertEqual(-1);
+      expect(full.configJson.indexOf('"old-socks"')).assertEqual(-1);
+      expect(full.configJson.indexOf('"dns"')).assertEqual(-1);
+      expect(full.configJson.indexOf('"fakedns"')).assertEqual(-1);
+      expect(full.configJson.indexOf('"stats"')).assertEqual(-1);
+      expect(full.configJson.indexOf('"policy"')).assertEqual(-1);
+      expect(full.configJson.indexOf('"mux"')).assertEqual(-1);
+    });
+
     it('applies hysteria2 bandwidth and masks to runtime finalmask', 0, () => {
       const hysteria2 = buildManualHysteria2Outbound({
         tag: 'HY2',
@@ -1972,7 +1991,14 @@ export default function localUnitTest() {
         outboundJson: FULL_XRAY_CONFIG,
         configType: 'full',
         updatedAt: 1
-      })).assertFalse();
+      })).assertTrue();
+      expect(canMeasureRuntimeDelayProfile({
+        id: 'p3',
+        name: 'advanced',
+        outboundJson: PROXY_CHAIN_CONFIG,
+        configType: 'proxy-chain',
+        updatedAt: 1
+      })).assertTrue();
     });
 
     it('warns on successful start when proxy sharing is enabled like v2rayNG', 0, () => {

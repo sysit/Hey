@@ -366,7 +366,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 - [x] 订阅正则过滤 `filter`（`SubscriptionGroup.filter` 全链路：编辑页输入框 → 更新/更新全部时按节点名正则筛选，无效/空/零匹配回退全部，2026-06-15）
 - [x] 订阅刷新选中节点保留（更新/更新全部时按 v2rayNG 通过备注、server、port、password 多级匹配旧选中节点，匹配失败回退新导入首节点，2026-06-20）
 - [x] 测速后自动操作：`autoSortAfterTest` / `autoRemoveInvalidAfterTest` 设置项 + 设置页开关 + 批量测速后触发（按延迟排序 / 删除超时节点；2026-06-19 补 All 虚拟分组跨订阅分组语义，并补 v2rayNG 手动按测试结果排序菜单）
-- [x] 真连接延迟测试：Settings 保存 `realPingConcurrency` 与 `delayTestUrl`；节点菜单提供 TCP 延迟和真连接测速两个入口，真连接批量测速按配置分批并发、通过 native `CGoPing` 访问目标 URL 并串行落盘；代理链/策略组高级节点会生成 v2rayNG 风格测速配置（多跳 `dialerProxy` / `balancer`），普通 outbound 启动成功后追加 v2rayNG 单次连接延迟日志，主 URL 失败会重试备用 `https://www.google.com/generate_204`，成功后再查出口 IP（2026-06-20 补运行态备用 URL 与高级测速配置）
+- [x] 真连接延迟测试：Settings 保存 `realPingConcurrency` 与 `delayTestUrl`；节点菜单提供 TCP 延迟和真连接测速两个入口，真连接批量测速按配置分批并发、通过 native `CGoPing` 访问目标 URL 并串行落盘；代理链/策略组高级节点会生成 v2rayNG 风格测速配置（多跳 `dialerProxy` / `balancer`），完整自定义配置测速会注入临时 SOCKS inbound 并剥离原 inbounds/DNS/FakeDNS/stats/policy/mux；ordinary/proxy-chain/policy-group/full 启动成功后追加 v2rayNG 单次连接延迟日志，主 URL 失败会重试备用 `https://www.google.com/generate_204`，成功后再查出口 IP（2026-06-20 补运行态备用 URL、高级测速配置与 full custom 测速配置）
 - [x] 删除配置确认：Settings 保存 `confirmRemove`，默认关闭；开启后单节点删除与订阅分组删除弹二次确认（2026-06-18）
 - [x] 立即启动扫码：Settings 保存 `startScanImmediate`，默认关闭；开启后进入 Scanner 页自动拉起 ScanKit 相机扫码（2026-06-18）
 - [x] 速度显示：Settings 保存 `speedEnabled`，默认关闭；开启后生成 metrics/stats/policy 并显示上传/下载，关闭时不启动 VPN stats 轮询（2026-06-18）
@@ -489,6 +489,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-19 | M4 | ✅ 真实延迟测速配置瘦身对齐 v2rayNG（`buildDelayTestConfig` 移除导入 outbound 自带 mux，保持测速路径不受 mux 影响；补配置生成单测） |
 | 2026-06-20 | M4 | ✅ 运行态连接延迟备用 URL 完成（普通 outbound 启动成功后按 v2rayNG 记录单次连接延迟，先测 Settings `delayTestUrl`，失败再测 `https://www.google.com/generate_204`；成功后再查询出口 IP；补 URL 选择与普通/完整配置 gating 单测） |
 | 2026-06-20 | M4 | ✅ 高级节点真连接测速配置完成（`buildDelayTestConfig` 接收 `proxy-chain`/`policy-group`，代理链测速保留多跳 `dialerProxy`，策略组测速通过 `balancer` 路由测试 SOCKS inbound，并继续移除 outbound mux；补配置生成单测） |
+| 2026-06-20 | M4 | ✅ 完整自定义真连接测速配置完成（`buildDelayTestConfig` 接收 `full`，生成独立 speedtest 配置并注入临时 SOCKS inbound，清理原 inbounds/DNS/FakeDNS/stats/policy/mux，路由到 `proxy` 或首个可用 outbound；运行态连接延迟 gating 放开到 ordinary/proxy-chain/policy-group/full；补配置生成与 gating 单测） |
 | 2026-06-18 | M4 | ✅ 删除配置确认设置完成（`confirmRemove` 默认关闭，Settings 开关保存后控制单节点删除和订阅分组删除确认弹窗，并补 Settings 往返单测） |
 | 2026-06-18 | M4 | ✅ 立即启动扫码设置完成（`startScanImmediate` 默认关闭，Settings 开关保存后控制 Scanner 页是否自动拉起 ScanKit，并修正此前无条件自动扫码行为） |
 | 2026-06-18 | M4 | ✅ 速度显示设置完成（`speedEnabled` 默认关闭；开启后普通/代理链/策略组运行配置生成 metrics/stats/policy，首页/日志页显示上传下载并启动 VPN stats 轮询；关闭时隐藏流量显示并不生成统计段） |

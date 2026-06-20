@@ -8,7 +8,8 @@ export interface RuntimeDelayResult extends DelayTestResult {
 }
 
 export function canMeasureRuntimeDelayProfile(profile: ProxyProfile): boolean {
-  return (profile.configType ?? 'outbound') === 'outbound';
+  const configType = profile.configType ?? 'outbound';
+  return configType === 'outbound' || configType === 'full' || configType === 'proxy-chain' || configType === 'policy-group';
 }
 
 export function resolveRuntimeDelayTestUrls(delayTestUrl: string | undefined): Array<string> {

@@ -1799,7 +1799,7 @@ export function buildDelayTestConfig(configJson: string, socksPort: number = DEL
     throw new Error(validation.message);
   }
   if (validation.configType === 'full') {
-    throw new Error('完整自定义配置暂不支持真连接测速。');
+    return buildFullDelayTestConfig(validation.normalizedJson, socksPort);
   }
   if (validation.configType === 'proxy-chain') {
     return buildProxyChainDelayTestConfig(validation.normalizedJson, socksPort);
@@ -1814,6 +1814,53 @@ export function buildDelayTestConfig(configJson: string, socksPort: number = DEL
   }
   applyDelayTestOutboundSettings(outbound);
   return buildDelayTestConfigFromOutbounds([outbound], socksPort);
+}
+
+function buildFullDelayTestConfig(fullJson: string, socksPort: number): GeneratedXrayConfig {
+  const source = parseFullConfig(fullJson);
+  if (!Array.isArray(source.outbounds) || source.outbounds.length === 0) {
+    throw new Error('完整配置缺少 outbounds 数组。');
+  }
+
+  const outbounds = new Array<XrayOutbound>();
+  for (let index = 0; index < source.outbounds.length; index++) {
+    outbounds.push(cloneOutbound(source.outbounds[index]));
+  }
+  applyDelayTestOutboundsSettings(outbounds);
+  applyOutboundIdnHostParity(outbounds);
+  const balancers = cloneFullDelayBalancers(source);
+  const proxyRule: XrayRoutingRule = {
+    type: 'field',
+    inboundTag: ['socks-in']
+  };
+  applyRoutingTarget(proxyRule, resolveFullDelayTestRoutingTarget(outbounds, balancers));
+
+  const config: XrayFullConfig = {
+    log: {
+      loglevel: 'none'
+    },
+    inbounds: [buildDelayTestSocksInbound(socksPort)],
+    outbounds,
+    routing: {
+      domainStrategy: resolveFullDelayRoutingDomainStrategy(source),
+      rules: [proxyRule]
+    }
+  };
+  if (balancers.length > 0) {
+    config.routing.balancers = balancers;
+  }
+  if (source.observatory !== undefined) {
+    config.observatory = JSON.parse(JSON.stringify(source.observatory)) as XrayObservatoryConfig;
+  }
+  if (source.burstObservatory !== undefined) {
+    config.burstObservatory = JSON.parse(JSON.stringify(source.burstObservatory)) as XrayBurstObservatoryConfig;
+  }
+
+  return {
+    configJson: JSON.stringify(config),
+    socksHost: DEFAULT_SOCKS_HOST,
+    socksPort
+  };
 }
 
 function buildProxyChainDelayTestConfig(chainJson: string, socksPort: number): GeneratedXrayConfig {
@@ -1864,13 +1911,6 @@ function buildDelayTestConfigFromOutbounds(
 ): GeneratedXrayConfig {
   applyOutboundIdnHostParity(proxyOutbounds);
 
-  const socksInbound: XrayInboundConfig = {
-    tag: 'socks-in',
-    listen: DEFAULT_SOCKS_HOST,
-    port: socksPort,
-    protocol: 'socks',
-    settings: new SocksInboundSettings()
-  };
   const directOutbound: XrayOutbound = {
     tag: 'direct',
     protocol: 'freedom',
@@ -1891,7 +1931,7 @@ function buildDelayTestConfigFromOutbounds(
     log: {
       loglevel: 'none'
     },
-    inbounds: [socksInbound],
+    inbounds: [buildDelayTestSocksInbound(socksPort)],
     outbounds: proxyOutbounds.concat([directOutbound, blockOutbound]),
     routing: {
       domainStrategy: 'AsIs',
@@ -1913,6 +1953,91 @@ function buildDelayTestConfigFromOutbounds(
     socksHost: DEFAULT_SOCKS_HOST,
     socksPort
   };
+}
+
+function buildDelayTestSocksInbound(socksPort: number): XrayInboundConfig {
+  return {
+    tag: 'socks-in',
+    listen: DEFAULT_SOCKS_HOST,
+    port: socksPort,
+    protocol: 'socks',
+    settings: new SocksInboundSettings()
+  };
+}
+
+function cloneFullDelayBalancers(config: XrayFullConfig): Array<XrayBalancerConfig> {
+  if (config.routing === undefined || config.routing.balancers === undefined || !Array.isArray(config.routing.balancers)) {
+    return [];
+  }
+  return JSON.parse(JSON.stringify(config.routing.balancers)) as Array<XrayBalancerConfig>;
+}
+
+function resolveFullDelayRoutingDomainStrategy(config: XrayFullConfig): string {
+  if (config.routing === undefined || typeof config.routing.domainStrategy !== 'string' || config.routing.domainStrategy.trim().length === 0) {
+    return 'AsIs';
+  }
+  return config.routing.domainStrategy;
+}
+
+function resolveFullDelayTestRoutingTarget(outbounds: Array<XrayOutbound>, balancers: Array<XrayBalancerConfig>): XrayRoutingTarget {
+  const proxy = findTaggedOutbound(outbounds, 'proxy');
+  if (proxy !== undefined) {
+    return {
+      outboundTag: proxy.tag
+    };
+  }
+
+  const firstProxyLike = findFirstProxyLikeOutbound(outbounds);
+  if (firstProxyLike !== undefined) {
+    return {
+      outboundTag: ensureDelayTestOutboundTag(firstProxyLike, 'proxy')
+    };
+  }
+
+  if (balancers.length > 0 && balancers[0].tag.trim().length > 0) {
+    return {
+      balancerTag: balancers[0].tag
+    };
+  }
+
+  return {
+    outboundTag: ensureDelayTestOutboundTag(outbounds[0], 'proxy')
+  };
+}
+
+function findTaggedOutbound(outbounds: Array<XrayOutbound>, tag: string): XrayOutbound | undefined {
+  for (let index = 0; index < outbounds.length; index++) {
+    if ((outbounds[index].tag ?? '').trim() === tag) {
+      return outbounds[index];
+    }
+  }
+  return undefined;
+}
+
+function findFirstProxyLikeOutbound(outbounds: Array<XrayOutbound>): XrayOutbound | undefined {
+  for (let index = 0; index < outbounds.length; index++) {
+    if (!isDelayTestUtilityOutbound(outbounds[index])) {
+      return outbounds[index];
+    }
+  }
+  return undefined;
+}
+
+function isDelayTestUtilityOutbound(outbound: XrayOutbound): boolean {
+  const protocol = (outbound.protocol ?? '').trim().toLowerCase();
+  const tag = (outbound.tag ?? '').trim().toLowerCase();
+  return protocol === 'freedom' || protocol === 'blackhole' || protocol === 'dns' ||
+    tag === 'direct' || tag === 'block' || tag === DNS_OUT_TAG || tag === DNS_TAG || tag === METRICS_OUT_TAG;
+}
+
+function ensureDelayTestOutboundTag(outbound: XrayOutbound, fallback: string): string {
+  const tag = (outbound.tag ?? '').trim();
+  if (tag.length > 0) {
+    outbound.tag = tag;
+    return tag;
+  }
+  outbound.tag = fallback;
+  return fallback;
 }
 
 function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
