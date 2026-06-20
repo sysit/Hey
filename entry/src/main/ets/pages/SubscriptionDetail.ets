@@ -26,7 +26,7 @@ import { shareText, TextShareResult } from '../services/SystemShare';
 struct SubscriptionDetailPage {
   @State private language: AppLanguage = DEFAULT_LANGUAGE;
   @State private groupId: string = '';
-  @State private groupName: string = '订阅详情';
+  @State private groupName: string = translate(DEFAULT_LANGUAGE, 'subscription.detail.title');
   @State private subscriptionUrl: string = '';
   @State private nodes: Array<ProxyNode> = [];
   @State private selectedNodeId: string = '';
@@ -59,14 +59,14 @@ struct SubscriptionDetailPage {
     Column() {
       PageHeader({
         title: this.groupName,
-        summary: `${this.nodes.length} 个节点`,
+        summary: this.f1('subscription.detail.summary', 'count', this.nodes.length.toString()),
         showBack: true
       })
 
       Scroll() {
         Column({ space: Space.lg }) {
           // 订阅链接组
-          SectionHeader({ title: '订阅链接' })
+          SectionHeader({ title: this.t('subscription.detail.link') })
           Column() {
             Row() {
               Image($r('app.media.ic_link'))
@@ -218,7 +218,7 @@ struct SubscriptionDetailPage {
                   .height(20)
                   .color(AppColor.onBrand)
               }
-              Text(this.isUpdating ? '正在获取并更新节点...' : '获取并更新节点')
+              Text(this.isUpdating ? this.t('subscription.detail.updating') : this.t('subscription.detail.update'))
                 .fontSize(FontSz.callout)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.isButtonEnabled() ? AppColor.onBrand : AppColor.textTertiary)
@@ -268,7 +268,7 @@ struct SubscriptionDetailPage {
           }
 
           // 节点列表组
-          SectionHeader({ title: '节点列表' })
+          SectionHeader({ title: this.t('subscription.detail.nodes') })
           if (this.nodes.length > 0) {
             Column() {
               ForEach(this.subscriptionNodeRows(), (row: SubscriptionNodeRowModel) => {
@@ -293,7 +293,7 @@ struct SubscriptionDetailPage {
             .margin({ left: Space.lg, right: Space.lg })
           } else {
             Column() {
-              Text('此分组下暂无节点')
+              Text(this.t('subscription.detail.emptyNodes'))
                 .fontSize(FontSz.body)
                 .fontColor(AppColor.textTertiary)
             }
@@ -361,6 +361,7 @@ struct SubscriptionDetailPage {
     const context = getContext(this) as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
+    this.groupName = this.t('subscription.detail.title');
     this.subscriptionProxyPort = shouldExposeLocalHttpProxy(settings) && SHARED_RUNTIME_CONTROLLER.isRunning() ?
       LOCAL_HTTP_PROXY_PORT : 0;
     let state = await SUBSCRIPTIONS_CONTROLLER.load(context, this.language);
