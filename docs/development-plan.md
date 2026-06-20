@@ -16,7 +16,7 @@
 自 2026-06-03 路线图以来已落地：
 
 - ✅ 相机扫码与相册图片二维码导入：`pages/Scanner.ets` 已接入 `@kit.ScanKit`（`scanBarcode.startScanForResult` / `detectBarcode.decode`），共享页头会随异步语言状态刷新，深链进入扫码页时标题与内容语言一致；首页统计标签、添加节点页主入口与 JSON 导入页也会随当前语言刷新，避免英文界面残留中文文案
-- ✅ 分应用代理：`pages/PerApp.ets` 已用 `bundleManager` 枚举已安装应用，并补齐全选/清除/反选、自动选择代理应用、剪贴板导入/导出包名列表；自动选择会先拉取 v2rayNG `androidpackagenamelist` 远程清单，失败回退内置列表
+- ✅ 分应用代理：`pages/PerApp.ets` 已用 `bundleManager` 枚举已安装应用，并补齐全选/清除/反选、自动选择代理应用、剪贴板导入/导出包名列表；自动选择会先拉取 v2rayNG `androidpackagenamelist` 远程清单，失败回退内置列表；过滤策略、应用列表、搜索/手动添加、关闭态和预置应用标签已跟随当前语言
 - ✅ Assets 页模块化、NodeEdit 组件化、8 协议手动配置与解析；内置 Geo 下载已包含 v2rayNG 强制更新的 `geoip-only-cn-private.dat`，下载源包含 v2rayNG 的 Loyalsoldier / Russia / Iran 三组规则源，资源下载已按 v2rayNG 优先经本地 HTTP 代理并直连兜底
 
 仍是关键缺口：
@@ -572,6 +572,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-20 | M4 | ✅ v2rayNG 语言枚举完成（`pref_language=auto/en/zh-rCN/zh-rTW/vi/ru/fa/ar/bn/bqi-rIR` 完整取值、旧 `zh`/`zh-Hans` 迁移到 `zh-rCN`，`auto` 解析系统语言，设置页分页选择完整语言列表，非中英语言值保留并回退英文显示） |
 | 2026-06-19 | M3 | ✅ 分应用代理批处理完成（PerApp 页支持全选/清除/反选当前筛选列表，按 v2rayNG 剪贴板格式导入/导出 `bypass + package list`，默认模式对齐为代理选中应用，导入后自动启用分应用代理；补包名列表与 VPN 映射单测） |
 | 2026-06-19 | M3 | ✅ 分应用自动选择完成（PerApp 页新增自动选择需代理应用，使用内置代理应用清单并保留 v2rayNG `com.google*` 强制匹配、WebView 排除和 bypass 补集语义；补 helper 单测） |
+| 2026-06-20 | M3 | ✅ 分应用代理页本地化补齐（过滤策略、应用列表摘要、搜索/手动添加、关闭态、预置应用标签和相关日志均走 i18n；模拟器英文布局验证关闭态/列表态/手动添加区无旧中文残留） |
 | 2026-06-19 | M3 | ✅ 分应用自动列表来源对齐 v2rayNG（自动选择先拉取 `2dust/androidpackagenamelist` 远程 `proxy.txt`，直连失败可经本地 HTTP 代理重试，失败/空内容回退内置列表；补 URL 与回退 helper 单测；顺手修正 About 页 v2rayNG source 链接） |
 | 2026-06-19 | M4 | ✅ 订阅链接二维码/分享完成（订阅详情页生成订阅 URL QR，支持复制与系统分享；订阅分组左滑分享走 Harmony `sendData`，失败回退剪贴板；补分享 Want 单测） |
 | 2026-06-19 | M4 | ✅ 批量导出非自定义配置完成（Export/Nodes 批量导出按 v2rayNG `shareNonCustomConfigsToClipboard` 语义跳过 full custom、proxy-chain、policy-group 与无效 JSON，只统计实际导出的可分享普通节点；补导出模型单测） |

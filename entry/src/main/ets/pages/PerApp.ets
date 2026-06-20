@@ -30,20 +30,26 @@ interface AppItem {
   isSystem: boolean;
 }
 
+interface PresetAppItem {
+  bundleName: string;
+  labelKey: string;
+  isSystem: boolean;
+}
+
 const SELF_BUNDLE_NAME: string = 'com.lmlm.hey';
 
-const PRESET_APPS: AppItem[] = [
-  { bundleName: 'com.huawei.hbrowser', label: '华为浏览器', isSystem: true },
-  { bundleName: 'com.tencent.mm', label: '微信', isSystem: false },
-  { bundleName: 'com.eg.android.AlipayGphone', label: '支付宝', isSystem: false },
-  { bundleName: 'com.ss.android.ugc.aweme', label: '抖音', isSystem: false },
-  { bundleName: 'com.netease.cloudmusic', label: '网易云音乐', isSystem: false },
-  { bundleName: 'com.sina.weibo', label: '微博', isSystem: false },
-  { bundleName: 'com.sankuai.meituan', label: '美团', isSystem: false },
-  { bundleName: 'com.xunmeng.pinduoduo', label: '拼多多', isSystem: false },
-  { bundleName: 'com.huawei.music', label: '华为音乐', isSystem: true },
-  { bundleName: 'com.huawei.photos', label: '图库', isSystem: true },
-  { bundleName: 'com.huawei.appmarket', label: '应用市场', isSystem: true }
+const PRESET_APPS: PresetAppItem[] = [
+  { bundleName: 'com.huawei.hbrowser', labelKey: 'perApp.preset.huaweiBrowser', isSystem: true },
+  { bundleName: 'com.tencent.mm', labelKey: 'perApp.preset.wechat', isSystem: false },
+  { bundleName: 'com.eg.android.AlipayGphone', labelKey: 'perApp.preset.alipay', isSystem: false },
+  { bundleName: 'com.ss.android.ugc.aweme', labelKey: 'perApp.preset.douyin', isSystem: false },
+  { bundleName: 'com.netease.cloudmusic', labelKey: 'perApp.preset.neteaseMusic', isSystem: false },
+  { bundleName: 'com.sina.weibo', labelKey: 'perApp.preset.weibo', isSystem: false },
+  { bundleName: 'com.sankuai.meituan', labelKey: 'perApp.preset.meituan', isSystem: false },
+  { bundleName: 'com.xunmeng.pinduoduo', labelKey: 'perApp.preset.pinduoduo', isSystem: false },
+  { bundleName: 'com.huawei.music', labelKey: 'perApp.preset.huaweiMusic', isSystem: true },
+  { bundleName: 'com.huawei.photos', labelKey: 'perApp.preset.gallery', isSystem: true },
+  { bundleName: 'com.huawei.appmarket', labelKey: 'perApp.preset.appGallery', isSystem: true }
 ];
 
 @Entry
@@ -75,12 +81,16 @@ struct PerAppPage {
 
     // 由于 HarmonyOS NEXT 三方应用权限限制，且在最新 SDK 中禁用了已安装的全局应用枚举接口，
     // 我们在此配合预设应用和自定义录入包名，从而实现完整的黑白名单规则定制。
-    SHARED_RUNTIME_CONTROLLER.appendLog("已载入分应用代理列表，可通过底部手动输入追加特定包名。");
+    SHARED_RUNTIME_CONTROLLER.appendLog(this.t('perApp.log.loaded'));
 
     // 将预置常用应用包名合并，并在此处显式排除掉当前应用自身，防止本应用出现在可选列表中
     PRESET_APPS.forEach(preset => {
       if (preset.bundleName !== SELF_BUNDLE_NAME && !list.some(item => item.bundleName === preset.bundleName)) {
-        list.push(preset);
+        list.push({
+          bundleName: preset.bundleName,
+          label: this.t(preset.labelKey),
+          isSystem: preset.isSystem
+        });
       }
     });
 
@@ -89,7 +99,7 @@ struct PerAppPage {
       if (pkg !== SELF_BUNDLE_NAME && !list.some(item => item.bundleName === pkg)) {
         list.push({
           bundleName: pkg,
-          label: `自定义应用 (${pkg})`,
+          label: this.f1('perApp.customLabel', 'package', pkg),
           isSystem: false
         });
       }
@@ -186,7 +196,7 @@ struct PerAppPage {
 
   @Builder
   private ModeGroup() {
-    SectionHeader({ title: '过滤策略' })
+    SectionHeader({ title: this.t('perApp.section.filterStrategy') })
     Column() {
       this.ModeRow(true, this.t('perApp.bypassSelected.title'), this.t('perApp.bypassSelected.detail'))
       this.RowDivider()
@@ -262,12 +272,12 @@ struct PerAppPage {
   @Builder
   private AppListGroup() {
     SectionHeader({
-      title: '应用列表',
-      detail: `已选 ${this.perAppProxyList.length} 个应用`
+      title: this.t('perApp.section.appList'),
+      detail: this.f1('perApp.selectedSummary', 'count', this.perAppProxyList.length.toString())
     })
 
     // 搜索栏（分组背景上的独立搜索条）
-    Search({ placeholder: '搜索应用名称或包名', value: this.searchQuery })
+    Search({ placeholder: this.t('perApp.searchPlaceholder'), value: this.searchQuery })
       .height(40)
       .backgroundColor(AppColor.surface)
       .placeholderColor(AppColor.textTertiary)
@@ -386,9 +396,9 @@ struct PerAppPage {
 
   @Builder
   private ManualAddGroup() {
-    SectionHeader({ title: '手动添加', detail: '添加未列出的应用包名' })
+    SectionHeader({ title: this.t('perApp.section.manualAdd'), detail: this.t('perApp.section.manualAdd.detail') })
     Column() {
-      TextInput({ placeholder: '应用名称 (如：百度地图)', text: this.newCustomLabel })
+      TextInput({ placeholder: this.t('perApp.manualLabel.placeholder'), text: this.newCustomLabel })
         .fontSize(FontSz.body)
         .height(48)
         .width('100%')
@@ -401,7 +411,7 @@ struct PerAppPage {
           this.newCustomLabel = v;
         })
       this.RowDivider()
-      TextInput({ placeholder: '应用包名 (如：com.baidu.BaiduMap)', text: this.newCustomPackage })
+      TextInput({ placeholder: this.t('perApp.manualPackage.placeholder'), text: this.newCustomPackage })
         .fontSize(FontSz.body)
         .height(48)
         .width('100%')
@@ -420,7 +430,7 @@ struct PerAppPage {
     .clip(true)
     .margin({ left: Space.lg, right: Space.lg })
 
-    Button('添加到列表')
+    Button(this.t('perApp.action.addToList'))
       .height(46)
       .width('100%')
       .backgroundColor(AppColor.brand)
@@ -441,11 +451,11 @@ struct PerAppPage {
         .height(64)
         .fillColor(AppColor.textTertiary)
         .opacity(0.3)
-      Text('分应用代理已关闭')
+      Text(this.t('perApp.disabled.title'))
         .fontSize(FontSz.headline)
         .fontWeight(FontWeight.Medium)
         .fontColor(AppColor.textTertiary)
-      Text('当前所有应用的流量均会默认经过虚拟网卡代理，开启后可按应用精准分流。')
+      Text(this.t('perApp.disabled.detail'))
         .fontSize(FontSz.body)
         .fontColor(AppColor.textTertiary)
         .textAlign(TextAlign.Center)
@@ -460,13 +470,13 @@ struct PerAppPage {
   // 手动新增包名逻辑
   private addCustomPackage(): void {
     const pkg = this.newCustomPackage.trim();
-    const label = this.newCustomLabel.trim() || `自定义应用 (${pkg})`;
+    const label = this.newCustomLabel.trim() || this.f1('perApp.customLabel', 'package', pkg);
     if (pkg.length === 0) {
-      SHARED_RUNTIME_CONTROLLER.appendLog("添加包名失败: 包名不能为空。");
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.t('perApp.log.addEmpty'));
       return;
     }
     if (!pkg.includes('.') || pkg.length < 5) {
-      SHARED_RUNTIME_CONTROLLER.appendLog("添加包名失败: 输入的包名格式不合规。");
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.t('perApp.log.addInvalid'));
       return;
     }
 
@@ -490,7 +500,7 @@ struct PerAppPage {
     // 清空输入框
     this.newCustomPackage = '';
     this.newCustomLabel = '';
-    SHARED_RUNTIME_CONTROLLER.appendLog(`已成功追加自定义代理应用: ${label}`);
+    SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('perApp.log.added', 'label', label));
   }
 
   private visiblePackageNames(): Array<string> {
@@ -538,10 +548,11 @@ struct PerAppPage {
       await this.saveSettings();
       const message = this.f1('perApp.autoSelected', 'count', this.perAppProxyList.length.toString());
       promptAction.showToast({ message });
-      const sourceLabel = packageList.source === 'remote' ? 'v2rayNG 远程列表' : '内置列表';
-      SHARED_RUNTIME_CONTROLLER.appendLog(`${message}（${sourceLabel}）`);
+      const sourceLabel = packageList.source === 'remote' ? this.t('perApp.autoSource.remote') :
+        this.t('perApp.autoSource.fallback');
+      SHARED_RUNTIME_CONTROLLER.appendLog(`${message} (${sourceLabel})`);
       if (packageList.source === 'fallback' && packageList.error.length > 0) {
-        SHARED_RUNTIME_CONTROLLER.appendLog(`自动选择代理应用列表下载失败，已使用内置列表：${packageList.error}`);
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('perApp.log.autoFallback', 'error', packageList.error));
       }
     } finally {
       this.isAutoSelectingProxyApps = false;
