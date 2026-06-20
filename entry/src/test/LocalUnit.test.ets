@@ -18,7 +18,7 @@ import { shouldShowProxySharingStartWarning } from '../main/ets/core/ProxySharin
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppSettings, ConnectionStatus, DEFAULT_DELAY_TEST_URL, DEFAULT_DELAY_TEST_URL_SECONDARY, DEFAULT_HEV_TUN_LOG_LEVEL, DEFAULT_HEV_TUN_RW_TIMEOUT, DEFAULT_IP_API_URL, DEFAULT_VPN_MTU, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, OutboundDomainResolveMethod, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, ProxyNode, resolveDelayTestUrl, RoutingRule, RuntimeStats, SubscriptionGroup } from '../main/ets/core/Profile';
 import { BUILTIN_GEO_DATA_FILE_NAMES, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, GEOIP_ONLY_CN_PRIVATE_URL, GEO_FILE_SOURCES, V2RAYNG_GEO_FILE_SOURCE_REPOS, buildBuiltinGeoAssetUrl, formatGeoCountSummary, formatGeoCountUnavailable, geoDataSpecForFile, parseGeoCountData } from '../main/ets/core/GeoAssets';
 import { DELAY_TEST_SOCKS_PORT, LOCAL_HTTP_PROXY_LAN_HOST, LOCAL_HTTP_PROXY_PORT, LOCAL_SOCKS_PROXY_PORT, UNIDENTIFIED_PROCESS_PACKAGE, buildDelayTestConfig, buildRuntimeXrayConfig, buildXrayConfig, buildXrayConfigWithSettings, canUseProcessRouting, collectOutboundDomainPreResolveHosts, normalizeFullConfigRoutingProcesses, normalizeOutboundInput, normalizeRoutingRuleProcesses, validateFullConfigJson, validateOutboundJson, validatePolicyGroupConfigJson, validateProxyChainConfigJson, withOutboundDomainResolvedHosts } from '../main/ets/core/XrayConfig';
-import { CONTROL_SHORTCUT_ACTION_PARAM, CONTROL_SHORTCUT_URI_PARAM, controlUriFromShortcutParameters, deepLinkUriFromWant, parseDeepLink } from '../main/ets/core/DeepLink';
+import { CONTROL_SHORTCUT_ACTION_PARAM, CONTROL_SHORTCUT_GUID_PARAM, CONTROL_SHORTCUT_NODE_ID_PARAM, CONTROL_SHORTCUT_URI_PARAM, TASKER_EXTRA_BUNDLE_GUID_PARAM, TASKER_EXTRA_BUNDLE_SWITCH_PARAM, controlUriFromShortcutParameters, deepLinkUriFromWant, parseDeepLink } from '../main/ets/core/DeepLink';
 import { HARMONY_SEND_DATA_ACTION, HARMONY_SHARE_ABSTRACT_KEY, HARMONY_SHARE_URL_KEY, HARMONY_TEXT_MIME_TYPE, SharedTextWantLike, extractSharedTextFromWant, isSharedTextWant } from '../main/ets/core/SharedTextImport';
 import { extractOutboundsFromXrayConfig } from '../main/ets/core/XrayOutbounds';
 import { SUPPORTED_SHARE_LINK_SCHEMES, buildUnsupportedShareLinkMessage, formatOutboundJsonToShareLink, isSupportedShareLink, parseShareLinkToOutboundJson } from '../main/ets/core/ShareLinkParser';
@@ -3301,10 +3301,26 @@ export default function localUnitTest() {
       expect(start.kind).assertEqual('control');
       expect(start.action).assertEqual('start');
       expect(start.payload).assertEqual('start');
+      expect(start.targetNodeId ?? '').assertEqual('');
 
       const stop = parseDeepLink('hey://stop');
       expect(stop.kind).assertEqual('control');
       expect(stop.action).assertEqual('stop');
+
+      const targetStart = parseDeepLink('hey://control?action=start&guid=node-1');
+      expect(targetStart.kind).assertEqual('control');
+      expect(targetStart.action).assertEqual('start');
+      expect(targetStart.targetNodeId ?? '').assertEqual('node-1');
+
+      const shortTargetStart = parseDeepLink('hey://start?id=node%202');
+      expect(shortTargetStart.kind).assertEqual('control');
+      expect(shortTargetStart.action).assertEqual('start');
+      expect(shortTargetStart.targetNodeId ?? '').assertEqual('node 2');
+
+      const pathTargetStart = parseDeepLink('hey://control/start?nodeId=node-3');
+      expect(pathTargetStart.kind).assertEqual('control');
+      expect(pathTargetStart.action).assertEqual('start');
+      expect(pathTargetStart.targetNodeId ?? '').assertEqual('node-3');
 
       const toggle = parseDeepLink('hey://switch');
       expect(toggle.kind).assertEqual('control');
@@ -3327,6 +3343,31 @@ export default function localUnitTest() {
       expect(actionUri).assertEqual('hey://control?action=toggle');
       expect(parseDeepLink(actionUri).action).assertEqual('toggle');
       expect(deepLinkUriFromWant({ parameters: actionParameters })).assertEqual(actionUri);
+
+      const nodeParameters: Record<string, Object> = {};
+      nodeParameters[CONTROL_SHORTCUT_ACTION_PARAM] = 'start';
+      nodeParameters[CONTROL_SHORTCUT_NODE_ID_PARAM] = 'node A';
+      const nodeUri = controlUriFromShortcutParameters(nodeParameters);
+      expect(nodeUri).assertEqual('hey://control?action=start&guid=node%20A');
+      expect(parseDeepLink(nodeUri).targetNodeId ?? '').assertEqual('node A');
+
+      const guidParameters: Record<string, Object> = {};
+      guidParameters[CONTROL_SHORTCUT_ACTION_PARAM] = 'start';
+      guidParameters[CONTROL_SHORTCUT_NODE_ID_PARAM] = 'node A';
+      guidParameters[CONTROL_SHORTCUT_GUID_PARAM] = 'node B';
+      expect(parseDeepLink(controlUriFromShortcutParameters(guidParameters)).targetNodeId ?? '').assertEqual('node B');
+
+      const taskerParameters: Record<string, Object> = {};
+      taskerParameters[TASKER_EXTRA_BUNDLE_SWITCH_PARAM] = true;
+      taskerParameters[TASKER_EXTRA_BUNDLE_GUID_PARAM] = 'node C';
+      const taskerUri = controlUriFromShortcutParameters(taskerParameters);
+      expect(taskerUri).assertEqual('hey://control?action=start&guid=node%20C');
+      expect(parseDeepLink(taskerUri).action).assertEqual('start');
+      expect(parseDeepLink(taskerUri).targetNodeId ?? '').assertEqual('node C');
+
+      const taskerStopParameters: Record<string, Object> = {};
+      taskerStopParameters[TASKER_EXTRA_BUNDLE_SWITCH_PARAM] = false;
+      expect(controlUriFromShortcutParameters(taskerStopParameters)).assertEqual('hey://control?action=stop');
 
       const uriParameters: Record<string, Object> = {};
       uriParameters[CONTROL_SHORTCUT_URI_PARAM] = 'hey://stop';

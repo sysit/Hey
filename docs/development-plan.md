@@ -234,7 +234,10 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
   `sendData/text/plain` 分享文本会按 v2rayNG `ACTION_SEND` 导入
 - ✅ **控制深链入口**：对应 v2rayNG Tasker/shortcuts/QS tile 的基础控制动作，
   支持 `hey://control?action=start|stop|toggle|scan` 和短 URI
-  `hey://start` / `hey://stop` / `hey://toggle` / `hey://scan`
+  `hey://start` / `hey://stop` / `hey://toggle` / `hey://scan`；
+  start/toggle 可携带 `guid`/`nodeId`/`id` 指定目标节点，先切换节点再启动，
+  快捷方式/Want 参数也兼容 `tasker_extra_bundle_switch/guid` 扁平 Tasker 键，
+  `guid=Default` 保持当前选中节点，对齐 v2rayNG Tasker `switch + guid`
 - ✅ **开机自动连接设置**：对应 v2rayNG `pref_is_booted`/`BootReceiver`，
   设置页可持久化“开机自动连接”；Harmony `AUTO_STARTUP` 启动原因会在主页加载设置和当前节点后触发启动当前节点
   （不声明会阻断普通调试签名安装的 `ohos.permission.RECEIVER_STARTUP_COMPLETED`；受系统自启动开关控制，仍需真机重启回归）
@@ -513,6 +516,7 @@ Harmony `VpnConfig.addresses`；VPN 绕过 LAN 也已按 v2rayNG 三态写入 Ha
 | 2026-06-18 | M5 | ✅ WebDAV ZIP 备份格式完成（默认 `backups/backup_ng.zip`，ZIP stored 条目内含 `hey_backup.json`，上传/下载走二进制，恢复兼容旧 JSON 备份 + 单测） |
 | 2026-06-18 | M4 | ✅ 控制深链入口完成（manifest 注册 `hey://control`/`start`/`stop`/`toggle`/`switch`/`scan`，Index 处理 start/stop/toggle/scan，补解析单测） |
 | 2026-06-20 | M4 | ✅ 声明式桌面快捷方式完成（`ohos.ability.shortcuts` + `shortcuts_config` 暴露开关/启动/停止/扫码四个入口，`EntryAbility` 解析快捷方式参数并复用控制深链，补参数解析单测）；待真机 launcher 展示/点击回归 |
+| 2026-06-20 | M4 | ✅ Tasker 指定节点控制完成（控制深链支持 `guid`/`nodeId`/`id` 目标节点，快捷方式参数可传 `hey.control.guid`/`hey.control.nodeId` 或 flat Tasker `tasker_extra_bundle_switch/guid`，start/toggle 会先选择目标节点再启动） |
 | 2026-06-18 | M4 | 🟡 常驻速度通知代码完成（`SpeedNotificationManager` 接 Harmony NotificationKit，运行中且 speedEnabled 开启时每 3 秒刷新速率/累计流量，停止或关闭设置时取消，补速率/节流文案单测）；待真机通知权限与通知中心展示回归 |
 | 2026-06-18 | M4 | 🟡 桌面服务卡片基础入口完成（`ControlCardAbility` + `form_config` + 2×2 ArkTS 卡片，提供 toggle/start/stop/scan 四个 `FormLink` 控制深链，补卡片 URI 单测）；待真机添加卡片、点击调起与运行态动态刷新回归 |
 | 2026-06-18 | M4 | 🟡 桌面服务卡片动态状态刷新代码完成（保存卡片 formId 与最近运行态，首页运行态变化同步状态文案、详情、主按钮动作并按 3 秒节流通过 `formProvider.updateForm` 刷新）；待真机添加卡片、点击调起与系统刷新回归 |

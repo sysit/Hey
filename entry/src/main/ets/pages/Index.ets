@@ -54,6 +54,12 @@ interface NodeDelayBatchResult {
 
 type NodeDelayTestMode = 'tcp' | 'real';
 
+interface ControlTargetSelectionResult {
+  ok: boolean;
+  changed: boolean;
+  runningSwitch: boolean;
+}
+
 @Entry
 @Component
 struct Index {
@@ -171,7 +177,7 @@ struct Index {
       return;
     }
     if (intent.kind === 'control') {
-      await this.handleControlDeepLink(intent.action ?? '');
+      await this.handleControlDeepLink(intent.action ?? '', intent.targetNodeId ?? '');
       return;
     }
     const context = getContext(this) as common.Context;
@@ -335,7 +341,7 @@ struct Index {
     return lower.startsWith('http://') || lower.startsWith('https://');
   }
 
-  private async handleControlDeepLink(action: DeepLinkControlAction): Promise<void> {
+  private async handleControlDeepLink(action: DeepLinkControlAction, targetNodeId: string = ''): Promise<void> {
     if (action === 'scan') {
       router.pushUrl({ url: AppRoute.SCANNER });
       SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.deepLinkControl', 'action', action));
@@ -348,6 +354,14 @@ struct Index {
     }
 
     if (action === 'start') {
+      const target = await this.selectControlTargetNode(targetNodeId);
+      if (!target.ok) {
+        return;
+      }
+      if (target.runningSwitch) {
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.deepLinkControl', 'action', action));
+        return;
+      }
       if (this.isRunning()) {
         SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.deepLinkControlNoop', 'action', action));
         return;
@@ -371,10 +385,56 @@ struct Index {
       if (this.isRunning()) {
         await this.stopConnection();
       } else {
+        const target = await this.selectControlTargetNode(targetNodeId);
+        if (!target.ok) {
+          return;
+        }
         await this.startConnection();
       }
       SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.deepLinkControl', 'action', action));
     }
+  }
+
+  private async selectControlTargetNode(targetNodeId: string): Promise<ControlTargetSelectionResult> {
+    const resolvedTargetNodeId = this.resolveControlTargetNodeId(targetNodeId);
+    if (resolvedTargetNodeId.length === 0) {
+      return { ok: true, changed: false, runningSwitch: false };
+    }
+
+    const node = this.findControlTargetNode(resolvedTargetNodeId);
+    if (node === null) {
+      this.lastError = this.f1('error.deepLinkControlNodeMissing', 'id', resolvedTargetNodeId);
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+      return { ok: false, changed: false, runningSwitch: false };
+    }
+    if (node.id === this.selectedNodeId) {
+      return { ok: true, changed: false, runningSwitch: false };
+    }
+
+    const wasRunning = this.isRunning();
+    await this.selectNode(node);
+    return { ok: this.lastError.length === 0, changed: true, runningSwitch: wasRunning };
+  }
+
+  private resolveControlTargetNodeId(targetNodeId: string): string {
+    const value = targetNodeId.trim();
+    return value.toLowerCase() === 'default' ? '' : value;
+  }
+
+  private findControlTargetNode(targetNodeId: string): ProxyNode | null {
+    const activeNode = NODES_CONTROLLER.findNode(this.nodes, targetNodeId);
+    if (activeNode !== null) {
+      return activeNode;
+    }
+    for (let groupIndex = 0; groupIndex < this.subscriptionGroups.length; groupIndex++) {
+      const nodes = this.subscriptionGroups[groupIndex].nodes;
+      for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+        if (nodes[nodeIndex].id === targetNodeId) {
+          return nodes[nodeIndex];
+        }
+      }
+    }
+    return null;
   }
 
   private nodeNameFromOutbound(outboundJson: string): string {

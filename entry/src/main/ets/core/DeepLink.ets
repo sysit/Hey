@@ -2,8 +2,8 @@
 // import entry points plus shortcut/Tasker-like controls. The app registers the scheme
 //   hey://install-sub?url=<encoded subscription url>
 //   hey://install-config?url=<encoded share link>
-//   hey://control?action=start|stop|toggle|scan
-//   hey://start | hey://stop | hey://toggle | hey://scan
+//   hey://control?action=start|stop|toggle|scan[&guid=<node id>]
+//   hey://start | hey://stop | hey://toggle | hey://scan[?guid=<node id>]
 // EntryAbility stashes the raw Want uri or shortcut parameters; the Index page
 // parses and handles it.
 
@@ -12,6 +12,10 @@ export type DeepLinkControlAction = 'start' | 'stop' | 'toggle' | 'scan' | '';
 
 export const CONTROL_SHORTCUT_ACTION_PARAM: string = 'hey.control.action';
 export const CONTROL_SHORTCUT_URI_PARAM: string = 'hey.control.uri';
+export const CONTROL_SHORTCUT_NODE_ID_PARAM: string = 'hey.control.nodeId';
+export const CONTROL_SHORTCUT_GUID_PARAM: string = 'hey.control.guid';
+export const TASKER_EXTRA_BUNDLE_SWITCH_PARAM: string = 'tasker_extra_bundle_switch';
+export const TASKER_EXTRA_BUNDLE_GUID_PARAM: string = 'tasker_extra_bundle_guid';
 
 export interface DeepLinkWantLike {
   uri?: string;
@@ -22,6 +26,7 @@ export interface DeepLinkIntent {
   kind: DeepLinkKind;
   payload: string;
   action?: DeepLinkControlAction;
+  targetNodeId?: string;
 }
 
 const SUB_PREFIX: string = 'hey://install-sub';
@@ -45,7 +50,7 @@ export function parseDeepLink(uri: string): DeepLinkIntent {
   }
   const action = controlActionFromShortcutHost(lower);
   if (action.length > 0) {
-    return { kind: 'control', payload: action, action };
+    return { kind: 'control', payload: action, action, targetNodeId: extractControlTargetNodeId(trimmed) };
   }
   return { kind: 'none', payload: '' };
 }
@@ -66,9 +71,9 @@ export function controlUriFromShortcutParameters(parameters: Record<string, Obje
   if (directUri.length > 0 && parseDeepLink(directUri).kind !== 'none') {
     return directUri;
   }
-  const action = normalizeControlAction(parameterText(parameters[CONTROL_SHORTCUT_ACTION_PARAM]));
+  const action = controlActionFromShortcutParameters(parameters);
   if (action.length > 0) {
-    return `hey://control?action=${action}`;
+    return appendControlTarget(`hey://control?action=${action}`, controlTargetNodeIdFromShortcutParameters(parameters));
   }
   return '';
 }
@@ -83,13 +88,14 @@ function buildIntent(kind: DeepLinkKind, uri: string): DeepLinkIntent {
 
 function buildControlIntent(uri: string): DeepLinkIntent {
   const queryAction = normalizeControlAction(extractQueryParam(uri, 'action'));
+  const targetNodeId = extractControlTargetNodeId(uri);
   if (queryAction.length > 0) {
-    return { kind: 'control', payload: queryAction, action: queryAction };
+    return { kind: 'control', payload: queryAction, action: queryAction, targetNodeId };
   }
 
   const pathAction = normalizeControlAction(extractControlPath(uri));
   if (pathAction.length > 0) {
-    return { kind: 'control', payload: pathAction, action: pathAction };
+    return { kind: 'control', payload: pathAction, action: pathAction, targetNodeId };
   }
   return { kind: 'none', payload: '' };
 }
@@ -120,6 +126,56 @@ function extractQueryParam(uri: string, key: string): string {
     }
   }
   return '';
+}
+
+function extractControlTargetNodeId(uri: string): string {
+  const keys = ['guid', 'nodeId', 'nodeid', 'id', 'node'];
+  for (let index = 0; index < keys.length; index++) {
+    const value = extractQueryParam(uri, keys[index]).trim();
+    if (value.length > 0) {
+      return value;
+    }
+  }
+  return '';
+}
+
+function controlTargetNodeIdFromShortcutParameters(parameters: Record<string, Object>): string {
+  const guid = parameterText(parameters[CONTROL_SHORTCUT_GUID_PARAM]);
+  if (guid.length > 0) {
+    return guid;
+  }
+  const nodeId = parameterText(parameters[CONTROL_SHORTCUT_NODE_ID_PARAM]);
+  if (nodeId.length > 0) {
+    return nodeId;
+  }
+  return parameterText(parameters[TASKER_EXTRA_BUNDLE_GUID_PARAM]);
+}
+
+function controlActionFromShortcutParameters(parameters: Record<string, Object>): DeepLinkControlAction {
+  const action = normalizeControlAction(parameterText(parameters[CONTROL_SHORTCUT_ACTION_PARAM]));
+  if (action.length > 0) {
+    return action;
+  }
+  return controlActionFromTaskerSwitch(parameters[TASKER_EXTRA_BUNDLE_SWITCH_PARAM]);
+}
+
+function controlActionFromTaskerSwitch(value: Object | undefined): DeepLinkControlAction {
+  const text = parameterText(value).toLowerCase();
+  if (text === 'true' || text === '1') {
+    return 'start';
+  }
+  if (text === 'false' || text === '0') {
+    return 'stop';
+  }
+  return '';
+}
+
+function appendControlTarget(uri: string, targetNodeId: string): string {
+  const target = targetNodeId.trim();
+  if (target.length === 0) {
+    return uri;
+  }
+  return `${uri}&guid=${encodeURIComponent(target)}`;
 }
 
 function extractOuterFragment(uri: string): string {
