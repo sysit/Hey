@@ -471,6 +471,18 @@ export default function localUnitTest() {
     });
 
     it('parses manual outbound configs back into NodeEdit state', 0, () => {
+      const unsupported = parseManualOutboundEditState('{"protocol":"freedom","settings":{}}', '', 'freedom');
+      expect(unsupported.valid).assertFalse();
+      expect(localizeCoreMessage('en', unsupported.message)).assertEqual('This protocol node cannot be edited as a manual config.');
+
+      const missingSettings = parseManualOutboundEditState('{"protocol":"vless"}', '', 'vless');
+      expect(missingSettings.valid).assertFalse();
+      expect(localizeCoreMessage('en', missingSettings.message)).assertEqual('Node config is missing settings.');
+
+      const malformed = parseManualOutboundEditState('{', '', 'vless');
+      expect(malformed.valid).assertFalse();
+      expect(localizeCoreMessage('en', malformed.message)).assertContain('Node config parse failed:');
+
       const vless = parseManualOutboundEditState(
         '{"protocol":"vless","tag":"Manual VLESS","browserDialerMode":"WebView","settings":{"vnext":[{"address":"edit.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"custom-experimental","flow":"xtls-rprx-vision-udp443"}]}]},"streamSettings":{"network":"xhttp","security":"reality","xhttpSettings":{"path":"/x","host":"cdn.example.com","mode":"packet-up","extra":{"headers":{"x-test":"1"}}},"realitySettings":{"serverName":"reality.example.com","publicKey":"pub","shortId":"abcd","spiderX":"/bot","mldsa65Verify":"pqv","fingerprint":"randomized","echConfigList":"ech","pinnedPeerCertSha256":"pcs"},"finalmask":{"tcp":[{"type":"custom"}]}}}',
         'Node Name',
@@ -1678,6 +1690,10 @@ export default function localUnitTest() {
       expect(localizeCoreMessage('en', '启动仅代理模式失败：仅代理模式缺少运行配置。')).assertEqual('Failed to start proxy-only mode: Proxy-only mode is missing the runtime config.');
       expect(localizeCoreMessage('en', '停止仅代理模式失败：native stop failed')).assertEqual('Failed to stop proxy-only mode: native stop failed');
       expect(localizeCoreMessage('en', '启动 VPN 失败：启动 VPN 超时：系统 VPN 授权服务没有响应。若 hilog 中出现 com.huawei.hmos.vpndialog bundle not exist，说明当前系统镜像缺少 VPN 授权组件，请改用真机测试。')).assertEqual('Failed to start VPN: VPN start timed out: the system VPN authorization service did not respond. If hilog shows com.huawei.hmos.vpndialog bundle not exist, this system image is missing the VPN authorization component; test on a real device.');
+      expect(localizeCoreMessage('en', '不支持编辑此协议节点。')).assertEqual('This protocol node cannot be edited as a manual config.');
+      expect(localizeCoreMessage('en', '节点配置缺少 settings。')).assertEqual('Node config is missing settings.');
+      expect(localizeCoreMessage('en', '节点配置解析失败：bad json')).assertEqual('Node config parse failed: bad json');
+      expect(localizeCoreMessage('en', '高级节点配置解析失败：bad json')).assertEqual('Advanced node config parse failed: bad json');
       const unsupportedShare = parseShareLinkToOutboundJson('ftp://example.com/node');
       expect(unsupportedShare.success).assertFalse();
       expect(unsupportedShare.message).assertEqual(buildUnsupportedShareLinkMessage());

@@ -15,6 +15,7 @@ import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
+import { localizeCoreMessage } from '../utils/LocalizationPresenter';
 
 // 1. 声明独立的通用子组件，支持标准的双向状态重绘 (@Link)
 
@@ -875,7 +876,7 @@ struct NodeEditPage {
 
     const editState = parseManualOutboundEditState(found.outboundJson, found.name, found.protocol);
     if (!editState.valid) {
-      this.lastError = editState.message;
+      this.lastError = localizeCoreMessage(this.language, editState.message);
       this.protocol = isManualEditProtocol(requestedProtocol) ? requestedProtocol : 'vless';
       this.applyProtocolDefaults(this.protocol);
       return;
@@ -987,7 +988,7 @@ struct NodeEditPage {
           mtu: this.wgMtu
         });
         if (!built.success) {
-          this.lastError = built.message;
+          this.lastError = localizeCoreMessage(this.language, built.message);
           return;
         }
         outbound.settings = (JSON.parse(built.outboundJson) as FormOutbound).settings;
@@ -1010,7 +1011,7 @@ struct NodeEditPage {
           bandwidthUp: this.hy2BandwidthUp
         });
         if (!built.success) {
-          this.lastError = built.message;
+          this.lastError = localizeCoreMessage(this.language, built.message);
           return;
         }
         outbound.settings = (JSON.parse(built.outboundJson) as FormOutbound).settings;

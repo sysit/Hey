@@ -180,6 +180,12 @@ export function localizeCoreMessage(language: AppLanguage, message: string): str
   if (message === '仅代理模式缺少运行配置。') {
     return translate(language, 'proxy.missingRuntimeConfig');
   }
+  if (message === '不支持编辑此协议节点。') {
+    return translate(language, 'manualEdit.unsupportedProtocol');
+  }
+  if (message === '节点配置缺少 settings。') {
+    return translate(language, 'manualEdit.missingSettings');
+  }
 
   const unsupportedPrefix = '暂不支持 ';
   const unsupportedEnd = '，当前支持 VLESS、VMess、Trojan、Shadowsocks、SOCKS、HTTP、WireGuard 和 Hysteria2。';
@@ -234,6 +240,8 @@ export function localizeCoreMessage(language: AppLanguage, message: string): str
 
   return localizePrefixMessage(language, message, 'JSON 解析失败：', 'core.jsonParseFailed') ??
     localizePrefixMessage(language, message, '分享链接解析失败：', 'core.shareParseFailed') ??
+    localizePrefixMessage(language, message, '节点配置解析失败：', 'manualEdit.parseFailed') ??
+    localizePrefixMessage(language, message, '高级节点配置解析失败：', 'advancedOutbound.parseFailed') ??
     localizeCoreErrorPrefixMessage(language, message, '启动 VPN 失败：', 'vpn.startFailed') ??
     localizeCoreErrorPrefixMessage(language, message, '停止 VPN 失败：', 'vpn.stopFailed') ??
     localizeCoreErrorPrefixMessage(language, message, '启动仅代理模式失败：', 'proxy.startFailed') ??
