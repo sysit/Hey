@@ -37,7 +37,7 @@ struct SubscriptionsPage {
     Column() {
       PageHeader({
         title: this.t('screen.subscriptions.title'),
-        summary: this.subscriptionGroups.length > 0 ? `共 ${this.subscriptionGroups.length} 个订阅分组` : '暂无订阅分组',
+        summary: this.subscriptionSummaryText(),
         showBack: true,
         rightActions: () => {
           this.HeaderActions()
@@ -51,7 +51,7 @@ struct SubscriptionsPage {
             .height(64)
             .fillColor(AppColor.textTertiary)
             .opacity(0.4)
-          Text('暂无订阅分组，点击右上角 + 添加')
+          Text(this.t('subscription.list.emptyHint'))
             .fontSize(FontSz.footnote)
             .fontColor(AppColor.textTertiary)
         }
@@ -229,14 +229,14 @@ struct SubscriptionsPage {
       return group.url;
     }
     if (group.id === 'sub-local') {
-      return `共 ${group.nodes.length} 个本地节点`;
+      return this.f1('subscription.list.localNodeCount', 'count', group.nodes.length.toString());
     }
-    return `${group.nodes.length} 个节点`;
+    return this.f1('node.count', 'count', group.nodes.length.toString());
   }
 
   private formatDateTime(timestamp: number): string {
     if (timestamp <= 0) {
-      return '从未更新';
+      return this.t('subscription.list.neverUpdated');
     }
     const date = new Date(timestamp);
     const year = date.getFullYear();
@@ -397,5 +397,15 @@ struct SubscriptionsPage {
 
   private f1(key: string, name: string, value: string): string {
     return formatOne(this.language, key, name, value);
+  }
+
+  private subscriptionSummaryText(): string {
+    if (this.subscriptionGroups.length === 0) {
+      return this.t('subscription.list.emptySummary');
+    }
+    if (this.subscriptionGroups.length === 1) {
+      return this.t('subscription.list.groupCount.one');
+    }
+    return this.f1('subscription.list.groupCount', 'count', this.subscriptionGroups.length.toString());
   }
 }

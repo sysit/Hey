@@ -57,7 +57,7 @@ export class SubscriptionsController {
 
   async update(context: common.Context, groupId: string, urlValue: string, selectedNodeId: string, language: AppLanguage, proxyPort: number = 0): Promise<SubscriptionsControllerState> {
     if (groupId === 'sub-local') {
-      return this.buildState(await SubscriptionStore.load(context), language, '本地节点分组无需更新');
+      return this.buildState(await SubscriptionStore.load(context), language, translate(language, 'subscription.update.localGroupSkipped'));
     }
     const url = urlValue.trim();
     if (url.length === 0) {
@@ -127,7 +127,7 @@ export class SubscriptionsController {
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (trimmedName.length === 0) {
-      return this.buildState(await SubscriptionStore.load(context), language, '订阅名称不能为空');
+      return this.buildState(await SubscriptionStore.load(context), language, translate(language, 'subscription.edit.groupName.empty'));
     }
     const validationMessage = this.validateEditableSubscriptionUrl(trimmedUrl, allowInsecureUrl, language);
     if (validationMessage.length > 0) {
@@ -160,7 +160,7 @@ export class SubscriptionsController {
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (trimmedName.length === 0) {
-      return this.buildState(await SubscriptionStore.load(context), language, '订阅名称不能为空');
+      return this.buildState(await SubscriptionStore.load(context), language, translate(language, 'subscription.edit.groupName.empty'));
     }
     const validationMessage = this.validateEditableSubscriptionUrl(trimmedUrl, allowInsecureUrl, language);
     if (validationMessage.length > 0) {
@@ -201,9 +201,10 @@ export class SubscriptionsController {
 
     await this.syncBackgroundSchedule(context);
     
-    const msg = failedCount === 0 
-      ? `已成功更新 ${successCount} 个订阅分组` 
-      : `更新完成: ${successCount} 个成功, ${failedCount} 个失败`;
+    const msg = failedCount === 0
+      ? formatOne(language, 'subscription.updateAll.success', 'count', successCount.toString())
+      : formatTwo(language, 'subscription.updateAll.partial',
+        'success', successCount.toString(), 'failed', failedCount.toString());
     
     return this.buildState(subscription, language, msg);
   }
@@ -236,8 +237,9 @@ export class SubscriptionsController {
     let message = '';
     if (updatedCount > 0 || failedCount > 0) {
       message = failedCount === 0
-        ? `已自动更新 ${updatedCount} 个订阅分组`
-        : `自动更新完成: ${updatedCount} 个成功, ${failedCount} 个失败`;
+        ? formatOne(language, 'subscription.autoUpdate.success', 'count', updatedCount.toString())
+        : formatTwo(language, 'subscription.autoUpdate.partial',
+          'success', updatedCount.toString(), 'failed', failedCount.toString());
     }
 
     return {
@@ -275,8 +277,8 @@ export class SubscriptionsController {
     await this.syncBackgroundSchedule(context);
 
     const message = failedCount === 0
-      ? `已自动更新订阅分组：${group.name}`
-      : `自动更新订阅分组失败：${group.name}`;
+      ? formatOne(language, 'subscription.autoUpdateGroup.success', 'name', group.name)
+      : formatOne(language, 'subscription.autoUpdateGroup.failed', 'name', group.name);
 
     return {
       state: this.buildState(subscription, language, message),
