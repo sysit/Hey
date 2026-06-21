@@ -7,6 +7,7 @@ import { HEY_RELEASES_PAGE_URL } from '../core/UpdateChecker';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { UPDATE_CHECKER_MANAGER } from '../services/UpdateCheckerManager';
+import { BUNDLED_XRAY_VERSION } from '../core/CoreInfo';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
@@ -205,7 +206,7 @@ struct AboutPage {
     Column() {
       CoreRow({
         label: this.t('about.core.xray'),
-        value: this.t('about.core.unknown'),
+        value: BUNDLED_XRAY_VERSION.length > 0 ? BUNDLED_XRAY_VERSION : this.t('about.core.unknown'),
         showDivider: true
       })
       CoreRow({
