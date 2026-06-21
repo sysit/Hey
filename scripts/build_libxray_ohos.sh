@@ -13,6 +13,27 @@ OUT_DIR="${ROOT_DIR}/entry/src/main/cpp/prebuilt/arm64-v8a"
 LIBXRAY_REPO="${LIBXRAY_REPO:-https://github.com/XTLS/libXray.git}"
 EXPORTS_FILE="${WORK_DIR}/libxray.exports"
 GO_LDFLAGS_DEFAULT="-s -w -checklinkname=0 -linkmode external -extldflags \"-Wl,--version-script=${EXPORTS_FILE} -Wl,-z,lazy\""
+# GOOS choice — a known, unresolved trade-off on HarmonyOS (musl libc, ld-musl-aarch64):
+#
+#  * GOOS=android: Go stores the goroutine pointer `g` in a FIXED bionic TLS slot
+#    (runtime.tls_g is plain DATA, slot #16, no TLS relocation). dlopen works, but that
+#    slot holds garbage on OHOS-musl threads the Go runtime didn't create — so every
+#    cgo->Go call from an ArkTS/UI thread SIGSEGVs (g is never set up). The VPN ability
+#    happens to work; UI-thread native calls (version/ping/import/geo) crash.
+#
+#  * GOOS=linux: runtime.tls_g is a real ELF TLS variable (TPIDR_EL0). Foreign-thread
+#    adoption (needm) then works and the cgo crash is GONE. BUT the build emits one
+#    R_AARCH64_TLS_TPREL64 (initial-exec) relocation for tls_g, and musl refuses
+#    initial-exec TLS in a dlopen'd library ("initial-exec TLS resolves to dynamic
+#    definition"), so libheyvpn's dlopen of libxray fails outright -> whole native
+#    bridge unavailable. CGO_CFLAGS="-ftls-model=global-dynamic" removes every other
+#    IE-TLS reloc, but NOT the Go-runtime tls_g one (Go has no flag/TLSDESC for it).
+#    Making linux usable needs a Go toolchain patch (port runtime.load_g/save_g in
+#    runtime/tls_arm64.s to musl-compatible dynamic TLS) — i.e. an OHOS Go port.
+#
+# Until that port exists, default to the android target (working VPN). Build the linux
+# variant for experiments with:
+#   GOOS_TARGET=linux CGO_CFLAGS="-ftls-model=global-dynamic" bash scripts/build_libxray_ohos.sh
 GOOS_TARGET="${GOOS_TARGET:-android}"
 ANDROID_STUB_DIR="${WORK_DIR}/android-stub"
 
@@ -127,23 +148,26 @@ path.write_text(text)
 PY
 fi
 
-if [[ "${GOOS_TARGET}" == "android" ]]; then
-  GVISOR_MODULE_VERSION="$(go list -m -f '{{.Version}}' gvisor.dev/gvisor)"
-  GVISOR_MODULE_DIR="$(go env GOMODCACHE)/gvisor.dev/gvisor@${GVISOR_MODULE_VERSION}"
-  PATCHED_GVISOR_DIR="${WORK_DIR}/gvisor-patched"
+# gvisor's fdbased endpoint calls unix.Fstat on the TUN fd to decide its dispatcher.
+# HarmonyOS VPN fds reject Fstat even though readv/writev work, so patch isSocketFD to
+# skip Fstat and force the portable Readv dispatcher. This is an OHOS-runtime
+# requirement and applies to every GOOS target (android and linux), so it is NOT gated.
+GVISOR_MODULE_VERSION="$(go list -m -f '{{.Version}}' gvisor.dev/gvisor)"
+GVISOR_MODULE_DIR="$(go env GOMODCACHE)/gvisor.dev/gvisor@${GVISOR_MODULE_VERSION}"
+PATCHED_GVISOR_DIR="${WORK_DIR}/gvisor-patched"
 
-  if [[ ! -d "${GVISOR_MODULE_DIR}" ]]; then
-    go mod download gvisor.dev/gvisor
-  fi
+if [[ ! -d "${GVISOR_MODULE_DIR}" ]]; then
+  go mod download gvisor.dev/gvisor
+fi
 
-  if [[ -d "${PATCHED_GVISOR_DIR}" ]]; then
-    chmod -R u+w "${PATCHED_GVISOR_DIR}"
-  fi
-  rm -rf "${PATCHED_GVISOR_DIR}"
-  cp -R "${GVISOR_MODULE_DIR}" "${PATCHED_GVISOR_DIR}"
+if [[ -d "${PATCHED_GVISOR_DIR}" ]]; then
   chmod -R u+w "${PATCHED_GVISOR_DIR}"
+fi
+rm -rf "${PATCHED_GVISOR_DIR}"
+cp -R "${GVISOR_MODULE_DIR}" "${PATCHED_GVISOR_DIR}"
+chmod -R u+w "${PATCHED_GVISOR_DIR}"
 
-  python3 - "${PATCHED_GVISOR_DIR}/pkg/tcpip/link/fdbased/endpoint.go" <<'PY'
+python3 - "${PATCHED_GVISOR_DIR}/pkg/tcpip/link/fdbased/endpoint.go" <<'PY'
 from pathlib import Path
 import sys
 
@@ -159,8 +183,8 @@ old = """func isSocketFD(fd int) (bool, error) {
 """
 new = """func isSocketFD(fd int) (bool, error) {
 \t// HarmonyOS VPN file descriptors can reject Fstat even when readv/writev
-\t// works. Xray's Android TUN inbound passes a TUN fd here, so force the
-\t// portable non-socket Readv dispatcher and avoid Fstat entirely.
+\t// works. Xray's TUN inbound passes a TUN fd here, so force the portable
+\t// non-socket Readv dispatcher and avoid Fstat entirely.
 \treturn false, nil
 }
 """
@@ -169,8 +193,7 @@ if old not in text:
 path.write_text(text.replace(old, new))
 PY
 
-  go mod edit -replace="gvisor.dev/gvisor=${PATCHED_GVISOR_DIR}"
-fi
+go mod edit -replace="gvisor.dev/gvisor=${PATCHED_GVISOR_DIR}"
 
 CGO_ENABLED=1 \
 GOOS="${GOOS_TARGET}" \
@@ -186,3 +209,35 @@ go build \
   .
 
 echo "Built ${OUT_DIR}/libxray.so"
+
+# Stamp the bundled Xray core version (core.Version()) into the app so the About
+# page can display it WITHOUT calling the native CGoXrayVersion(): that export
+# cold-crashes (SIGSEGV in the Go runtime) on the GOOS=android lib running under
+# HarmonyOS. We read the constants straight from the pinned xray-core source.
+CORE_INFO_FILE="${ROOT_DIR}/entry/src/main/ets/core/CoreInfo.ets"
+XRAY_CORE_DIR="$(go list -m -f '{{.Dir}}' github.com/xtls/xray-core)"
+CORE_GO="${XRAY_CORE_DIR}/core/core.go"
+VX="$(grep -E 'Version_x[[:space:]]+byte' "${CORE_GO}" | grep -oE '[0-9]+' | head -1)"
+VY="$(grep -E 'Version_y[[:space:]]+byte' "${CORE_GO}" | grep -oE '[0-9]+' | head -1)"
+VZ="$(grep -E 'Version_z[[:space:]]+byte' "${CORE_GO}" | grep -oE '[0-9]+' | head -1)"
+if [[ -n "${VX}" && -n "${VY}" && -n "${VZ}" ]]; then
+  XRAY_VER="${VX}.${VY}.${VZ}"
+  cat > "${CORE_INFO_FILE}" <<EOF
+/**
+ * 内置 Xray 内核（xtls/xray-core）的版本号 —— 即 \`core.Version()\` 的返回值。
+ *
+ * 注意：不要在运行时调用原生 \`CGoXrayVersion()\` 去取这个值。该函数在为
+ * \`GOOS=android\` 编译、运行于 HarmonyOS 的 libxray.so 里冷调用会触发不可捕获的
+ * 原生段错误（SIGSEGV，崩在 Go runtime 的 m/g 线程上下文里）。详见
+ * scripts/build_libxray_ohos.sh 与 pages/About.ets。
+ *
+ * 此常量在重新编译 libxray.so 时由 scripts/build_libxray_ohos.sh 从所锁定的
+ * xtls/xray-core 源码（core/core.go 的 Version_x/y/z 常量）自动写入，
+ * 与 prebuilt/arm64-v8a/libxray.so 保持同步——请勿手动修改。
+ */
+export const BUNDLED_XRAY_VERSION: string = '${XRAY_VER}';
+EOF
+  echo "Stamped bundled Xray core version ${XRAY_VER} into ${CORE_INFO_FILE}"
+else
+  echo "WARN: could not parse Xray core version from ${CORE_GO}; left CoreInfo.ets unchanged" >&2
+fi
