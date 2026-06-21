@@ -29,6 +29,7 @@ import { V2RAYNG_FRAGMENT_PACKET_OPTIONS, normalizeV2rayNgCoreLogLevel, normaliz
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
 import { filterSettings, SETTINGS_CATALOG, SettingGroup, SettingInputKind, SettingItem } from '../features/settings/SettingsCatalog';
 import { findInputSpec, findSelectSpec, SettingInputSpec, SettingSelectSpec } from '../features/settings/SettingsOptions';
+import { CORE_TYPE_XRAY, CoreSelectionStore, CoreType } from '../core/CoreSelection';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
@@ -95,6 +96,8 @@ struct SettingsPage {
   @State private settingIpApiUrl: string = DEFAULT_IP_API_URL;
   @State private settingRealPingConcurrency: string = '16';
   @State private settingMode: string = APP_MODE_VPN;
+  // 运行内核（独立存储 CoreSelectionStore，不走 AppSettings 草稿）。预览功能。
+  @State private settingCoreType: string = CORE_TYPE_XRAY;
   @State private settingOutboundDomainResolveMethod: OutboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS;
   @State private settingAutoSortAfterTest: boolean = false;
   @State private settingAutoRemoveAfterTest: boolean = false;
@@ -489,6 +492,7 @@ struct SettingsPage {
     try {
       const context = getContext(this) as common.Context;
       this.applyDraft(SETTINGS_CONTROLLER.toDraft(await SETTINGS_CONTROLLER.load(context)));
+      this.settingCoreType = await CoreSelectionStore.load(context);
     } catch (error) {
       this.lastError = this.f1('error.loadSettings', 'error', JSON.stringify(error));
     }
@@ -931,6 +935,7 @@ struct SettingsPage {
   private currentOptionValue(key: string): string {
     switch (key) {
       case 'mode': return this.settingMode;
+      case 'coreType': return this.settingCoreType;
       case 'uiModeNight': return this.settingUiModeNight;
       case 'vpnBypassLan': return this.settingVpnBypassLan;
       case 'logLevel': return normalizeV2rayNgCoreLogLevel(this.settingLogLevel);
@@ -945,6 +950,9 @@ struct SettingsPage {
     switch (key) {
       case 'mode':
         this.settingMode = value;
+        break;
+      case 'coreType':
+        this.settingCoreType = value;
         break;
       case 'uiModeNight':
         this.settingUiModeNight = value;
@@ -980,7 +988,21 @@ struct SettingsPage {
     this.applyOptionValue(key, value);
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.sheetTitle));
     this.closeSheet();
+    // 内核选择存在独立 store，不进 AppSettings 草稿。
+    if (key === 'coreType') {
+      this.persistCoreType(value);
+      return;
+    }
     this.persistSettings(false);
+  }
+
+  private async persistCoreType(value: string): Promise<void> {
+    try {
+      const context = getContext(this) as common.Context;
+      this.settingCoreType = await CoreSelectionStore.save(context, value as CoreType);
+    } catch (error) {
+      this.lastError = this.f1('error.saveSettings', 'error', JSON.stringify(error));
+    }
   }
 
   private commitInput(): void {

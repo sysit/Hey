@@ -10,7 +10,6 @@ import { UPDATE_CHECKER_MANAGER } from '../services/UpdateCheckerManager';
 import { BUNDLED_XRAY_VERSION } from '../core/CoreInfo';
 // [SING-BOX SPIKE — TEMP] Phase 0 验证入口，验证完连同探测行一起删。
 import { probeNativeSingbox } from '../native/HeyNative';
-import { CORE_TYPE_SINGBOX, CORE_TYPE_XRAY, CoreSelectionStore, CoreType, isSingboxCore } from '../core/CoreSelection';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
@@ -41,8 +40,6 @@ struct AboutPage {
   @State private versionName: string = '1.2.0';
   @State private versionCode: string = '1020000';
   @State private bundleId: string = 'com.lmlm.hey';
-  // 运行内核（全局开关，预览）。独立存储，详见 core/CoreSelection.ets。
-  @State private coreType: CoreType = CORE_TYPE_XRAY;
 
   aboutToAppear(): void {
     this.loadState();
@@ -205,19 +202,10 @@ struct AboutPage {
     .width('100%')
   }
 
-  // 内核引擎：运行内核开关（预览）+ 键值对展示。
+  // 内核引擎：键值对展示 + sing-box 诊断探测。
   @Builder
   private CoreCard() {
     Column() {
-      // 全局内核选择（Xray / sing-box）。字面量文案，预览功能不走 i18n。
-      CoreSelectRow({
-        label: '运行内核',
-        value: isSingboxCore(this.coreType) ? 'sing-box (预览)' : 'Xray',
-        showDivider: true,
-        onAction: () => {
-          this.toggleCore();
-        }
-      })
       CoreRow({
         label: this.t('about.core.xray'),
         value: BUNDLED_XRAY_VERSION.length > 0 ? BUNDLED_XRAY_VERSION : this.t('about.core.unknown'),
@@ -255,20 +243,6 @@ struct AboutPage {
     const result = probeNativeSingbox();
     promptAction.showToast({ message: result.message, duration: 6000 });
     SHARED_RUNTIME_CONTROLLER.appendLog('[sing-box probe] ' + result.message);
-  }
-
-  // 切换全局运行内核（Xray <-> sing-box）。重连后生效。
-  private async toggleCore(): Promise<void> {
-    const next: CoreType = isSingboxCore(this.coreType) ? CORE_TYPE_XRAY : CORE_TYPE_SINGBOX;
-    try {
-      const context = getContext(this) as common.Context;
-      this.coreType = await CoreSelectionStore.save(context, next);
-      const label = isSingboxCore(this.coreType) ? 'sing-box (预览)' : 'Xray';
-      promptAction.showToast({ message: `运行内核已切换为 ${label}，重新连接后生效。` });
-      SHARED_RUNTIME_CONTROLLER.appendLog(`Core switched to ${this.coreType}.`);
-    } catch (error) {
-      promptAction.showToast({ message: '切换内核失败。' });
-    }
   }
 
   // 开源与社区：带彩色图标的外链行。
@@ -453,7 +427,6 @@ struct AboutPage {
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
     this.checkUpdatePreRelease = settings.checkUpdatePreRelease;
-    this.coreType = await CoreSelectionStore.load(context);
     this.loadAppInfo();
     this.isStateLoaded = true;
   }
@@ -601,60 +574,6 @@ struct CoreRow {
       .width('100%')
       .constraintSize({ minHeight: 50 })
       .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.md })
-
-      if (this.showDivider) {
-        Divider()
-          .strokeWidth(0.5)
-          .color(AppColor.divider)
-          .margin({ left: Space.lg })
-      }
-    }
-    .width('100%')
-  }
-}
-
-// 运行内核选择行：标签 + 当前值 + 右向箭头，点击切换。
-@Component
-struct CoreSelectRow {
-  @Prop label: string = '';
-  @Prop value: string = '';
-  showDivider: boolean = false;
-  onAction: () => void = () => {};
-
-  @State private isPressed: boolean = false;
-
-  build() {
-    Column() {
-      Row({ space: Space.md }) {
-        Text(this.label)
-          .fontSize(FontSz.callout)
-          .fontColor(AppColor.textPrimary)
-          .layoutWeight(1)
-        Text(this.value)
-          .fontSize(FontSz.body)
-          .fontColor(AppColor.brand)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .constraintSize({ maxWidth: '55%' })
-        Image($r('app.media.ic_chevron_right'))
-          .width(20)
-          .height(20)
-          .fillColor(AppColor.textTertiary)
-      }
-      .width('100%')
-      .constraintSize({ minHeight: 50 })
-      .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.md })
-      .backgroundColor(this.isPressed ? AppColor.surfaceAlt : AppColor.surface)
-      .onTouch((event: TouchEvent) => {
-        if (event.type === TouchType.Down) {
-          this.isPressed = true;
-        } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-          this.isPressed = false;
-        }
-      })
-      .onClick(() => {
-        this.onAction();
-      })
 
       if (this.showDivider) {
         Divider()

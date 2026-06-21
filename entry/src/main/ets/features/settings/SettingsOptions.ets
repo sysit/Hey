@@ -19,6 +19,7 @@ import {
   VPN_BYPASS_LAN_FOLLOW_CONFIG,
   VPN_BYPASS_LAN_PROXY
 } from '../../core/Profile';
+import { CORE_TYPE_SINGBOX, CORE_TYPE_XRAY } from '../../core/CoreSelection';
 
 /**
  * 设置项「选择」「输入」弹窗的数据模型（底部抽屉用）。
@@ -63,6 +64,14 @@ export const SETTING_SELECTS: SettingSelectSpec[] = [
     choices: [
       { value: APP_MODE_VPN, labelKey: 'settings.mode.vpn', descKey: 'settings.mode.vpn.desc' },
       { value: APP_MODE_PROXY_ONLY, labelKey: 'settings.mode.proxyOnly', descKey: 'settings.mode.proxyOnly.desc' }
+    ]
+  },
+  {
+    key: 'coreType',
+    hintKey: 'settings.coreType.hint',
+    choices: [
+      { value: CORE_TYPE_XRAY, labelKey: 'settings.coreType.xray', descKey: '' },
+      { value: CORE_TYPE_SINGBOX, labelKey: 'settings.coreType.singbox', descKey: '' }
     ]
   },
   {
