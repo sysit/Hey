@@ -7,7 +7,7 @@ import { HEY_RELEASES_PAGE_URL } from '../core/UpdateChecker';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { UPDATE_CHECKER_MANAGER } from '../services/UpdateCheckerManager';
-import { BUNDLED_XRAY_VERSION } from '../core/CoreInfo';
+import { BUNDLED_XRAY_VERSION, BUNDLED_SINGBOX_VERSION } from '../core/CoreInfo';
 // [SING-BOX SPIKE — TEMP] Phase 0 验证入口，验证完连同探测行一起删。
 import { probeNativeSingbox } from '../native/HeyNative';
 import { SectionHeader } from '../components/SectionHeader';
@@ -209,6 +209,11 @@ struct AboutPage {
       CoreRow({
         label: this.t('about.core.xray'),
         value: BUNDLED_XRAY_VERSION.length > 0 ? BUNDLED_XRAY_VERSION : this.t('about.core.unknown'),
+        showDivider: true
+      })
+      CoreRow({
+        label: this.t('about.core.singbox'),
+        value: BUNDLED_SINGBOX_VERSION.length > 0 ? BUNDLED_SINGBOX_VERSION : this.t('about.core.unknown'),
         showDivider: true
       })
       CoreRow({

@@ -5,13 +5,15 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppRuntimeMode, AppSettings, ConnectionStatus, GeneratedXrayConfig, normalizeAppRuntimeMode, ProxyProfile, RuntimeStats } from '../core/Profile';
 import { resolveDynamicPolicyGroupConfigJson } from '../core/AdvancedOutboundBuilder';
 import { selectRuntimeLocalSocksPort, shouldExposeLocalHttpProxy, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../core/LocalProxy';
-import { buildRuntimeXrayConfig, LOCAL_HTTP_PROXY_PORT, METRICS_PORT, normalizeConfigInput } from '../core/XrayConfig';
+import { buildRuntimeXrayConfig, injectXrayLogFile, LOCAL_HTTP_PROXY_PORT, METRICS_PORT, normalizeConfigInput, XRAY_CORE_LOG_FILE } from '../core/XrayConfig';
+import { normalizeV2rayNgCoreLogLevel } from '../core/V2rayNgOptions';
 import { CORE_TYPE_SINGBOX, CoreSelectionStore, isSingboxCore } from '../core/CoreSelection';
 import { buildSingboxConfig } from '../core/SingboxConfig';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { createStopCommandVpnWant, createStopVpnWant, createVpnWant } from '../vpn/VpnConstants';
 import { getNativeFreePorts, getNativeStats, startNativeXray, stopNativeXray, testNativeXrayConfig } from '../native/HeyNative';
 import { DiagnosticEvent, DiagnosticLog } from './DiagnosticLog';
+import { clearCoreLog } from './CoreLogReader';
 import { OUTBOUND_DOMAIN_RESOLVER } from './OutboundDomainResolver';
 
 const LOG_DOMAIN: number = 0x0001;
@@ -95,6 +97,12 @@ export class ConnectionController {
     const runtimeConfigJson = await this.resolveRuntimeConfigJson(context, validation.normalizedJson, validation.configType);
     const resolvedRuntimeSettings = await OUTBOUND_DOMAIN_RESOLVER.resolve(context, runtimeConfigJson, runtimeSettings, validation.configType);
     this.generatedConfig = buildRuntimeXrayConfig(runtimeConfigJson, resolvedRuntimeSettings, validation.configType);
+    // 让核心把分级运行日志落盘，供 Logcat 页读取（绝对路径，VPN 扩展进程与主进程共享沙箱）。
+    // 启动前清空旧文件：核心日志本就是逐会话的，避免跨会话累积、文件无限增长。
+    clearCoreLog(context.filesDir);
+    const coreLogPath = `${context.filesDir}/${XRAY_CORE_LOG_FILE}`;
+    const fallbackLogLevel = normalizeV2rayNgCoreLogLevel(resolvedRuntimeSettings?.logLevel ?? '');
+    this.generatedConfig.configJson = injectXrayLogFile(this.generatedConfig.configJson, coreLogPath, fallbackLogLevel);
     this.runtimeMode = normalizeAppRuntimeMode(resolvedRuntimeSettings?.mode ?? settings?.mode, APP_MODE_VPN);
     const requestedAt = Date.now();
 

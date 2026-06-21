@@ -2,8 +2,10 @@ import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
 
 @Component
 export struct MetricTile {
-  label: string = '';
-  value: string = '';
+  // @Prop：抽取的子组件展示成员必须用 @Prop，否则父 re-render 时不刷新（编译器对普通
+  // 成员生成空的 updateStateVars()，时长/流量会冻结）。详见 arkui-child-component-prop-sync。
+  @Prop label: string = '';
+  @Prop value: string = '';
 
   build() {
     Column({ space: Space.xs }) {
@@ -26,8 +28,8 @@ export struct MetricTile {
 
 @Component
 export struct FlagTile {
-  label: string = '';
-  active: boolean = false;
+  @Prop label: string = '';
+  @Prop active: boolean = false;
 
   build() {
     Row({ space: Space.sm }) {

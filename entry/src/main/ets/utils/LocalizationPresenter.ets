@@ -1,7 +1,7 @@
 import { AppLanguage, ConnectionStatus } from '../core/Profile';
 import { formatTranslation, translate } from '../core/I18n';
 import { buildUnsupportedShareLinkMessage } from '../core/ShareLinkParser';
-import { formatClockTime } from './Formatters';
+import { formatBytes, formatClockTime } from './Formatters';
 
 export function formatOne(language: AppLanguage, key: string, name: string, value: string): string {
   const names = new Array<string>();
@@ -48,6 +48,32 @@ export function localizedSubscriptionStatusText(language: AppLanguage, updatedAt
     return translate(language, 'subscription.none');
   }
   return formatOne(language, 'subscription.updatedAt', 'time', formatClockTime(updatedAt));
+}
+
+// 把 VPN 运行心跳（每 2 秒一条的 'Native bridge stats.'）渲染成友好文案，
+// 顺带带上它携带的有用数据：上/下行累计流量与 Xray/TUN 运行状态。
+export function localizeDiagnosticHeartbeat(
+  language: AppLanguage,
+  uploadBytes: number,
+  downloadBytes: number,
+  xrayRunning: boolean,
+  tunRunning: boolean,
+  coreLabel: string = 'Xray'
+): string {
+  const names = new Array<string>();
+  const values = new Array<string>();
+  names.push('up');
+  values.push(formatBytes(uploadBytes));
+  names.push('down');
+  values.push(formatBytes(downloadBytes));
+  // {core} 是当前运行内核名（Xray / sing-box），{xray} 仍是运行状态勾。
+  names.push('core');
+  values.push(coreLabel);
+  names.push('xray');
+  values.push(xrayRunning ? '✓' : '✗');
+  names.push('tun');
+  values.push(tunRunning ? '✓' : '✗');
+  return formatTranslation(language, 'log.heartbeat', names, values);
 }
 
 export function localizeCoreMessage(language: AppLanguage, message: string): string {

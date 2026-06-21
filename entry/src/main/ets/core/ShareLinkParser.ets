@@ -216,10 +216,24 @@ interface XrayHysteria2Settings {
   servers: Array<XrayHysteria2Server>;
 }
 
+interface XrayAnytlsServer {
+  address: string;
+  port: number;
+  password: string;
+  sni?: string;
+  alpn?: string;
+  insecure?: boolean;
+  fingerprint?: string;
+}
+
+interface XrayAnytlsSettings {
+  servers: Array<XrayAnytlsServer>;
+}
+
 interface XrayOutbound {
   protocol: string;
   tag: string;
-  settings: XrayVlessSettings | XrayVmessSettings | XrayTrojanSettings | XrayShadowsocksSettings | XrayServerSettings | XrayWireguardSettings | XrayHysteria2Settings;
+  settings: XrayVlessSettings | XrayVmessSettings | XrayTrojanSettings | XrayShadowsocksSettings | XrayServerSettings | XrayWireguardSettings | XrayHysteria2Settings | XrayAnytlsSettings;
   streamSettings?: XrayStreamSettings;
 }
 
@@ -280,7 +294,8 @@ export const SUPPORTED_SHARE_LINK_SCHEMES: Array<string> = [
   'https://',
   'wireguard://',
   'hysteria2://',
-  'hy2://'
+  'hy2://',
+  'anytls://'
 ];
 
 export function buildUnsupportedShareLinkMessage(): string {
@@ -339,6 +354,9 @@ export function parseShareLinkToOutboundJson(input: string): ShareLinkParseResul
     }
     if (lower.startsWith('hysteria2://') || lower.startsWith('hy2://')) {
       return parseHysteria2Link(trimmed);
+    }
+    if (lower.startsWith('anytls://')) {
+      return parseAnytlsLink(trimmed);
     }
     return makeFailure(buildUnsupportedShareLinkMessage());
   } catch (error) {
@@ -763,6 +781,44 @@ function parseHysteria2Link(input: string): ShareLinkParseResult {
     }
   };
   return makeSuccess('hysteria2', defaultShareName(parsed.fragment), outbound);
+}
+
+function parseAnytlsLink(input: string): ShareLinkParseResult {
+  const parsed = parseOptionalUserShareLink(input, 'anytls');
+  if (parsed.userInfo.length === 0) {
+    return makeFailure('AnyTLS 链接缺少认证密码。', 'anytls');
+  }
+
+  const server: XrayAnytlsServer = {
+    address: parsed.host,
+    port: parsed.port,
+    password: parsed.userInfo
+  };
+  const sni = queryValue(parsed.query, 'sni', '');
+  if (sni.length > 0) {
+    server.sni = sni;
+  }
+  const alpn = queryValue(parsed.query, 'alpn', '');
+  if (alpn.length > 0) {
+    server.alpn = alpn;
+  }
+  const fingerprint = queryValue(parsed.query, 'fp', '');
+  if (fingerprint.length > 0) {
+    server.fingerprint = fingerprint;
+  }
+  const insecure = queryValue(parsed.query, 'insecure', '');
+  if (insecure.length > 0) {
+    server.insecure = insecure === '1' || insecure.toLowerCase() === 'true';
+  }
+
+  const outbound: XrayOutbound = {
+    protocol: 'anytls',
+    tag: 'proxy',
+    settings: {
+      servers: [server]
+    }
+  };
+  return makeSuccess('anytls', defaultShareName(parsed.fragment), outbound);
 }
 
 function tryParseUrlStyleShareLink(input: string, scheme: string): ParsedShareUrl | null {

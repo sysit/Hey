@@ -3,12 +3,15 @@ import { DEFAULT_LANGUAGE, translate } from '../../core/I18n';
 import { shouldExposeLocalHttpProxy } from '../../core/LocalProxy';
 import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppLanguage, AppRuntimeMode, AppSettings, ConnectionStatus, normalizeAppRuntimeMode, ProxyProfile, RuntimeStats } from '../../core/Profile';
 import { LOCAL_HTTP_PROXY_PORT } from '../../core/XrayConfig';
+import { CoreSelectionStore, isSingboxCore } from '../../core/CoreSelection';
 import { ConnectionController, ConnectionSnapshot } from '../../services/ConnectionController';
 import { DiagnosticEvent, DiagnosticLog } from '../../services/DiagnosticLog';
+import { clearCoreLog, readCoreLogEntries } from '../../services/CoreLogReader';
+import { LogEntry, normalizeLogLevel } from '../logs/LogModel';
 import { fetchRemoteIpInfo, RemoteIpInfoResult } from '../../services/RemoteIpInfo';
 import { measureRuntimeProfileDelay, RuntimeDelayResult } from '../../services/RuntimeDelay';
 import { connectionStatusBackground, connectionStatusColor, formatClockTime, formatDuration } from '../../utils/Formatters';
-import { formatOne, localizedConnectionStatus, localizeCoreMessage } from '../../utils/LocalizationPresenter';
+import { formatOne, localizedConnectionStatus, localizeCoreMessage, localizeDiagnosticHeartbeat } from '../../utils/LocalizationPresenter';
 
 const EMPTY_STATS: RuntimeStats = {
   uploadBytes: 0,
@@ -23,7 +26,7 @@ export interface RuntimeViewState {
   startedAt: number;
   elapsedText: string;
   lastError: string;
-  logs: Array<string>;
+  entries: Array<LogEntry>;
   stats: RuntimeStats;
 }
 
@@ -33,11 +36,14 @@ export class RuntimeController {
   private startedAt: number = 0;
   private elapsedText: string = '00:00';
   private lastError: string = '';
-  private logs: Array<string> = [translate(DEFAULT_LANGUAGE, 'log.ready')];
-  private diagnosticLogs: Array<string> = [];
+  private logs: Array<LogEntry> = RuntimeController.buildReadyLogs();
+  private diagnosticEntries: Array<LogEntry> = [];
+  private coreEntries: Array<LogEntry> = [];
   private stats: RuntimeStats = EMPTY_STATS;
   private diagnosticRefreshing: boolean = false;
   private runtimeMode: AppRuntimeMode = APP_MODE_VPN;
+  // 当前运行内核名（Xray / sing-box），心跳日志据此渲染。
+  private coreLabel: string = 'Xray';
 
   async start(context: common.Context, profile: ProxyProfile, settings: AppSettings, language: AppLanguage): Promise<RuntimeViewState> {
     this.runtimeMode = normalizeAppRuntimeMode(settings.mode, APP_MODE_VPN);
@@ -71,7 +77,9 @@ export class RuntimeController {
 
   async refresh(context: common.Context, language: AppLanguage): Promise<RuntimeViewState> {
     this.stats = this.controller.getStats();
+    this.coreLabel = isSingboxCore(await CoreSelectionStore.load(context)) ? 'sing-box' : 'Xray';
     await this.refreshDiagnostics(context, language);
+    this.coreEntries = readCoreLogEntries(context.filesDir);
     this.stats = this.localizeStats(this.stats, language);
     if (this.startedAt <= 0 || this.status !== ConnectionStatus.RUNNING) {
       this.elapsedText = '00:00';
@@ -88,14 +96,14 @@ export class RuntimeController {
       startedAt: this.startedAt,
       elapsedText: this.elapsedText,
       lastError: this.lastError,
-      logs: this.allLogs(),
+      entries: this.allEntries(),
       stats: this.stats
     };
   }
 
   appendLog(message: string): void {
-    const line = `${formatClockTime(Date.now())}  ${message}`;
-    const next = [line].concat(this.logs);
+    const entry = RuntimeController.makeAppEntry(message);
+    const next = [entry].concat(this.logs);
     this.logs = next.slice(0, 80);
   }
 
@@ -106,7 +114,9 @@ export class RuntimeController {
       this.appendLog(formatOne(language, 'error.clearDiagnostics', 'error', JSON.stringify(error)));
     }
     this.logs = [];
-    this.diagnosticLogs = [];
+    this.diagnosticEntries = [];
+    clearCoreLog(context.filesDir);
+    this.coreEntries = [];
     return this.snapshot();
   }
 
@@ -130,8 +140,48 @@ export class RuntimeController {
     return this.status === ConnectionStatus.STARTING || this.status === ConnectionStatus.STOPPING;
   }
 
-  private allLogs(): Array<string> {
-    return this.diagnosticLogs.concat(this.logs).slice(0, 120);
+  // 核心日志、诊断日志、应用日志各自最新在前，合并后按时间倒序统一排列（最新在顶），上限 120 条。
+  private allEntries(): Array<LogEntry> {
+    const merged = this.coreEntries.concat(this.diagnosticEntries).concat(this.logs);
+    merged.sort((a: LogEntry, b: LogEntry) => b.at - a.at);
+    return merged.slice(0, 120);
+  }
+
+  // 应用内日志没有等级信息，统一记为 info；raw 保留「时钟 + 正文」整行原文。
+  private static makeAppEntry(message: string): LogEntry {
+    const at = Date.now();
+    const time = formatClockTime(at);
+    return { at, time, level: 'info', source: '', message, raw: `${time}  ${message}` };
+  }
+
+  private static buildReadyLogs(): Array<LogEntry> {
+    return [RuntimeController.makeAppEntry(translate(DEFAULT_LANGUAGE, 'log.ready'))];
+  }
+
+  // 诊断事件本身带 level/source，归一化等级。心跳（vpn-stats）渲染成带流量/状态的友好文案，
+  // 其余沿用既有格式化输出（供复制/分享）。
+  private static eventToEntry(event: DiagnosticEvent, language: AppLanguage, coreLabel: string): LogEntry {
+    const time = formatClockTime(event.at);
+    const level = normalizeLogLevel(event.level);
+    if (event.source === 'vpn-stats') {
+      const message = localizeDiagnosticHeartbeat(
+        language,
+        event.uploadBytes ?? 0,
+        event.downloadBytes ?? 0,
+        event.xrayRunning ?? false,
+        event.tunRunning ?? false,
+        coreLabel
+      );
+      return { at: event.at, time, level, source: event.source, message, raw: `${time}  ${message}` };
+    }
+    return {
+      at: event.at,
+      time,
+      level,
+      source: event.source,
+      message: event.message,
+      raw: DiagnosticLog.format(event, (value: number) => formatClockTime(value))
+    };
   }
 
   private localizeStats(stats: RuntimeStats, language: AppLanguage): RuntimeStats {
@@ -207,9 +257,12 @@ export class RuntimeController {
 
     try {
       const events = await DiagnosticLog.read(context, 80);
-      this.diagnosticLogs = events.map((event: DiagnosticEvent) => DiagnosticLog.format(event, (value: number) => formatClockTime(value)));
+      this.diagnosticEntries = events.map((event: DiagnosticEvent) => RuntimeController.eventToEntry(event, language, this.coreLabel));
       this.applyDiagnosticStats(events);
       this.applyDiagnosticError(events, language);
+    } catch (error) {
+      // 诊断解析失败绝不能让 refresh 整体抛出——否则页面收不到 snapshot，日志面板会全空。
+      console.error(`Diagnostic refresh failed: ${JSON.stringify(error)}`);
     } finally {
       this.diagnosticRefreshing = false;
     }

@@ -5,6 +5,7 @@ import { shouldExposeLocalHttpProxy } from '../core/LocalProxy';
 import { AppLanguage, SubscriptionGroup } from '../core/Profile';
 import { LOCAL_HTTP_PROXY_PORT } from '../core/XrayConfig';
 import { SUBSCRIPTIONS_CONTROLLER, SubscriptionsControllerState } from '../features/subscriptions/SubscriptionsController';
+import { avatarColor, monogram } from '../features/subscriptions/SubscriptionVisuals';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { AppRoute } from '../shell/AppRoute';
@@ -70,7 +71,7 @@ struct SubscriptionsPage {
         .layoutWeight(1)
         .width('100%')
         .scrollBar(BarState.Off)
-        .padding({ left: Space.lg, right: Space.lg, top: Space.lg, bottom: Space.xxl })
+        .padding({ left: Space.lg, right: Space.lg, top: 14, bottom: Space.xxl })
       }
     }
     .height('100%')
@@ -114,21 +115,36 @@ struct SubscriptionsPage {
   @Builder
   private GroupRow(group: SubscriptionGroup) {
     Row({ space: Space.md }) {
-      // 图标
-      Column() {
-        Image(group.id === 'sub-local' ? $r('app.media.ic_folder') : $r('app.media.ic_subscriptions'))
-          .width(20)
-          .height(20)
-          .fillColor(group.enabled || group.id === 'sub-local' ? AppColor.brand : AppColor.textTertiary)
-      }
-      .width(40)
-      .height(40)
-      .borderRadius(20)
-      .backgroundColor(group.enabled || group.id === 'sub-local' ? AppColor.brandTint : AppColor.surfaceAlt)
-      .justifyContent(FlexAlign.Center)
-      .alignItems(HorizontalAlign.Center)
+      // 圆角字母方块头像 + 右下角云/设备角标
+      Stack({ alignContent: Alignment.BottomEnd }) {
+        Text(monogram(group.name))
+          .fontSize(17)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Color.White)
+          .width(42)
+          .height(42)
+          .textAlign(TextAlign.Center)
+          .borderRadius(12)
+          .backgroundColor(this.isRemoteGroup(group) ? avatarColor(group.name) : '#64748B')
+          .opacity(this.isRemoteGroup(group) && !group.enabled ? 0.4 : 1)
 
-      // 文本
+        Stack() {
+          Image(this.isRemoteGroup(group) ? $r('app.media.ic_cloud_download') : $r('app.media.ic_folder'))
+            .width(10)
+            .height(10)
+            .fillColor(Color.White)
+        }
+        .width(16)
+        .height(16)
+        .borderRadius(8)
+        .backgroundColor(this.isRemoteGroup(group) ? AppColor.brand : '#64748B')
+        .border({ width: 2, color: AppColor.surface })
+        .offset({ x: 3, y: 3 })
+      }
+      .width(42)
+      .height(42)
+
+      // 文本（名称 / 来源 / 更新时间 三级信息）
       Column({ space: 3 }) {
         Text(group.name)
           .fontSize(FontSz.callout)
@@ -151,7 +167,7 @@ struct SubscriptionsPage {
       .layoutWeight(1)
 
       // 右侧：开关（订阅组）/ 箭头（本地）
-      if (group.url.trim().length > 0) {
+      if (this.isRemoteGroup(group)) {
         Toggle({ type: ToggleType.Switch, isOn: group.enabled })
           .selectedColor(AppColor.brand)
           .switchPointColor(AppColor.onBrand)
@@ -166,12 +182,18 @@ struct SubscriptionsPage {
       }
     }
     .width('100%')
-    .padding(Space.lg)
+    .padding(14)
+    .alignItems(VerticalAlign.Center)
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
+    .border({ width: 0.5, color: AppColor.border })
     .onClick(() => {
       this.selectSubscriptionGroup(group);
     })
+  }
+
+  private isRemoteGroup(group: SubscriptionGroup): boolean {
+    return group.url.trim().length > 0;
   }
 
   @Builder

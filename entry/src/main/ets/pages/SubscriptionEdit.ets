@@ -8,10 +8,9 @@ import {
 import { SUBSCRIPTIONS_CONTROLLER, SubscriptionsControllerState } from '../features/subscriptions/SubscriptionsController';
 import { DEFAULT_SUBSCRIPTION_USER_AGENT } from '../services/SubscriptionManager';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
-import { AppRoute } from '../shell/AppRoute';
-import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
+import { isScanCancelled, scanQrCode } from '../utils/QrScan';
 import { formatOne, formatTwo } from '../utils/LocalizationPresenter';
 import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
@@ -40,20 +39,69 @@ struct SubscriptionEditPage {
     this.loadState();
   }
 
+  @Builder
+  private SaveAction() {
+    Button() {
+      if (this.isBusy) {
+        LoadingProgress()
+          .width(20)
+          .height(20)
+          .color(AppColor.brand)
+      } else {
+        Text(this.t('action.save'))
+          .fontSize(FontSz.callout)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.isSaveEnabled() ? AppColor.brand : AppColor.textTertiary)
+      }
+    }
+    .type(ButtonType.Normal)
+    .backgroundColor(Color.Transparent)
+    .height(44)
+    .padding({ left: Space.md, right: Space.md })
+    .enabled(this.isSaveEnabled())
+    .onClick(() => {
+      this.saveGroup();
+    })
+  }
+
+  // 紧凑分组标题，对齐 UI 稿（左右 18 / 底 8，加粗三级文字）
+  @Builder
+  private GroupLabel(title: string) {
+    Text(title)
+      .fontSize(FontSz.footnote)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(AppColor.textTertiary)
+      .width('100%')
+      .padding({ left: 18, right: 18, bottom: Space.sm })
+  }
+
+  // 字段下方帮助文字：卡片底部 8 提供与卡片的间距，自身底部 16 衔接下一分组
+  @Builder
+  private FieldHint(text: string) {
+    Text(text)
+      .fontSize(FontSz.footnote)
+      .fontColor(AppColor.textTertiary)
+      .width('100%')
+      .lineHeight(16)
+      .padding({ left: 18, right: 18 })
+      .margin({ bottom: Space.lg })
+  }
+
   build() {
     Column() {
       PageHeader({
         title: this.pageTitleText(),
-        showBack: true
+        showBack: true,
+        rightActions: () => {
+          this.SaveAction()
+        }
       })
 
-      // 整体采用 Stack 布局，使保存按钮能够置底悬浮
-      Stack({ alignContent: Alignment.Bottom }) {
-        Scroll() {
-          Column({ space: Space.lg }) {
+      Scroll() {
+        Column() {
 
             // 卡片一：分组名称
-            SectionHeader({ title: this.t('subscription.edit.groupName') })
+            this.GroupLabel(this.t('subscription.edit.groupName'))
             Column() {
               TextInput({ text: this.groupName, placeholder: this.t('subscription.edit.groupName.placeholder') })
                 .height(48)
@@ -63,7 +111,7 @@ struct SubscriptionEditPage {
                 .placeholderColor(AppColor.textTertiary)
                 .backgroundColor(Color.Transparent)
                 .borderRadius(0)
-                .padding({ left: Space.lg, right: Space.lg })
+                .padding({ left: 14, right: 14 })
                 .onChange((val) => {
                   this.groupName = val;
                 })
@@ -71,25 +119,21 @@ struct SubscriptionEditPage {
             .width('100%')
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
+            .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
 
-            Text(this.t('subscription.edit.groupName.detail'))
-              .fontSize(FontSz.footnote)
-              .fontColor(AppColor.textTertiary)
-              .width('100%')
-              .lineHeight(16)
-              .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+            this.FieldHint(this.t('subscription.edit.groupName.detail'))
 
             // 卡片二：订阅链接
-            SectionHeader({ title: this.t('subscription.edit.url') })
+            this.GroupLabel(this.t('subscription.edit.url'))
             Column() {
               Row() {
                 Image($r('app.media.ic_link'))
                   .width(20)
                   .height(20)
                   .fillColor(AppColor.textSecondary)
-                  .margin({ left: Space.lg, right: Space.sm })
+                  .margin({ left: 14, right: Space.sm })
 
                 TextInput({
                   placeholder: this.t('subscription.edit.url.placeholder'),
@@ -148,7 +192,7 @@ struct SubscriptionEditPage {
                   .height(28)
                   .borderRadius(14)
                   .onClick(() => {
-                    router.pushUrl({ url: AppRoute.SCANNER });
+                    this.scanSubscriptionUrl();
                   })
                 }
                 .margin({ right: Space.md })
@@ -159,48 +203,32 @@ struct SubscriptionEditPage {
             .width('100%')
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
+            .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
 
-            Text(this.t('subscription.edit.url.detail'))
-              .fontSize(FontSz.footnote)
-              .fontColor(AppColor.textTertiary)
-              .width('100%')
-              .lineHeight(16)
-              .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+            this.FieldHint(this.t('subscription.edit.url.detail'))
 
-            Column() {
-              Row() {
-                Column({ space: 4 }) {
-                  Text(this.t('subscription.edit.allowInsecure'))
-                    .fontSize(FontSz.body)
-                    .fontColor(AppColor.textPrimary)
-                  Text(this.t('subscription.edit.allowInsecure.detail'))
-                    .fontSize(FontSz.footnote)
-                    .fontColor(AppColor.textTertiary)
-                    .maxLines(2)
-                }
-                .alignItems(HorizontalAlign.Start)
+            // 允许不安全：轻量裸行（对齐 UI 稿，左右 4 内边距、单行说明）
+            Row() {
+              Text(this.t('subscription.edit.allowInsecure'))
+                .fontSize(13)
+                .fontColor(AppColor.textSecondary)
                 .layoutWeight(1)
 
-                Toggle({ type: ToggleType.Switch, isOn: this.allowInsecureUrl })
-                  .selectedColor(AppColor.brand)
-                  .switchPointColor(AppColor.onBrand)
-                  .onChange((isOn: boolean) => {
-                    this.allowInsecureUrl = isOn;
-                  })
-              }
-              .width('100%')
-              .padding(Space.lg)
-              .alignItems(VerticalAlign.Center)
+              Toggle({ type: ToggleType.Switch, isOn: this.allowInsecureUrl })
+                .selectedColor(AppColor.brand)
+                .switchPointColor(AppColor.onBrand)
+                .onChange((isOn: boolean) => {
+                  this.allowInsecureUrl = isOn;
+                })
             }
             .width('100%')
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.lg)
-            .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .padding({ left: Space.xs, right: Space.xs })
+            .alignItems(VerticalAlign.Center)
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
 
-            SectionHeader({ title: this.t('subscription.edit.autoUpdate') })
+            this.GroupLabel(this.t('subscription.edit.autoUpdate'))
             Column() {
               Row() {
                 Column({ space: 4 }) {
@@ -223,48 +251,63 @@ struct SubscriptionEditPage {
                   })
               }
               .width('100%')
-              .padding({ left: Space.lg, right: Space.lg, top: Space.lg, bottom: Space.md })
+              .padding({
+                left: Space.lg,
+                right: Space.lg,
+                top: Space.lg,
+                bottom: this.autoUpdate ? Space.md : Space.lg
+              })
               .alignItems(VerticalAlign.Center)
 
-              Row() {
-                Column({ space: 4 }) {
-                  Text(this.t('subscription.edit.updateInterval'))
+              // 开启自动更新后展开「更新间隔」
+              if (this.autoUpdate) {
+                Divider()
+                  .strokeWidth(0.5)
+                  .color(AppColor.divider)
+                  .margin({ left: Space.lg })
+
+                Row() {
+                  Column({ space: 4 }) {
+                    Text(this.t('subscription.edit.updateInterval'))
+                      .fontSize(FontSz.body)
+                      .fontColor(AppColor.textPrimary)
+                    Text(this.f2('subscription.edit.updateInterval.detail',
+                      'min', MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString(),
+                      'default', DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString()))
+                      .fontSize(FontSz.footnote)
+                      .fontColor(AppColor.textTertiary)
+                  }
+                  .alignItems(HorizontalAlign.Start)
+                  .layoutWeight(1)
+
+                  TextInput({ text: this.updateInterval, placeholder: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString() })
+                    .width(104)
+                    .height(40)
+                    .type(InputType.Number)
                     .fontSize(FontSz.body)
                     .fontColor(AppColor.textPrimary)
-                  Text(this.f2('subscription.edit.updateInterval.detail',
-                    'min', MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString(),
-                    'default', DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString()))
-                    .fontSize(FontSz.footnote)
-                    .fontColor(AppColor.textTertiary)
+                    .placeholderColor(AppColor.textTertiary)
+                    .backgroundColor(AppColor.surfaceAlt)
+                    .borderRadius(Radius.md)
+                    .padding({ left: Space.md, right: Space.md })
+                    .onChange((val) => {
+                      this.updateInterval = val;
+                    })
                 }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1)
-
-                TextInput({ text: this.updateInterval, placeholder: DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString() })
-                  .width(104)
-                  .height(40)
-                  .fontSize(FontSz.body)
-                  .fontColor(AppColor.textPrimary)
-                  .placeholderColor(AppColor.textTertiary)
-                  .backgroundColor(AppColor.surfaceAlt)
-                  .borderRadius(Radius.md)
-                  .padding({ left: Space.md, right: Space.md })
-                  .onChange((val) => {
-                    this.updateInterval = val;
-                  })
+                .width('100%')
+                .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.lg })
+                .alignItems(VerticalAlign.Center)
               }
-              .width('100%')
-              .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.lg })
-              .alignItems(VerticalAlign.Center)
             }
             .width('100%')
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
+            .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
 
             // 卡片四：自定义 User-Agent
-            SectionHeader({ title: this.t('subscription.edit.userAgent') })
+            this.GroupLabel(this.t('subscription.edit.userAgent'))
             Column() {
               TextInput({
                 text: this.userAgent,
@@ -277,7 +320,7 @@ struct SubscriptionEditPage {
                 .placeholderColor(AppColor.textTertiary)
                 .backgroundColor(Color.Transparent)
                 .borderRadius(0)
-                .padding({ left: Space.lg, right: Space.lg })
+                .padding({ left: 14, right: 14 })
                 .onChange((val) => {
                   this.userAgent = val;
                 })
@@ -285,18 +328,14 @@ struct SubscriptionEditPage {
             .width('100%')
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
+            .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
 
-            Text(this.t('subscription.edit.userAgent.detail'))
-              .fontSize(FontSz.footnote)
-              .fontColor(AppColor.textTertiary)
-              .width('100%')
-              .lineHeight(16)
-              .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+            this.FieldHint(this.t('subscription.edit.userAgent.detail'))
 
             // 卡片五：节点过滤（正则）
-            SectionHeader({ title: this.t('subscription.edit.filter') })
+            this.GroupLabel(this.t('subscription.edit.filter'))
             Column() {
               TextInput({ text: this.filter, placeholder: this.t('subscription.edit.filter.placeholder') })
                 .height(48)
@@ -306,7 +345,7 @@ struct SubscriptionEditPage {
                 .placeholderColor(AppColor.textTertiary)
                 .backgroundColor(Color.Transparent)
                 .borderRadius(0)
-                .padding({ left: Space.lg, right: Space.lg })
+                .padding({ left: 14, right: 14 })
                 .onChange((val) => {
                   this.filter = val;
                 })
@@ -314,17 +353,13 @@ struct SubscriptionEditPage {
             .width('100%')
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
+            .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
 
-            Text(this.t('subscription.edit.filter.detail'))
-              .fontSize(FontSz.footnote)
-              .fontColor(AppColor.textTertiary)
-              .width('100%')
-              .lineHeight(16)
-              .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+            this.FieldHint(this.t('subscription.edit.filter.detail'))
 
-            SectionHeader({ title: this.t('subscription.edit.profilePair') })
+            this.GroupLabel(this.t('subscription.edit.profilePair'))
             Column() {
               TextInput({ text: this.prevProfile, placeholder: this.t('subscription.edit.prevProfile.placeholder') })
                 .height(48)
@@ -334,7 +369,7 @@ struct SubscriptionEditPage {
                 .placeholderColor(AppColor.textTertiary)
                 .backgroundColor(Color.Transparent)
                 .borderRadius(0)
-                .padding({ left: Space.lg, right: Space.lg })
+                .padding({ left: 14, right: 14 })
                 .onChange((val) => {
                   this.prevProfile = val;
                 })
@@ -347,7 +382,7 @@ struct SubscriptionEditPage {
                 .placeholderColor(AppColor.textTertiary)
                 .backgroundColor(Color.Transparent)
                 .borderRadius(0)
-                .padding({ left: Space.lg, right: Space.lg })
+                .padding({ left: 14, right: 14 })
                 .onChange((val) => {
                   this.nextProfile = val;
                 })
@@ -355,57 +390,19 @@ struct SubscriptionEditPage {
             .width('100%')
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
+            .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
+            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
 
-            Text(this.t('subscription.edit.profilePair.detail'))
-              .fontSize(FontSz.footnote)
-              .fontColor(AppColor.textTertiary)
-              .width('100%')
-              .lineHeight(16)
-              .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+            this.FieldHint(this.t('subscription.edit.profilePair.detail'))
 
           }
           .width('100%')
-          // 底部 padding 为 100 避开底置悬浮大按钮
-          .padding({ top: Space.sm, bottom: 100 })
+          .padding({ top: 14, bottom: Space.sm })
         }
+        .layoutWeight(1)
         .width('100%')
-        .height('100%')
         .align(Alignment.Top)
-
-        // 底部悬浮保存按钮
-        Column() {
-          Button() {
-            Row() {
-              if (this.isBusy) {
-                LoadingProgress()
-                  .width(20)
-                  .height(20)
-                  .color(AppColor.onBrand)
-                  .margin({ right: Space.sm })
-              }
-              Text(this.t('subscription.edit.save'))
-                .fontSize(FontSz.headline)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.isSaveEnabled() ? AppColor.onBrand : AppColor.textTertiary)
-            }
-          }
-          .width('100%')
-          .height(48)
-          .borderRadius(Radius.pill)
-          .enabled(this.isSaveEnabled())
-          .backgroundColor(this.isSaveEnabled() ? AppColor.brand : AppColor.surfaceAlt)
-          .onClick(() => {
-            this.saveGroup();
-          })
-        }
-        .width('100%')
-        .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.xxl })
-        .backgroundColor(AppColor.bg)
-      }
-      .layoutWeight(1)
-      .width('100%')
     }
     .height('100%')
     .width('100%')
@@ -508,6 +505,21 @@ struct SubscriptionEditPage {
       }
     } catch (error) {
       promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
+    }
+  }
+
+  // 直接拉起相机扫码，将结果填入订阅链接输入框，扫码后仍停留在当前页面。
+  private async scanSubscriptionUrl(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const value = await scanQrCode(context);
+      if (value.length > 0) {
+        this.subscriptionUrl = value;
+      }
+    } catch (error) {
+      if (!isScanCancelled(error)) {
+        promptAction.showToast({ message: this.f1('scanner.scanFailed', 'error', JSON.stringify(error)) });
+      }
     }
   }
 
