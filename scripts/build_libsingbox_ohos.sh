@@ -27,15 +27,28 @@ OUT_DIR="${ROOT_DIR}/entry/src/main/cpp/prebuilt/arm64-v8a"
 EXPORTS_FILE="${WORK_DIR}/libsingbox.exports"
 GO_LDFLAGS_DEFAULT="-s -w -checklinkname=0 -linkmode external -extldflags \"-Wl,--version-script=${EXPORTS_FILE} -Wl,-z,lazy\""
 
-# GOOS 选择见 build_libxray_ohos.sh 顶部那段长注释——同一堵 Go-on-musl TLS 墙。
-# android：dlopen 可用、VPN 线程可跑，但 UI 线程冷调会 SIGSEGV。先用 android。
-GOOS_TARGET="${GOOS_TARGET:-android}"
-# [SING-BOX] build tags（缺一不可，已用真实 sing-box NewService 校验，见 validate_test.go）：
-#   with_gvisor     tun 的 gvisor 协议栈
-#   with_utls       reality 客户端 + uTLS 指纹（生成器会产出 utls/reality，缺则被拒）
-#   with_clash_api  libbox.NewService 依赖它创建 command server，缺则核心根本起不来
-# netgo 沿用 libxray 的做法。后续加 hysteria2/tuic 等需再补 with_quic。
-GO_TAGS="${GO_TAGS:-with_gvisor with_utls with_clash_api netgo}"
+# [SING-BOX] 用 OHOS 官方 Go fork + GOOS=openharmony 编译——这是 docs/harmonyos-go-tls-wall.md
+# 定的正解。fork 为 arm64 补了 TLSDESC（通用动态 TLS）：产物带真正的 PT_TLS，musl 能
+# dlopen，且外来线程 cgo 不再从 bionic 固定槽读到垃圾 g。
+# 真机实测（ALN-AL80/HarmonyOS 6.1）：用原版 Go(GOOS=android) 编的 libsingbox，连最轻量的
+# CGoSingBoxVersion 都一调就 SIGSEGV(@0x000103ffd50323b7)，VPN 扩展进程当场死。libxray 现在
+# 能用，正是因为它已用本 fork 重编过。
+OHOS_GO_FORK="${OHOS_GO_FORK:-${HOME}/hey-ohos-build/ohos_golang_go}"
+GOOS_TARGET="${GOOS_TARGET:-openharmony}"
+# build tags（已用真实 sing-box NewService 校验，见 validate_test.go）：
+#   with_gvisor / with_utls(reality+uTLS) / with_clash_api(libbox.NewService 必需)。
+# ⚠️ 不能加 netgo：openharmony 的 net 端口需要 cgo，加了会报 _C_getifaddrs undefined。
+GO_TAGS="${GO_TAGS:-with_gvisor with_utls with_clash_api}"
+if [[ -x "${OHOS_GO_FORK}/bin/go" ]]; then
+  export PATH="${OHOS_GO_FORK}/bin:${PATH}"
+  export GOTOOLCHAIN=local
+else
+  echo "ERROR: 找不到 OHOS Go fork: ${OHOS_GO_FORK}/bin/go" >&2
+  echo "  按 docs/harmonyos-go-tls-wall.md §9.4 构建该工具链:" >&2
+  echo "  git clone --branch release-branch.go1.24 https://gitcode.com/openharmony-sig/ohos_golang_go.git" >&2
+  echo "  cd ohos_golang_go/src && GOROOT_BOOTSTRAP=/usr/local/go GOTOOLCHAIN=local ./make.bash" >&2
+  exit 1
+fi
 ANDROID_STUB_DIR="${WORK_DIR}/android-stub"
 
 mkdir -p "${WORK_DIR}" "${OUT_DIR}"
@@ -95,6 +108,12 @@ C
   "${AR_BIN}" rcs "${ANDROID_STUB_DIR}/liblog.a" "${ANDROID_STUB_DIR}/android_log_stub.o"
   export CGO_CFLAGS="${CGO_CFLAGS:-} -I${ANDROID_STUB_DIR}"
   export CGO_LDFLAGS="${CGO_LDFLAGS:-} -L${ANDROID_STUB_DIR}"
+fi
+
+if [[ "${GOOS_TARGET}" == "openharmony" ]]; then
+  # 去掉其余 IE-TLS 重定位，配合 fork 的 tls_g TLSDESC——musl 在 dlopen 的库里只接受
+  # 通用动态 TLS（global-dynamic / TLSDESC），不接受 initial-exec。
+  export CGO_CFLAGS="${CGO_CFLAGS:-} -ftls-model=global-dynamic"
 fi
 
 cd "${SRC_DIR}"

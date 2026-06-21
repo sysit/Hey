@@ -23,6 +23,8 @@ import "C"
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/sagernet/sing-box/experimental/libbox"
@@ -93,7 +95,16 @@ func CGoSetTunFd(fd C.int) {
 }
 
 //export CGoStartSingBox
-func CGoStartSingBox(base64Text *C.char) *C.char {
+func CGoStartSingBox(base64Text *C.char) (result *C.char) {
+	// 诊断兜底：libbox 启动若在本 goroutine 同步路径 panic（如 platform 接口返回 nil
+	// 被解引用），recover 抓住并把原因+栈当错误返回，避免 VPN 扩展进程整个崩掉、看不到原因。
+	// 注意：libbox 自己 spawn 的 goroutine 里的 panic / 真正的 cgo SIGSEGV 抓不到。
+	defer func() {
+		if r := recover(); r != nil {
+			result = encode("", fmt.Errorf("sing-box start panic: %v | %s", r, string(debug.Stack())))
+		}
+	}()
+
 	var req startRequest
 	if err := decodeRequest(base64Text, &req); err != nil {
 		return encode("", err)

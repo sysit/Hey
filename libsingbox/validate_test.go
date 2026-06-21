@@ -46,7 +46,7 @@ func TestGeneratedConfigs(t *testing.T) {
 const vlessRealityTcp = `{
  "log":{"level":"warn","timestamp":true},
  "dns":{"servers":[{"tag":"proxy-dns","address":"1.1.1.1","detour":"proxy"},{"tag":"direct-dns","address":"223.5.5.5","detour":"direct"}],"final":"proxy-dns","strategy":"ipv4_only"},
- "inbounds":[{"type":"tun","tag":"tun-in","interface_name":"vpn-tun","mtu":1500,"inet4_address":"10.10.14.1/30","auto_route":false,"stack":"gvisor","sniff":true,"sniff_override_destination":false}],
+ "inbounds":[{"type":"mixed","tag":"socks-in","listen":"127.0.0.1","listen_port":10810,"sniff":true,"sniff_override_destination":false}],
  "outbounds":[
    {"type":"vless","tag":"proxy","server":"1.2.3.4","server_port":443,"uuid":"b831381d-6324-4d53-ad4f-8cda48b30811","packet_encoding":"xudp","flow":"xtls-rprx-vision","tls":{"enabled":true,"server_name":"a.example.com","utls":{"enabled":true,"fingerprint":"chrome"},"reality":{"enabled":true,"public_key":"jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0","short_id":"0123abcd"}}},
    {"type":"direct","tag":"direct"},
@@ -58,7 +58,7 @@ const vlessRealityTcp = `{
 const vmessWsTls = `{
  "log":{"level":"warn","timestamp":true},
  "dns":{"servers":[{"tag":"proxy-dns","address":"1.1.1.1","detour":"proxy"},{"tag":"direct-dns","address":"223.5.5.5","detour":"direct"}],"final":"proxy-dns","strategy":"ipv4_only"},
- "inbounds":[{"type":"tun","tag":"tun-in","interface_name":"vpn-tun","mtu":1500,"inet4_address":"10.10.14.1/30","auto_route":false,"stack":"gvisor","sniff":true,"sniff_override_destination":false}],
+ "inbounds":[{"type":"mixed","tag":"socks-in","listen":"127.0.0.1","listen_port":10810,"sniff":true,"sniff_override_destination":false}],
  "outbounds":[
    {"type":"vmess","tag":"proxy","server":"5.6.7.8","server_port":443,"uuid":"b831381d-6324-4d53-ad4f-8cda48b30811","security":"auto","alter_id":0,"tls":{"enabled":true,"server_name":"b.example.com","utls":{"enabled":true,"fingerprint":"chrome"}},"transport":{"type":"ws","path":"/wspath","headers":{"Host":"b.example.com"}}},
    {"type":"direct","tag":"direct"},
@@ -70,7 +70,7 @@ const vmessWsTls = `{
 const trojanGrpcTls = `{
  "log":{"level":"warn","timestamp":true},
  "dns":{"servers":[{"tag":"proxy-dns","address":"1.1.1.1","detour":"proxy"},{"tag":"direct-dns","address":"223.5.5.5","detour":"direct"}],"final":"proxy-dns","strategy":"ipv4_only"},
- "inbounds":[{"type":"tun","tag":"tun-in","interface_name":"vpn-tun","mtu":1500,"inet4_address":"10.10.14.1/30","auto_route":false,"stack":"gvisor","sniff":true,"sniff_override_destination":false}],
+ "inbounds":[{"type":"mixed","tag":"socks-in","listen":"127.0.0.1","listen_port":10810,"sniff":true,"sniff_override_destination":false}],
  "outbounds":[
    {"type":"trojan","tag":"proxy","server":"9.10.11.12","server_port":443,"password":"trojan-pass","tls":{"enabled":true,"server_name":"c.example.com"},"transport":{"type":"grpc","service_name":"grpcsvc"}},
    {"type":"direct","tag":"direct"},
@@ -82,7 +82,7 @@ const trojanGrpcTls = `{
 const shadowsocksPlain = `{
  "log":{"level":"warn","timestamp":true},
  "dns":{"servers":[{"tag":"proxy-dns","address":"1.1.1.1","detour":"proxy"},{"tag":"direct-dns","address":"223.5.5.5","detour":"direct"}],"final":"proxy-dns","strategy":"ipv4_only"},
- "inbounds":[{"type":"tun","tag":"tun-in","interface_name":"vpn-tun","mtu":1500,"inet4_address":"10.10.14.1/30","auto_route":false,"stack":"gvisor","sniff":true,"sniff_override_destination":false}],
+ "inbounds":[{"type":"mixed","tag":"socks-in","listen":"127.0.0.1","listen_port":10810,"sniff":true,"sniff_override_destination":false}],
  "outbounds":[
    {"type":"shadowsocks","tag":"proxy","server":"13.14.15.16","server_port":8388,"method":"aes-256-gcm","password":"ss-pass"},
    {"type":"direct","tag":"direct"},

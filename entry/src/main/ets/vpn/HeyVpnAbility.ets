@@ -14,15 +14,14 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import {
   getNativeStats,
   queryNativeTraffic,
-  setNativeSingboxTunFd,
-  setNativeTunFd,
   startNativeSingbox,
+  startNativeTun2Socks,
   startNativeXray,
   stopNativeSingbox,
-  stopNativeXray,
-  testNativeXrayConfig
+  stopNativeTun2Socks,
+  stopNativeXray
 } from '../native/HeyNative';
-import { METRICS_SERVER_URL } from '../core/XrayConfig';
+import { METRICS_SERVER_URL, VPN_DATA_SOCKS_HOST, VPN_DATA_SOCKS_PORT } from '../core/XrayConfig';
 import { isSingboxCore } from '../core/CoreSelection';
 import { DiagnosticLog } from '../services/DiagnosticLog';
 
@@ -70,18 +69,10 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
 
     try {
       this.emitInfo('VPN start requested.', `core=${useSingbox ? 'singbox' : 'xray'}, configBytes=${configJson.length}`);
-      // Non-blocking preflight (Xray only): surface config issues early in
-      // diagnostics, but never abort start on a not-ok result. startNativeXray
-      // below remains the source of truth for real failures. sing-box has no
-      // equivalent dry-run export, so it relies on startNativeSingbox directly.
-      if (!useSingbox) {
-        const validation = testNativeXrayConfig(configJson, this.context.filesDir);
-        if (validation.ok) {
-          this.emitInfo('Native config preflight passed.', validation.message);
-        } else {
-          this.emitInfo('Native config preflight warning.', validation.message);
-        }
-      }
+      // 不再做 testNativeXrayConfig 预检：重编后的 libXray 的 CGoTestXray 冷 cgo 入口
+      // 会在 VPN 扩展进程里 SIGSEGV（真机 ALN-AL80 / HarmonyOS 6.1 复现，崩在本行附近，
+      // Go-on-musl 的 TLS/栈问题），导致扩展进程当场死亡、无法回写启动状态。预检本就是
+      // 非阻塞诊断，startNativeXray 才是真相来源，直接走它（与 1.1 行为一致）。
 
       this.vpnConnection = vpnExtension.createVpnConnection(this.context);
       this.emitInfo('Creating VPN connection.');
@@ -107,12 +98,9 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       this.tunFd = await this.vpnConnection.create(vpnConfig);
       this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}, ipv6=${settings.ipv6Enabled}, preferIpv6=${settings.preferIpv6}, mtu=${vpnMtu}, address=${addressConfig.displayName}, bypassLan=${settings.vpnBypassLan}`);
 
-      const tunResult = useSingbox ? setNativeSingboxTunFd(this.tunFd) : setNativeTunFd(this.tunFd);
-      if (!tunResult.ok) {
-        throw new Error(tunResult.message);
-      }
-      this.emitInfo(`${useSingbox ? 'sing-box' : 'Xray'} TUN fd configured.`, tunResult.message);
-
+      // 两个内核统一走 tun2socks 数据面：内核在 127.0.0.1:VPN_DATA_SOCKS_PORT 起本地
+      // SOCKS 入站，再由 libheytun2socks.so 把 Harmony TUN fd 的流量转发进去。sing-box
+      // 因此不需要把 tun fd 交给核心（无 OpenTun / gvisor tun 栈），与 Xray 路径一致。
       const coreResult = useSingbox
         ? startNativeSingbox(configJson, this.context.filesDir)
         : startNativeXray(configJson, this.context.filesDir);
@@ -120,6 +108,12 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
         throw new Error(coreResult.message);
       }
       this.emitInfo(`${useSingbox ? 'sing-box' : 'Xray'} started.`, coreResult.message);
+
+      const tun2socksResult = startNativeTun2Socks(this.tunFd, VPN_DATA_SOCKS_HOST, VPN_DATA_SOCKS_PORT, vpnMtu);
+      if (!tun2socksResult.ok) {
+        throw new Error(tun2socksResult.message);
+      }
+      this.emitInfo('tun2socks started.', `${VPN_DATA_SOCKS_HOST}:${VPN_DATA_SOCKS_PORT}, mtu=${vpnMtu}, core=${useSingbox ? 'singbox' : 'xray'}, ${tun2socksResult.message}`);
 
       if (settings.speedEnabled) {
         this.startStatsTimer();
@@ -161,8 +155,10 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
     this.stopStatsTimer();
     this.emitInfo('VPN cleanup started.', `tunFd=${this.tunFd}`);
 
-    // Stop both cores; each is idempotent (no-op when not running), so this is
-    // safe regardless of which core this session started.
+    // 先停 tun2socks 适配器（停止往 SOCKS 转发），再停内核。各操作幂等（未运行即 no-op），
+    // 无论本会话用哪条数据面都安全。
+    const tun2socksResult = stopNativeTun2Socks();
+    this.emitInfo('tun2socks stop requested.', tun2socksResult.message);
     const xrayResult = stopNativeXray();
     this.emitInfo('Xray stop requested.', xrayResult.message);
     const singboxResult = stopNativeSingbox();

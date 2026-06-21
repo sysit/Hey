@@ -83,6 +83,8 @@ interface NativeBridge {
   startXray(configJson: string, workDir: string): NativeResult;
   stopXray(): NativeResult;
   getStats(): RuntimeStats;
+  startTun2Socks(tunFd: number, socksHost: string, socksPort: number, mtu: number): NativeResult;
+  stopTun2Socks(): NativeResult;
   pingOutbound(configJson: string, datDir: string, url: string, timeoutSeconds: number, proxy: string): NativePingResult;
   queryStats(server: string): NativeResult;
   testXrayConfig(configJson: string, workDir: string): NativeResult;
@@ -121,6 +123,14 @@ export function stopNativeXray(): NativeResult {
 
 export function getNativeStats(): RuntimeStats {
   return bridge.getStats();
+}
+
+export function startNativeTun2Socks(tunFd: number, socksHost: string, socksPort: number, mtu: number): NativeResult {
+  return bridge.startTun2Socks(tunFd, socksHost, socksPort, mtu);
+}
+
+export function stopNativeTun2Socks(): NativeResult {
+  return bridge.stopTun2Socks();
 }
 
 export function pingNativeOutbound(configJson: string, datDir: string, url: string, timeoutSeconds: number, proxy: string): NativePingResult {

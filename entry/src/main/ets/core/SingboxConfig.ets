@@ -1,13 +1,15 @@
-import { AppSettings, resolveVpnInterfaceAddressConfig } from './Profile';
+import { AppSettings } from './Profile';
+import { VPN_DATA_SOCKS_HOST, VPN_DATA_SOCKS_PORT } from './XrayConfig';
 
 /**
  * sing-box 配置生成器（预览功能）。
  *
  * 把单个节点的 Xray outbound JSON 转换成 sing-box 的完整运行配置：
- *   tun 入站（fd 由 HarmonyOS 提供，OpenTun 回传）+ 代理出站 + direct/dns 出站 +
- *   基础路由（DNS 劫持、私网直连、其余走代理）+ 基础 DNS。
+ *   本地 SOCKS(mixed) 入站（监听 VPN_DATA_SOCKS 端口，由 libheytun2socks.so 把 Harmony
+ *   TUN fd 的流量转发进来——与 Xray 统一走 tun2socks 数据面，不用 tun 入站/OpenTun）+
+ *   代理出站 + direct/dns 出站 + 基础路由（DNS 劫持、私网直连、其余走代理）+ 基础 DNS。
  *
- * 覆盖最常见协议：VLESS / VMess / Trojan / Shadowsocks，传输 tcp/ws/grpc/http(upgrade)，
+ * 覆盖最常见协议：VLESS / VMess / Trojan / Shadowsocks / AnyTLS，传输 tcp/ws/grpc/http(upgrade)，
  * 安全 none/tls/reality。不支持的协议返回 ok=false（不抛异常），由调用方提示。
  *
  * 注意：节点凭据（地址/端口/UUID/密码/TLS）与 Xray 是同一份事实，这里只做"格式翻译"——
@@ -73,11 +75,8 @@ interface SbOutbound {
 interface SbInbound {
   type: string;
   tag: string;
-  interface_name?: string;
-  mtu?: number;
-  inet4_address?: string;
-  auto_route?: boolean;
-  stack?: string;
+  listen?: string;
+  listen_port?: number;
   sniff?: boolean;
   sniff_override_destination?: boolean;
 }
@@ -209,6 +208,43 @@ function buildTls(stream: JsonObject): SbTls | undefined {
     return tls;
   }
   return undefined;
+}
+
+// anytls 这类把 TLS 字段内联在 server 对象（而非 streamSettings）里的协议：直接从 server 组 sing-box TLS。
+// anytls 协议本身即「any TLS」，链路恒走 TLS，所以这里恒为 enabled。
+function buildServerTls(server: JsonObject): SbTls {
+  const tls: SbTls = { enabled: true };
+  const sni = asString(server['sni']);
+  if (sni.length > 0) {
+    tls.server_name = sni;
+  }
+  if (server['insecure'] === true) {
+    tls.insecure = true;
+  }
+  const alpn = splitCsv(asString(server['alpn']));
+  if (alpn.length > 0) {
+    tls.alpn = alpn;
+  }
+  const fingerprint = asString(server['fingerprint']);
+  if (fingerprint.length > 0) {
+    tls.utls = { enabled: true, fingerprint };
+  }
+  return tls;
+}
+
+function splitCsv(value: string): Array<string> {
+  const result = new Array<string>();
+  if (value.length === 0) {
+    return result;
+  }
+  const parts = value.split(',');
+  for (let index = 0; index < parts.length; index++) {
+    const item = parts[index].trim();
+    if (item.length > 0) {
+      result.push(item);
+    }
+  }
+  return result;
 }
 
 function stripEarlyData(path: string): string {
@@ -373,6 +409,22 @@ function convertOutbound(outbound: JsonObject): SbOutbound | null {
     return out;
   }
 
+  if (protocol === 'anytls') {
+    const server = firstObject(settings['servers']);
+    if (server === undefined) {
+      return null;
+    }
+    const out: SbOutbound = {
+      type: 'anytls',
+      tag: 'proxy',
+      server: asString(server['address']),
+      server_port: asNumber(server['port']),
+      password: asString(server['password']),
+      tls: buildServerTls(server)
+    };
+    return out;
+  }
+
   return null;
 }
 
@@ -394,7 +446,7 @@ export function buildSingboxConfig(outboundJson: string, settings?: AppSettings)
   if (proxy === null) {
     return {
       ok: false,
-      message: `sing-box 暂不支持该节点（协议: ${protocol.length > 0 ? protocol : '未知'}）。当前预览仅支持 VLESS / VMess / Trojan / Shadowsocks。`,
+      message: `sing-box 暂不支持该节点（协议: ${protocol.length > 0 ? protocol : '未知'}）。当前预览仅支持 VLESS / VMess / Trojan / Shadowsocks / AnyTLS。`,
       configJson: ''
     };
   }
@@ -404,19 +456,17 @@ export function buildSingboxConfig(outboundJson: string, settings?: AppSettings)
 
   const remoteDns = (settings?.remoteDns ?? '').trim().length > 0 ? (settings as AppSettings).remoteDns.trim() : '1.1.1.1';
   const directDns = (settings?.domesticDns ?? '').trim().length > 0 ? (settings as AppSettings).domesticDns.trim() : '223.5.5.5';
-  const mtu = settings?.vpnMtu !== undefined && settings.vpnMtu > 0 ? settings.vpnMtu : 1500;
   const ipv6Enabled = settings?.ipv6Enabled === true;
-  const addressConfig = resolveVpnInterfaceAddressConfig(settings?.vpnInterfaceAddressIndex);
   const logLevel = (settings?.logLevel ?? '').trim().length > 0 ? (settings as AppSettings).logLevel.trim() : 'warn';
 
-  const tun: SbInbound = {
-    type: 'tun',
-    tag: 'tun-in',
-    interface_name: 'vpn-tun',
-    mtu,
-    inet4_address: `${addressConfig.ipv4Client}/30`,
-    auto_route: false,
-    stack: 'gvisor',
+  // tun2socks 数据面：sing-box 起一个本地 mixed(SOCKS+HTTP) 入站，监听与 Xray 相同的
+  // VPN_DATA_SOCKS 端口，由 libheytun2socks.so 把 Harmony TUN fd 的流量转发进来。
+  // 因此 sing-box 不需要 tun 入站 / OpenTun / gvisor tun 栈——甩掉了最难且最易出问题的一环。
+  const socksIn: SbInbound = {
+    type: 'mixed',
+    tag: 'socks-in',
+    listen: VPN_DATA_SOCKS_HOST,
+    listen_port: VPN_DATA_SOCKS_PORT,
     sniff: true,
     sniff_override_destination: false
   };
@@ -445,7 +495,7 @@ export function buildSingboxConfig(outboundJson: string, settings?: AppSettings)
   const config: SbConfig = {
     log: { level: logLevel, timestamp: true },
     dns,
-    inbounds: [tun],
+    inbounds: [socksIn],
     outbounds: [proxy, directOut, dnsOut],
     route
   };

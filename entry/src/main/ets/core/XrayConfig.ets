@@ -58,6 +58,54 @@ interface XrayHysteriaRuntimeTlsSettings {
 
 interface XrayLogConfig {
   loglevel: string;
+  access?: string;
+  error?: string;
+}
+
+// 核心运行日志落盘文件名（相对 filesDir）。VPN 扩展进程与主进程共享同一 app 沙箱，
+// 核心把分级日志写到这里，主进程 Logcat 页读取解析。详见 CoreLogReader。
+export const XRAY_CORE_LOG_FILE: string = 'xray-core.log';
+
+// 注入「日志写文件」字段：让核心把分级运行日志落盘到 errorLogPath，供 Logcat 页读取。
+// 仅操作顶层 log，尊重 full config 里用户已设的 log（loglevel/error 都保留），
+// loglevel=none 时不强开（用户显式关日志）。任何解析异常都回退原文，绝不阻断启动。
+interface CoreLogFields {
+  loglevel?: string;
+  access?: string;
+  error?: string;
+}
+
+export function injectXrayLogFile(configJson: string, errorLogPath: string, fallbackLevel: string): string {
+  try {
+    const root = JSON.parse(configJson) as Record<string, Object>;
+    const rawLog = root['log'];
+    let loglevel = fallbackLevel;
+    let errorPath = errorLogPath;
+    let accessPath = '';
+    if (rawLog !== undefined && rawLog !== null && typeof rawLog === 'object') {
+      const logObj = rawLog as CoreLogFields;
+      if (typeof logObj.loglevel === 'string' && logObj.loglevel.length > 0) {
+        loglevel = logObj.loglevel;
+      }
+      if (typeof logObj.error === 'string' && logObj.error.length > 0) {
+        errorPath = logObj.error;
+      }
+      if (typeof logObj.access === 'string' && logObj.access.length > 0) {
+        accessPath = logObj.access;
+      }
+    }
+    if (loglevel === 'none') {
+      return configJson;
+    }
+    const nextLog: CoreLogFields = { loglevel: loglevel, error: errorPath };
+    if (accessPath.length > 0) {
+      nextLog.access = accessPath;
+    }
+    root['log'] = nextLog;
+    return JSON.stringify(root);
+  } catch (error) {
+    return configJson;
+  }
 }
 
 interface XrayMuxConfig {
@@ -299,7 +347,7 @@ class DokodemoInboundSettings {
 class EmptySettings {
 }
 
-const SUPPORTED_PROTOCOLS: Array<string> = ['vless', 'vmess', 'trojan', 'shadowsocks', 'socks', 'http', 'wireguard', 'hysteria2'];
+const SUPPORTED_PROTOCOLS: Array<string> = ['vless', 'vmess', 'trojan', 'shadowsocks', 'socks', 'http', 'wireguard', 'hysteria2', 'anytls'];
 
 export const DEFAULT_SOCKS_HOST: string = '127.0.0.1';
 export const LOCAL_HTTP_PROXY_HOST: string = '127.0.0.1';
@@ -307,6 +355,14 @@ export const LOCAL_HTTP_PROXY_LAN_HOST: string = '0.0.0.0';
 export const LOCAL_SOCKS_PROXY_PORT: number = 10808;
 export const LOCAL_HTTP_PROXY_PORT: number = 10809;
 export const DELAY_TEST_SOCKS_PORT: number = 10825;
+// 并发测速时每个"槽"占一个固定 socks 端口，基址从此开始（端口 = 基址 + 槽号）。
+// 槽内顺序处理节点，故并发的 ping 互不撞端口。避开 VPN 数据面(10810)/单测(10825)/
+// 本地代理(10808-10809)等已用端口。
+export const DELAY_TEST_BATCH_PORT_BASE: number = 11200;
+// VPN 数据面（tun2socks -> Xray SOCKS 入站）的本地地址与端口。Harmony TUN fd 的
+// 流量由 libheytun2socks.so 转发到这里。与用户本地 SOCKS 代理端口分开，避免冲突。
+export const VPN_DATA_SOCKS_HOST: string = '127.0.0.1';
+export const VPN_DATA_SOCKS_PORT: number = 10810;
 // Local Xray metrics (expvar) endpoint. The generated VPN config exposes a
 // dokodemo inbound on this port routed to the metrics handler so that
 // CGoQueryStats can read real per-tag traffic counters from /debug/vars.
@@ -800,7 +856,7 @@ function validateOutboundObject(outbound: XrayOutbound): ValidationResult {
   if (!isSupportedProtocol(outbound.protocol)) {
     return {
       valid: false,
-      message: `暂不支持 ${outbound.protocol}，当前支持 VLESS、VMess、Trojan、Shadowsocks、SOCKS、HTTP、WireGuard 和 Hysteria2。`,
+      message: `暂不支持 ${outbound.protocol}，当前支持 VLESS、VMess、Trojan、Shadowsocks、SOCKS、HTTP、WireGuard、Hysteria2 和 AnyTLS。`,
       protocol: outbound.protocol,
       normalizedJson: '',
       configType: 'outbound'
@@ -1627,10 +1683,16 @@ function buildXrayConfigFromOutbounds(
   observatory?: XrayObservatoryConfig,
   burstObservatory?: XrayBurstObservatoryConfig
 ): GeneratedXrayConfig {
+  // VPN 数据面改走 tun2socks：Xray 起一个本地 SOCKS 入站（tag 仍为 'tun-in'，所有
+  // 路由规则无需改动），由 libheytun2socks.so 把 Harmony TUN fd 的流量转发进来。不再
+  // 用 protocol:'tun' 原生入站——那依赖 xray-core 的 proxy/tun（需 go1.26），而 OHOS
+  // Go 工具链只有 go1.24.5。详见 docs/harmonyos-go-tls-wall.md。
   const tunInbound: XrayInboundConfig = {
     tag: 'tun-in',
-    protocol: 'tun',
-    settings: new TunInboundSettings(settings === undefined ? DEFAULT_VPN_MTU : settings.vpnMtu)
+    listen: VPN_DATA_SOCKS_HOST,
+    port: VPN_DATA_SOCKS_PORT,
+    protocol: 'socks',
+    settings: new SocksInboundSettings(true)
   };
   const sniffing = buildTunSniffing(settings);
   if (sniffing !== undefined) {

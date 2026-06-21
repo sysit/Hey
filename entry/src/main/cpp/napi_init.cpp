@@ -1,6 +1,7 @@
 #include "napi/native_api.h"
 
 #include <atomic>
+#include <thread>
 #include <cctype>
 #include <cerrno>
 #include <cstdint>
@@ -60,6 +61,19 @@ void* g_singboxHandle = nullptr;
 CGoStringFunc g_singboxStart = nullptr;
 CGoStopFunc g_singboxStop = nullptr;
 CGoSetTunFdFunc g_singboxSetTunFd = nullptr;
+
+// tun2socks 适配器（libheytun2socks.so）：把 Harmony VPN TUN fd 的流量转发到
+// Xray 的本地 SOCKS 入站（fd:// -> socks5://127.0.0.1:port）。与 libxray.so 分开
+// 编译/加载——各自独立的 Go 运行时 + TLSDESC，规避 xray-core 与 tun2socks 的
+// gvisor 版本冲突。
+using Tun2SocksStartFunc = int (*)(int, char*, int, int);
+using Tun2SocksStopFunc = void (*)();
+using Tun2SocksStatsFunc = int64_t (*)();
+void* g_tun2socksHandle = nullptr;
+Tun2SocksStartFunc g_startTun2Socks = nullptr;
+Tun2SocksStopFunc g_stopTun2Socks = nullptr;
+Tun2SocksStatsFunc g_tun2SocksUploadBytes = nullptr;
+Tun2SocksStatsFunc g_tun2SocksDownloadBytes = nullptr;
 
 const char* BASE64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -359,12 +373,45 @@ bool LoadXrayCore(std::string& message)
     g_runXrayFromJson = reinterpret_cast<CGoStringFunc>(dlsym(handle, "CGoRunXrayFromJSON"));
     g_stopXray = reinterpret_cast<CGoStopFunc>(dlsym(handle, "CGoStopXray"));
     g_pingXray = reinterpret_cast<CGoPingFunc>(dlsym(handle, "CGoPing"));
+    // CGoSetTunFd 为可选：tun2socks（SOCKS 入站）数据面不需要它，SOCKS 版
+    // libxray.so 也不导出它。只把真正必需的三个符号作为加载成功判据。
     g_setTunFd = reinterpret_cast<CGoSetTunFdFunc>(dlsym(handle, "CGoSetTunFd"));
-    if (g_runXrayFromJson == nullptr || g_stopXray == nullptr || g_pingXray == nullptr || g_setTunFd == nullptr) {
+    if (g_runXrayFromJson == nullptr || g_stopXray == nullptr || g_pingXray == nullptr) {
         message = "libXray unavailable: required CGo symbols missing.";
         return false;
     }
     g_xrayHandle = handle;
+    return true;
+}
+
+// 懒加载 libheytun2socks.so 并解析 HeyTun2Socks* 符号。独立 handle、独立 Go 运行时。
+constexpr const char* TUN2SOCKS_LIB = "libheytun2socks.so";
+
+bool LoadTun2SocksCore(std::string& message)
+{
+    if (g_tun2socksHandle != nullptr && g_startTun2Socks != nullptr && g_stopTun2Socks != nullptr) {
+        return true;
+    }
+    void* handle = dlopen(ExecPath(TUN2SOCKS_LIB).c_str(), RTLD_LAZY | RTLD_LOCAL);
+    if (handle == nullptr) {
+        handle = dlopen(TUN2SOCKS_LIB, RTLD_LAZY | RTLD_LOCAL);
+    }
+    if (handle == nullptr) {
+        const char* error = dlerror();
+        message = std::string("tun2socks unavailable: failed to load ") + TUN2SOCKS_LIB + ": " +
+            (error != nullptr ? error : "unknown error");
+        return false;
+    }
+    dlerror();
+    g_startTun2Socks = reinterpret_cast<Tun2SocksStartFunc>(dlsym(handle, "HeyTun2SocksStart"));
+    g_stopTun2Socks = reinterpret_cast<Tun2SocksStopFunc>(dlsym(handle, "HeyTun2SocksStop"));
+    g_tun2SocksUploadBytes = reinterpret_cast<Tun2SocksStatsFunc>(dlsym(handle, "HeyTun2SocksUploadBytes"));
+    g_tun2SocksDownloadBytes = reinterpret_cast<Tun2SocksStatsFunc>(dlsym(handle, "HeyTun2SocksDownloadBytes"));
+    if (g_startTun2Socks == nullptr || g_stopTun2Socks == nullptr) {
+        message = "tun2socks unavailable: required HeyTun2Socks symbols missing.";
+        return false;
+    }
+    g_tun2socksHandle = handle;
     return true;
 }
 
@@ -541,7 +588,20 @@ napi_value PingOutbound(napi_env env, napi_callback_info info)
         return CreatePingResult(env, false, -1, message);
     }
 
-    std::string configPath = datDir + "/" + PING_CONFIG_FILE;
+    // 并发测速时每个 ping 用独立的 socks 端口，按端口区分配置文件名，避免多个并发
+    // ping 同时写同一个文件互相覆盖（旧实现固定 PING_CONFIG_FILE 会造成串行/串读）。
+    std::string portDigits;
+    size_t colonPos = proxy.find_last_of(':');
+    if (colonPos != std::string::npos) {
+        for (size_t i = colonPos + 1; i < proxy.size(); ++i) {
+            char c = proxy[i];
+            if (c >= '0' && c <= '9') {
+                portDigits.push_back(c);
+            }
+        }
+    }
+    std::string configFile = portDigits.empty() ? std::string(PING_CONFIG_FILE) : ("hey-ping-" + portDigits + ".json");
+    std::string configPath = datDir + "/" + configFile;
     if (!WriteTextFile(configPath, config, message)) {
         return CreatePingResult(env, false, -1, message);
     }
@@ -972,12 +1032,79 @@ napi_value GetStats(napi_env env, napi_callback_info info)
 
     napi_value result = nullptr;
     napi_create_object(env, &result);
+    // tun2socks 运行时，用适配器的字节计数刷新流量统计（仅在已加载适配器的 VPN
+    // 扩展进程里命中；主进程指针为 null，自动跳过）。
+    if (g_tunRunning.load() && g_tun2SocksUploadBytes != nullptr && g_tun2SocksDownloadBytes != nullptr) {
+        g_uploadBytes.store(g_tun2SocksUploadBytes());
+        g_downloadBytes.store(g_tun2SocksDownloadBytes());
+    }
     napi_set_named_property(env, result, "uploadBytes", CreateInt64(env, g_uploadBytes.load()));
     napi_set_named_property(env, result, "downloadBytes", CreateInt64(env, g_downloadBytes.load()));
     napi_set_named_property(env, result, "xrayRunning", CreateBool(env, g_xrayRunning.load() || g_singboxRunning.load()));
     napi_set_named_property(env, result, "tunRunning", CreateBool(env, g_tunRunning.load()));
     napi_set_named_property(env, result, "lastMessage", CreateString(env, g_lastMessage));
     return result;
+}
+
+// 启动 tun2socks 适配器：把 TUN fd 的流量转发到 socks5://host:port。必须在 Xray 的
+// SOCKS 入站已监听之后调用。
+napi_value StartTun2Socks(napi_env env, napi_callback_info info)
+{
+    size_t argc = 4;
+    napi_value args[4] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 4) {
+        return CreateResult(env, false, "Missing tun2socks arguments.");
+    }
+    int32_t tunFd = GetIntArg(env, args[0]);
+    std::string host = GetStringArg(env, args[1]);
+    int32_t port = GetIntArg(env, args[2]);
+    int32_t mtu = GetIntArg(env, args[3]);
+    if (tunFd < 0) {
+        return CreateResult(env, false, "Invalid TUN fd.");
+    }
+    if (host.empty() || port <= 0 || port > 65535 || mtu < 576 || mtu > 1500) {
+        return CreateResult(env, false, "Invalid tun2socks host, port, or MTU.");
+    }
+    if (g_tunRunning.load()) {
+        return CreateResult(env, true, "tun2socks already running.");
+    }
+    g_uploadBytes.store(0);
+    g_downloadBytes.store(0);
+
+    std::string message;
+    if (!LoadTun2SocksCore(message)) {
+        g_lastMessage = message;
+        LogError(message);
+        return CreateResult(env, false, message);
+    }
+    if (!MakeFdInheritable(tunFd, message)) {
+        return CreateResult(env, false, message);
+    }
+
+    int result = g_startTun2Socks(tunFd, const_cast<char*>(host.c_str()), port, mtu);
+    if (result != 0) {
+        return CreateResult(env, false, "tun2socks adapter start failed.");
+    }
+    g_tunRunning.store(true);
+    return CreateResult(env, true, "tun2socks adapter started.");
+}
+
+napi_value StopTun2Socks(napi_env env, napi_callback_info info)
+{
+    (void)info;
+    if (!g_tunRunning.load()) {
+        return CreateResult(env, true, "tun2socks already stopped.");
+    }
+    std::string message;
+    if (!LoadTun2SocksCore(message)) {
+        return CreateResult(env, false, message);
+    }
+    g_tunRunning.store(false);
+    // engine.Stop() 可能阻塞，放到分离线程避免卡住 ArkTS 调用线程。
+    Tun2SocksStopFunc stop = g_stopTun2Socks;
+    std::thread([stop]() { stop(); }).detach();
+    return CreateResult(env, true, "tun2socks stop requested.");
 }
 
 // ===================== sing-box second core (optional, preview) =====================
@@ -1192,6 +1319,8 @@ static napi_value Init(napi_env env, napi_value exports)
         { "startXray", nullptr, StartXray, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "stopXray", nullptr, StopXray, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getStats", nullptr, GetStats, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "startTun2Socks", nullptr, StartTun2Socks, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "stopTun2Socks", nullptr, StopTun2Socks, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "pingOutbound", nullptr, PingOutbound, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "queryStats", nullptr, QueryStats, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "testXrayConfig", nullptr, TestXrayConfig, nullptr, nullptr, nullptr, napi_default, nullptr },

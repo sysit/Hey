@@ -22,6 +22,9 @@ export const setTunFd: (tunFd: number) => NativeResult;
 export const startXray: (configJson: string, workDir: string) => NativeResult;
 export const stopXray: () => NativeResult;
 export const getStats: () => RuntimeStats;
+// tun2socks 适配器（libheytun2socks.so）：TUN fd 流量 -> 本地 SOCKS 入站。
+export const startTun2Socks: (tunFd: number, socksHost: string, socksPort: number, mtu: number) => NativeResult;
+export const stopTun2Socks: () => NativeResult;
 export const pingOutbound: (configJson: string, datDir: string, url: string, timeoutSeconds: number, proxy: string) => NativePingResult;
 export const queryStats: (server: string) => NativeResult;
 export const testXrayConfig: (configJson: string, workDir: string) => NativeResult;
