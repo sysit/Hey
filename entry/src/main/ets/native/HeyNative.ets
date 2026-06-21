@@ -92,6 +92,9 @@ interface NativeBridge {
   getFreePorts(count: number): NativeResult;
   convertShareLinksToXrayJson(text: string): NativeResult;
   convertXrayJsonToShareLinks(configJson: string): NativeResult;
+  // [SING-BOX SPIKE — TEMP] Phase 0 验证 libsingbox.so，验证完删除。
+  singboxProbe(): NativeResult;
+  singboxVersion(): NativeResult;
 }
 
 const bridge = heyNative as NativeBridge;
@@ -134,6 +137,23 @@ export function testNativeXrayConfig(configJson: string, workDir: string): Nativ
 // Bundled Xray core version string, or ok=false when unavailable.
 export function nativeXrayVersion(): NativeResult {
   const result = bridge.xrayVersion();
+  if (!result.ok) {
+    return { ok: false, message: result.message };
+  }
+  return { ok: true, message: extractCallData(result.message) };
+}
+
+// [SING-BOX SPIKE — TEMP] Phase 0 验证，验证完删除这两个 wrapper。
+// probeNativeSingbox 只 dlopen+dlsym（不调 Go），UI 线程点按安全：message 直接是
+// 「loaded + 符号列表」或失败原因。是 Phase 0 最核心的「能不能加载」判定。
+export function probeNativeSingbox(): NativeResult {
+  return bridge.singboxProbe();
+}
+
+// nativeSingboxVersion 真调 CGoSingBoxVersion —— 只应从 VPN 原生线程调用，
+// UI 线程冷调可能 SIGSEGV（与 Xray 同墙）。
+export function nativeSingboxVersion(): NativeResult {
+  const result = bridge.singboxVersion();
   if (!result.ok) {
     return { ok: false, message: result.message };
   }

@@ -972,6 +972,72 @@ napi_value GetStats(napi_env env, napi_callback_info info)
     return result;
 }
 
+// ===================== [SING-BOX SPIKE — TEMPORARY, do not ship] =====================
+// Phase 0：验证 sing-box 内核能否在 HarmonyOS 上加载/运行。验证完整段删除。
+//
+// SingboxProbe 只 dlopen + dlsym，绝不调用任何 Go 函数 —— 因此在 UI 线程调用也安全，
+// 可直接从 About 页点按触发。它回答 Phase 0 最核心的问题：libsingbox.so 会不会像
+// GOOS=linux 的 libxray 那样被 musl 以 initial-exec TLS 拒绝（拒绝 => dlopen 失败）。
+//
+// SingboxVersion 才真正调用 CGoSingBoxVersion —— 只应从 VPN 原生线程调用；UI 线程
+// 冷调可能不可捕获地 SIGSEGV（与 Xray 同一堵 Go-on-musl TLS 墙）。
+constexpr const char* SINGBOX_CORE_LIB = "libsingbox.so";
+
+void* OpenSingbox(std::string& message)
+{
+    void* handle = dlopen(ExecPath(SINGBOX_CORE_LIB).c_str(), RTLD_LAZY | RTLD_LOCAL);
+    if (handle == nullptr) {
+        handle = dlopen(SINGBOX_CORE_LIB, RTLD_LAZY | RTLD_LOCAL);
+    }
+    if (handle == nullptr) {
+        const char* error = dlerror();
+        message = std::string("dlopen ") + SINGBOX_CORE_LIB + " failed: " +
+            (error != nullptr ? error : "unknown error");
+    }
+    return handle;
+}
+
+napi_value SingboxProbe(napi_env env, napi_callback_info info)
+{
+    (void)info;
+    std::string message;
+    void* handle = OpenSingbox(message);
+    if (handle == nullptr) {
+        return CreateResultQuiet(env, false, message);
+    }
+    dlerror();
+    bool hasVersion = dlsym(handle, "CGoSingBoxVersion") != nullptr;
+    bool hasStart = dlsym(handle, "CGoStartSingBox") != nullptr;
+    bool hasStop = dlsym(handle, "CGoStopSingBox") != nullptr;
+    bool hasSetTun = dlsym(handle, "CGoSetTunFd") != nullptr;
+    std::ostringstream out;
+    out << "libsingbox.so loaded. symbols: "
+        << "Version=" << (hasVersion ? "yes" : "no")
+        << " Start=" << (hasStart ? "yes" : "no")
+        << " Stop=" << (hasStop ? "yes" : "no")
+        << " SetTunFd=" << (hasSetTun ? "yes" : "no");
+    bool ok = hasVersion && hasStart && hasStop && hasSetTun;
+    return CreateResultQuiet(env, ok, out.str());
+}
+
+napi_value SingboxVersion(napi_env env, napi_callback_info info)
+{
+    (void)info;
+    std::string message;
+    void* handle = OpenSingbox(message);
+    if (handle == nullptr) {
+        return CreateResultQuiet(env, false, message);
+    }
+    dlerror();
+    CGoVersionFunc version = reinterpret_cast<CGoVersionFunc>(dlsym(handle, "CGoSingBoxVersion"));
+    if (version == nullptr) {
+        return CreateResultQuiet(env, false, "CGoSingBoxVersion not exported by libsingbox.so.");
+    }
+    char* raw = version();
+    return BuildCallResult(env, raw, "CGoSingBoxVersion returned null.");
+}
+// =================== [end SING-BOX SPIKE — TEMPORARY] ===================
+
 } // namespace
 
 EXTERN_C_START
@@ -994,6 +1060,9 @@ static napi_value Init(napi_env env, napi_value exports)
             napi_default, nullptr },
         { "convertXrayJsonToShareLinks", nullptr, ConvertXrayJsonToShareLinks, nullptr, nullptr, nullptr,
             napi_default, nullptr },
+        // [SING-BOX SPIKE — TEMP] 验证完删除这两行。
+        { "singboxProbe", nullptr, SingboxProbe, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "singboxVersion", nullptr, SingboxVersion, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

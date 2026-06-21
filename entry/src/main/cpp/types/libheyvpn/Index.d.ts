@@ -31,3 +31,6 @@ export const readGeoFiles: (configJson: string) => NativeResult;
 export const getFreePorts: (count: number) => NativeResult;
 export const convertShareLinksToXrayJson: (text: string) => NativeResult;
 export const convertXrayJsonToShareLinks: (configJson: string) => NativeResult;
+// [SING-BOX SPIKE — TEMP] Phase 0 验证 libsingbox.so 能否加载/运行，验证完删除。
+export const singboxProbe: () => NativeResult;
+export const singboxVersion: () => NativeResult;

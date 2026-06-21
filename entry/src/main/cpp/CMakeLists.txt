@@ -16,7 +16,9 @@ target_link_libraries(heyvpn PUBLIC
     libhilog_ndk.z.so
     libdl.so)
 
-foreach(PREBUILT_LIB libxray.so)
+# [SING-BOX SPIKE — TEMP] libsingbox.so 由 scripts/build_libsingbox_ohos.sh 产出；
+# if(EXISTS) 守卫保证它还没编出来时不影响正常构建。验证完连同 napi 的临时导出一起删。
+foreach(PREBUILT_LIB libxray.so libsingbox.so)
     if(EXISTS "${HEYVPN_PREBUILT_DIR}/${PREBUILT_LIB}")
         add_custom_command(TARGET heyvpn POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different

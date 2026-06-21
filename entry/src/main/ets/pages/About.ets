@@ -8,6 +8,8 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { UPDATE_CHECKER_MANAGER } from '../services/UpdateCheckerManager';
 import { BUNDLED_XRAY_VERSION } from '../core/CoreInfo';
+// [SING-BOX SPIKE — TEMP] Phase 0 验证入口，验证完连同探测行一起删。
+import { probeNativeSingbox } from '../native/HeyNative';
 import { SectionHeader } from '../components/SectionHeader';
 import { PageHeader } from '../shell/PageHeader';
 import { formatOne } from '../utils/LocalizationPresenter';
@@ -217,7 +219,16 @@ struct AboutPage {
       CoreRow({
         label: this.t('about.core.mode'),
         value: this.t('about.core.mode.value'),
-        showDivider: false
+        showDivider: true
+      })
+      // [SING-BOX SPIKE — TEMP] 点一下验证 libsingbox.so 能否加载（dlopen，UI 线程安全）。
+      // 字面量文案、不走 i18n —— 临时行，避免新增 I18n 键。验证完整行删除。
+      LegalRow({
+        title: 'sing-box 探测 (临时)',
+        showDivider: false,
+        onAction: () => {
+          this.probeSingbox();
+        }
       })
     }
     .backgroundColor(AppColor.surface)
@@ -225,6 +236,13 @@ struct AboutPage {
     .border({ width: 0.5, color: AppColor.border })
     .clip(true)
     .width('100%')
+  }
+
+  // [SING-BOX SPIKE — TEMP] 调 dlopen-only 的探测，把结果用 toast + 日志展示。
+  private probeSingbox(): void {
+    const result = probeNativeSingbox();
+    promptAction.showToast({ message: result.message, duration: 6000 });
+    SHARED_RUNTIME_CONTROLLER.appendLog('[sing-box probe] ' + result.message);
   }
 
   // 开源与社区：带彩色图标的外链行。
