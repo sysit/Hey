@@ -53,6 +53,14 @@ CGoFreePortsFunc g_getFreePorts = nullptr;
 CGoStringFunc g_convertShareLinksToXrayJson = nullptr;
 CGoStringFunc g_convertXrayJsonToShareLinks = nullptr;
 
+// sing-box second core state. Implementation lives in the sing-box block below;
+// declared here so GetStats (above that block) can read g_singboxRunning.
+std::atomic_bool g_singboxRunning(false);
+void* g_singboxHandle = nullptr;
+CGoStringFunc g_singboxStart = nullptr;
+CGoStopFunc g_singboxStop = nullptr;
+CGoSetTunFdFunc g_singboxSetTunFd = nullptr;
+
 const char* BASE64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 void LogInfo(const std::string& message)
@@ -966,21 +974,16 @@ napi_value GetStats(napi_env env, napi_callback_info info)
     napi_create_object(env, &result);
     napi_set_named_property(env, result, "uploadBytes", CreateInt64(env, g_uploadBytes.load()));
     napi_set_named_property(env, result, "downloadBytes", CreateInt64(env, g_downloadBytes.load()));
-    napi_set_named_property(env, result, "xrayRunning", CreateBool(env, g_xrayRunning.load()));
+    napi_set_named_property(env, result, "xrayRunning", CreateBool(env, g_xrayRunning.load() || g_singboxRunning.load()));
     napi_set_named_property(env, result, "tunRunning", CreateBool(env, g_tunRunning.load()));
     napi_set_named_property(env, result, "lastMessage", CreateString(env, g_lastMessage));
     return result;
 }
 
-// ===================== [SING-BOX SPIKE — TEMPORARY, do not ship] =====================
-// Phase 0：验证 sing-box 内核能否在 HarmonyOS 上加载/运行。验证完整段删除。
-//
-// SingboxProbe 只 dlopen + dlsym，绝不调用任何 Go 函数 —— 因此在 UI 线程调用也安全，
-// 可直接从 About 页点按触发。它回答 Phase 0 最核心的问题：libsingbox.so 会不会像
-// GOOS=linux 的 libxray 那样被 musl 以 initial-exec TLS 拒绝（拒绝 => dlopen 失败）。
-//
-// SingboxVersion 才真正调用 CGoSingBoxVersion —— 只应从 VPN 原生线程调用；UI 线程
-// 冷调可能不可捕获地 SIGSEGV（与 Xray 同一堵 Go-on-musl TLS 墙）。
+// ===================== sing-box second core (optional, preview) =====================
+// libsingbox.so 是 sing-box 内核的 c-shared 封装（见 libsingbox/）。与上面的 Xray 核
+// 平行：start/stop/setTunFd 必须从 VPN 原生线程调用（GOOS=android 下唯一安全的
+// cgo->Go 上下文）。SingboxProbe 只 dlopen+dlsym、不触发 cgo，UI 线程点按也安全。
 constexpr const char* SINGBOX_CORE_LIB = "libsingbox.so";
 
 void* OpenSingbox(std::string& message)
@@ -997,6 +1000,30 @@ void* OpenSingbox(std::string& message)
     return handle;
 }
 
+// 懒加载 libsingbox.so 并解析生命周期符号。只应从 VPN 原生线程调用。
+bool LoadSingboxCore(std::string& message)
+{
+    if (g_singboxHandle != nullptr && g_singboxStart != nullptr && g_singboxStop != nullptr &&
+        g_singboxSetTunFd != nullptr) {
+        return true;
+    }
+    void* handle = OpenSingbox(message);
+    if (handle == nullptr) {
+        return false;
+    }
+    dlerror();
+    g_singboxStart = reinterpret_cast<CGoStringFunc>(dlsym(handle, "CGoStartSingBox"));
+    g_singboxStop = reinterpret_cast<CGoStopFunc>(dlsym(handle, "CGoStopSingBox"));
+    g_singboxSetTunFd = reinterpret_cast<CGoSetTunFdFunc>(dlsym(handle, "CGoSetTunFd"));
+    if (g_singboxStart == nullptr || g_singboxStop == nullptr || g_singboxSetTunFd == nullptr) {
+        message = "libsingbox unavailable: required CGo symbols missing.";
+        return false;
+    }
+    g_singboxHandle = handle;
+    return true;
+}
+
+// 诊断用：只 dlopen+dlsym，不触发 cgo，UI 线程安全（关于页探测按钮用）。
 napi_value SingboxProbe(napi_env env, napi_callback_info info)
 {
     (void)info;
@@ -1020,6 +1047,7 @@ napi_value SingboxProbe(napi_env env, napi_callback_info info)
     return CreateResultQuiet(env, ok, out.str());
 }
 
+// 真调 CGoSingBoxVersion —— 仅限 VPN 原生线程（UI 线程冷调可能 SIGSEGV）。
 napi_value SingboxVersion(napi_env env, napi_callback_info info)
 {
     (void)info;
@@ -1036,7 +1064,122 @@ napi_value SingboxVersion(napi_env env, napi_callback_info info)
     char* raw = version();
     return BuildCallResult(env, raw, "CGoSingBoxVersion returned null.");
 }
-// =================== [end SING-BOX SPIKE — TEMPORARY] ===================
+
+napi_value SingboxSetTunFd(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1] = { nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResult(env, false, "Missing TUN fd.");
+    }
+
+    int32_t tunFd = GetIntArg(env, args[0]);
+    if (tunFd < 0) {
+        return CreateResult(env, false, "Invalid TUN fd.");
+    }
+    if (g_singboxRunning.load()) {
+        return CreateResult(env, false, "Cannot set TUN fd while sing-box is running.");
+    }
+
+    std::string message;
+    if (!LoadSingboxCore(message)) {
+        g_tunRunning.store(false);
+        return CreateResult(env, false, message);
+    }
+    if (!MakeFdInheritable(tunFd, message)) {
+        g_tunRunning.store(false);
+        return CreateResult(env, false, message);
+    }
+
+    g_uploadBytes.store(0);
+    g_downloadBytes.store(0);
+    // sing-box 自己管 tun：把 fd 存进 Go wrapper，CGoStartSingBox 时由 OpenTun 取用。
+    g_singboxSetTunFd(tunFd);
+    g_tunRunning.store(true);
+    return CreateResult(env, true, "sing-box TUN fd configured.");
+}
+
+napi_value SingboxStart(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2] = { nullptr, nullptr };
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (argc < 1) {
+        return CreateResult(env, false, "Missing sing-box config JSON.");
+    }
+
+    std::string config = GetStringArg(env, args[0]);
+    if (config.empty()) {
+        return CreateResult(env, false, "sing-box config JSON is empty.");
+    }
+    if (g_singboxRunning.load()) {
+        return CreateResult(env, true, "sing-box already running.");
+    }
+
+    std::string workDir = argc >= 2 ? GetStringArg(env, args[1]) : "";
+    if (workDir.empty()) {
+        return CreateResult(env, false, "Missing native work directory for sing-box config.");
+    }
+
+    std::string message;
+    if (!LoadSingboxCore(message)) {
+        g_singboxRunning.store(false);
+        return CreateResult(env, false, message);
+    }
+
+    // 请求体对齐 libsingbox/main.go 的 startRequest：{"basePath":..,"config":..}
+    std::ostringstream request;
+    request << "{\"basePath\":\"" << JsonEscape(workDir) << "\","
+            << "\"config\":\"" << JsonEscape(config) << "\"}";
+    std::string encoded = Base64Encode(request.str());
+    std::vector<char> buffer(encoded.begin(), encoded.end());
+    buffer.push_back('\0');
+
+    char* raw = g_singboxStart(buffer.data());
+    if (raw == nullptr) {
+        g_singboxRunning.store(false);
+        return CreateResult(env, false, "libsingbox start returned null.");
+    }
+    std::string response(raw);
+    std::free(raw);
+    if (!ResponseOk(response, message)) {
+        g_singboxRunning.store(false);
+        return CreateResult(env, false, message);
+    }
+
+    g_singboxRunning.store(true);
+    return CreateResult(env, true, "sing-box core started.");
+}
+
+napi_value SingboxStop(napi_env env, napi_callback_info info)
+{
+    (void)info;
+    if (!g_singboxRunning.load()) {
+        g_tunRunning.store(false);
+        return CreateResult(env, true, "sing-box already stopped.");
+    }
+
+    std::string message;
+    if (!LoadSingboxCore(message)) {
+        return CreateResult(env, false, message);
+    }
+
+    char* raw = g_singboxStop();
+    if (raw == nullptr) {
+        return CreateResult(env, false, "libsingbox stop returned null.");
+    }
+    std::string response(raw);
+    std::free(raw);
+    if (!ResponseOk(response, message)) {
+        return CreateResult(env, false, message);
+    }
+
+    g_singboxRunning.store(false);
+    g_tunRunning.store(false);
+    return CreateResult(env, true, "sing-box core stopped.");
+}
+// =================== [end sing-box second core] ===================
 
 } // namespace
 
@@ -1060,9 +1203,13 @@ static napi_value Init(napi_env env, napi_value exports)
             napi_default, nullptr },
         { "convertXrayJsonToShareLinks", nullptr, ConvertXrayJsonToShareLinks, nullptr, nullptr, nullptr,
             napi_default, nullptr },
-        // [SING-BOX SPIKE — TEMP] 验证完删除这两行。
+        // sing-box second core (optional). singboxProbe is UI-thread safe (dlopen only);
+        // the rest must be called from the VPN native thread.
         { "singboxProbe", nullptr, SingboxProbe, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "singboxVersion", nullptr, SingboxVersion, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "singboxSetTunFd", nullptr, SingboxSetTunFd, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "singboxStart", nullptr, SingboxStart, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "singboxStop", nullptr, SingboxStop, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

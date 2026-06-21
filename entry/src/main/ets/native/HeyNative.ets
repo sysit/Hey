@@ -92,9 +92,13 @@ interface NativeBridge {
   getFreePorts(count: number): NativeResult;
   convertShareLinksToXrayJson(text: string): NativeResult;
   convertXrayJsonToShareLinks(configJson: string): NativeResult;
-  // [SING-BOX SPIKE — TEMP] Phase 0 验证 libsingbox.so，验证完删除。
+  // sing-box second core (optional). singboxProbe is UI-thread safe; the rest must
+  // be called from the VPN native thread.
   singboxProbe(): NativeResult;
   singboxVersion(): NativeResult;
+  singboxSetTunFd(tunFd: number): NativeResult;
+  singboxStart(configJson: string, workDir: string): NativeResult;
+  singboxStop(): NativeResult;
 }
 
 const bridge = heyNative as NativeBridge;
@@ -143,9 +147,8 @@ export function nativeXrayVersion(): NativeResult {
   return { ok: true, message: extractCallData(result.message) };
 }
 
-// [SING-BOX SPIKE — TEMP] Phase 0 验证，验证完删除这两个 wrapper。
 // probeNativeSingbox 只 dlopen+dlsym（不调 Go），UI 线程点按安全：message 直接是
-// 「loaded + 符号列表」或失败原因。是 Phase 0 最核心的「能不能加载」判定。
+// 「loaded + 符号列表」或失败原因。用于关于页诊断。
 export function probeNativeSingbox(): NativeResult {
   return bridge.singboxProbe();
 }
@@ -158,6 +161,20 @@ export function nativeSingboxVersion(): NativeResult {
     return { ok: false, message: result.message };
   }
   return { ok: true, message: extractCallData(result.message) };
+}
+
+// sing-box 生命周期（与 Xray 平行）。必须从 VPN 原生线程调用。
+// 顺序：先 setNativeSingboxTunFd 把 tun fd 存进核，再 startNativeSingbox。
+export function setNativeSingboxTunFd(tunFd: number): NativeResult {
+  return bridge.singboxSetTunFd(tunFd);
+}
+
+export function startNativeSingbox(configJson: string, workDir: string): NativeResult {
+  return bridge.singboxStart(configJson, workDir);
+}
+
+export function stopNativeSingbox(): NativeResult {
+  return bridge.singboxStop();
 }
 
 // Asks libXray to parse a geosite/geoip .dat file and write {name}.json into

@@ -6,6 +6,8 @@ import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppRuntimeMode, AppSettings, Connect
 import { resolveDynamicPolicyGroupConfigJson } from '../core/AdvancedOutboundBuilder';
 import { selectRuntimeLocalSocksPort, shouldExposeLocalHttpProxy, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../core/LocalProxy';
 import { buildRuntimeXrayConfig, LOCAL_HTTP_PROXY_PORT, METRICS_PORT, normalizeConfigInput } from '../core/XrayConfig';
+import { CORE_TYPE_SINGBOX, CoreSelectionStore, isSingboxCore } from '../core/CoreSelection';
+import { buildSingboxConfig } from '../core/SingboxConfig';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { createStopCommandVpnWant, createStopVpnWant, createVpnWant } from '../vpn/VpnConstants';
 import { getNativeFreePorts, getNativeStats, startNativeXray, stopNativeXray, testNativeXrayConfig } from '../native/HeyNative';
@@ -82,6 +84,13 @@ export class ConnectionController {
 
     this.status = ConnectionStatus.STARTING;
     this.lastError = '';
+
+    // 内核分流：sing-box（预览）走独立的配置生成 + native 生命周期。
+    const coreType = await CoreSelectionStore.load(context);
+    if (isSingboxCore(coreType)) {
+      return this.startSingbox(context, validation.normalizedJson, validation.configType, settings);
+    }
+
     const runtimeSettings = validation.configType === 'full' ? settings : this.resolveRuntimeSettings(settings);
     const runtimeConfigJson = await this.resolveRuntimeConfigJson(context, validation.normalizedJson, validation.configType);
     const resolvedRuntimeSettings = await OUTBOUND_DOMAIN_RESOLVER.resolve(context, runtimeConfigJson, runtimeSettings, validation.configType);
@@ -119,6 +128,62 @@ export class ConnectionController {
       const action = this.runtimeMode === APP_MODE_PROXY_ONLY ? '启动仅代理模式失败' : '启动 VPN 失败';
       this.lastError = `${action}：${businessError.message ?? JSON.stringify(error)}`;
       hilog.error(LOG_DOMAIN, LOG_TAG, 'connection start failed: %{public}s', this.lastError);
+    }
+    return this.getSnapshot();
+  }
+
+  // sing-box 内核启动路径（预览）：仅支持 VPN 模式 + 单节点（outbound）配置。
+  private async startSingbox(
+    context: common.Context,
+    normalizedJson: string,
+    configType: string | undefined,
+    settings?: AppSettings
+  ): Promise<ConnectionSnapshot> {
+    const mode = normalizeAppRuntimeMode(settings?.mode, APP_MODE_VPN);
+    if (mode === APP_MODE_PROXY_ONLY) {
+      this.status = ConnectionStatus.ERROR;
+      this.lastError = 'sing-box 预览暂仅支持 VPN 模式，请切回 VPN 模式或改用 Xray 内核。';
+      return this.getSnapshot();
+    }
+    if (configType !== undefined && configType !== 'outbound') {
+      this.status = ConnectionStatus.ERROR;
+      this.lastError = 'sing-box 预览暂仅支持单节点配置（不支持代理链 / 策略组 / 完整配置）。';
+      return this.getSnapshot();
+    }
+
+    const generated = buildSingboxConfig(normalizedJson, settings);
+    if (!generated.ok) {
+      this.status = ConnectionStatus.ERROR;
+      this.lastError = generated.message;
+      return this.getSnapshot();
+    }
+
+    this.generatedConfig = { configJson: generated.configJson };
+    this.runtimeMode = APP_MODE_VPN;
+    const requestedAt = Date.now();
+    try {
+      hilog.info(LOG_DOMAIN, LOG_TAG, 'Calling startVpnExtensionAbility (sing-box), configBytes=%{public}d',
+        generated.configJson.length);
+      await this.withTimeout(vpnExtension.startVpnExtensionAbility(createVpnWant(
+        generated.configJson,
+        CORE_TYPE_SINGBOX
+      )), START_VPN_TIMEOUT_MS, '启动 VPN 超时：系统 VPN 授权服务没有响应。若为模拟器缺少 VPN 授权组件，请改用真机测试。');
+      const startEvent = await this.waitForDiagnosticEvent(context, requestedAt, START_VPN_READY_TIMEOUT_MS, (event: DiagnosticEvent) => {
+        return event.source === 'vpn' && (event.message === VPN_STARTED_MESSAGE || event.message === VPN_START_FAILED_MESSAGE);
+      });
+      if (startEvent === null) {
+        throw new Error('启动 sing-box 未确认完成：VPN 扩展没有回写启动完成状态。');
+      }
+      if (startEvent.message === VPN_START_FAILED_MESSAGE) {
+        throw new Error(this.formatDiagnosticEvent(startEvent));
+      }
+      this.status = ConnectionStatus.RUNNING;
+      this.startedAt = Date.now();
+    } catch (error) {
+      const businessError = error as BusinessError;
+      this.status = ConnectionStatus.ERROR;
+      this.lastError = `启动 sing-box 失败：${businessError.message ?? JSON.stringify(error)}`;
+      hilog.error(LOG_DOMAIN, LOG_TAG, 'sing-box start failed: %{public}s', this.lastError);
     }
     return this.getSnapshot();
   }

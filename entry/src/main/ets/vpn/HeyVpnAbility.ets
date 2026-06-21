@@ -14,12 +14,16 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import {
   getNativeStats,
   queryNativeTraffic,
+  setNativeSingboxTunFd,
   setNativeTunFd,
+  startNativeSingbox,
   startNativeXray,
+  stopNativeSingbox,
   stopNativeXray,
   testNativeXrayConfig
 } from '../native/HeyNative';
 import { METRICS_SERVER_URL } from '../core/XrayConfig';
+import { isSingboxCore } from '../core/CoreSelection';
 import { DiagnosticLog } from '../services/DiagnosticLog';
 
 const LOG_DOMAIN: number = 0x0001;
@@ -62,19 +66,21 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
 
   private async startVpn(want: Want): Promise<void> {
     const configJson = this.getStringParameter(want, 'xrayConfigJson', '');
+    const useSingbox = isSingboxCore(this.getStringParameter(want, 'coreType', 'xray'));
 
     try {
-      this.emitInfo('VPN start requested.', `configBytes=${configJson.length}`);
-      // Non-blocking preflight: surface config issues early in diagnostics, but
-      // never abort start on a not-ok result. CGoTestXray builds the core from
-      // the full config (including the `tun` inbound) before the TUN fd is set,
-      // so a false-positive here must not block the verified connection path —
-      // startNativeXray below remains the source of truth for real failures.
-      const validation = testNativeXrayConfig(configJson, this.context.filesDir);
-      if (validation.ok) {
-        this.emitInfo('Native config preflight passed.', validation.message);
-      } else {
-        this.emitInfo('Native config preflight warning.', validation.message);
+      this.emitInfo('VPN start requested.', `core=${useSingbox ? 'singbox' : 'xray'}, configBytes=${configJson.length}`);
+      // Non-blocking preflight (Xray only): surface config issues early in
+      // diagnostics, but never abort start on a not-ok result. startNativeXray
+      // below remains the source of truth for real failures. sing-box has no
+      // equivalent dry-run export, so it relies on startNativeSingbox directly.
+      if (!useSingbox) {
+        const validation = testNativeXrayConfig(configJson, this.context.filesDir);
+        if (validation.ok) {
+          this.emitInfo('Native config preflight passed.', validation.message);
+        } else {
+          this.emitInfo('Native config preflight warning.', validation.message);
+        }
       }
 
       this.vpnConnection = vpnExtension.createVpnConnection(this.context);
@@ -101,17 +107,19 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       this.tunFd = await this.vpnConnection.create(vpnConfig);
       this.emitInfo('VPN created.', `tunFd=${this.tunFd}, dns=${dnsAddresses.join(',')}, ipv6=${settings.ipv6Enabled}, preferIpv6=${settings.preferIpv6}, mtu=${vpnMtu}, address=${addressConfig.displayName}, bypassLan=${settings.vpnBypassLan}`);
 
-      const tunResult = setNativeTunFd(this.tunFd);
+      const tunResult = useSingbox ? setNativeSingboxTunFd(this.tunFd) : setNativeTunFd(this.tunFd);
       if (!tunResult.ok) {
         throw new Error(tunResult.message);
       }
-      this.emitInfo('Xray TUN fd configured.', tunResult.message);
+      this.emitInfo(`${useSingbox ? 'sing-box' : 'Xray'} TUN fd configured.`, tunResult.message);
 
-      const xrayResult = startNativeXray(configJson, this.context.filesDir);
-      if (!xrayResult.ok) {
-        throw new Error(xrayResult.message);
+      const coreResult = useSingbox
+        ? startNativeSingbox(configJson, this.context.filesDir)
+        : startNativeXray(configJson, this.context.filesDir);
+      if (!coreResult.ok) {
+        throw new Error(coreResult.message);
       }
-      this.emitInfo('Xray started.', xrayResult.message);
+      this.emitInfo(`${useSingbox ? 'sing-box' : 'Xray'} started.`, coreResult.message);
 
       if (settings.speedEnabled) {
         this.startStatsTimer();
@@ -153,8 +161,12 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
     this.stopStatsTimer();
     this.emitInfo('VPN cleanup started.', `tunFd=${this.tunFd}`);
 
+    // Stop both cores; each is idempotent (no-op when not running), so this is
+    // safe regardless of which core this session started.
     const xrayResult = stopNativeXray();
     this.emitInfo('Xray stop requested.', xrayResult.message);
+    const singboxResult = stopNativeSingbox();
+    this.emitInfo('sing-box stop requested.', singboxResult.message);
 
     if (this.vpnConnection !== null) {
       try {

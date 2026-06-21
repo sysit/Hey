@@ -31,6 +31,10 @@ export const readGeoFiles: (configJson: string) => NativeResult;
 export const getFreePorts: (count: number) => NativeResult;
 export const convertShareLinksToXrayJson: (text: string) => NativeResult;
 export const convertXrayJsonToShareLinks: (configJson: string) => NativeResult;
-// [SING-BOX SPIKE — TEMP] Phase 0 验证 libsingbox.so 能否加载/运行，验证完删除。
+// sing-box second core (optional). singboxProbe is UI-thread safe (dlopen only);
+// singboxVersion/SetTunFd/Start/Stop must be called from the VPN native thread.
 export const singboxProbe: () => NativeResult;
 export const singboxVersion: () => NativeResult;
+export const singboxSetTunFd: (tunFd: number) => NativeResult;
+export const singboxStart: (configJson: string, workDir: string) => NativeResult;
+export const singboxStop: () => NativeResult;
