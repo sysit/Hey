@@ -67,7 +67,7 @@ struct SubscriptionDetailPage {
       .fontWeight(FontWeight.Bold)
       .fontColor(AppColor.textTertiary)
       .width('100%')
-      .padding({ left: 18, right: 18, bottom: Space.sm })
+      .padding({ left: 2, right: 2, bottom: Space.sm })
   }
 
   @Builder
@@ -96,8 +96,9 @@ struct SubscriptionDetailPage {
         showBack: true
       })
 
-      Scroll() {
-        Column() {
+      Column() {
+        Scroll() {
+          Column() {
           // 订阅链接工具栏：链接图标 + 输入 + 粘贴/扫码/分享
           this.GroupLabel(this.t('subscription.detail.link'))
           Row() {
@@ -142,7 +143,7 @@ struct SubscriptionDetailPage {
           .backgroundColor(AppColor.surface)
           .borderRadius(Radius.lg)
           .border({ width: 0.5, color: AppColor.border })
-          .margin({ left: Space.lg, right: Space.lg, bottom: Space.md })
+          .margin({ bottom: Space.md })
 
           if (this.showSubscriptionQr && this.subscriptionUrl.trim().length > 0) {
             this.GroupLabel(this.t('subscription.detail.qr'))
@@ -193,7 +194,7 @@ struct SubscriptionDetailPage {
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.md })
+            .margin({ bottom: Space.md })
             .alignItems(HorizontalAlign.Center)
           }
 
@@ -218,7 +219,7 @@ struct SubscriptionDetailPage {
           .enabled(this.isButtonEnabled())
           .backgroundColor(this.isButtonEnabled() ? AppColor.brand : AppColor.surfaceAlt)
           .shadow(this.isButtonEnabled() ? { radius: 12, color: AppColor.shadowBrand, offsetX: 0, offsetY: 6 } : undefined)
-          .margin({ left: Space.lg, right: Space.lg, bottom: Space.md })
+          .margin({ bottom: Space.md })
           .onClick(() => {
             this.updateSubscription();
           })
@@ -241,7 +242,7 @@ struct SubscriptionDetailPage {
             .padding({ left: 14, right: 14, top: Space.md, bottom: Space.md })
             .borderRadius(Radius.md)
             .backgroundColor(this.cardType === 'success' ? AppColor.successTint : this.cardType === 'error' ? AppColor.dangerTint : AppColor.brandTint)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.md })
+            .margin({ bottom: Space.md })
           }
 
           // 节点列表组：国旗 + 名称/协议 + 延迟信号点 + 当前项勾选
@@ -266,7 +267,6 @@ struct SubscriptionDetailPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
           } else {
             Column() {
               Text(this.t('subscription.detail.emptyNodes'))
@@ -279,7 +279,11 @@ struct SubscriptionDetailPage {
           }
         }
         .width('100%')
-        .padding({ top: 14, bottom: Space.xxl })
+        .padding({ left: Space.lg, right: Space.lg, top: 14, bottom: Space.xxl })
+        }
+        .width('100%')
+        .height('100%')
+        .align(Alignment.Top)
       }
       .layoutWeight(1)
       .width('100%')

@@ -72,7 +72,7 @@ struct SubscriptionEditPage {
       .fontWeight(FontWeight.Bold)
       .fontColor(AppColor.textTertiary)
       .width('100%')
-      .padding({ left: 18, right: 18, bottom: Space.sm })
+      .padding({ left: 2, right: 2, bottom: Space.sm })
   }
 
   // 字段下方帮助文字：卡片底部 8 提供与卡片的间距，自身底部 16 衔接下一分组
@@ -83,7 +83,7 @@ struct SubscriptionEditPage {
       .fontColor(AppColor.textTertiary)
       .width('100%')
       .lineHeight(16)
-      .padding({ left: 18, right: 18 })
+      .padding({ left: 2, right: 2 })
       .margin({ bottom: Space.lg })
   }
 
@@ -97,8 +97,9 @@ struct SubscriptionEditPage {
         }
       })
 
-      Scroll() {
-        Column() {
+      Column() {
+        Scroll() {
+          Column() {
 
             // 卡片一：分组名称
             this.GroupLabel(this.t('subscription.edit.groupName'))
@@ -121,7 +122,7 @@ struct SubscriptionEditPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
+            .margin({ bottom: Space.sm })
 
             this.FieldHint(this.t('subscription.edit.groupName.detail'))
 
@@ -205,7 +206,7 @@ struct SubscriptionEditPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
+            .margin({ bottom: Space.sm })
 
             this.FieldHint(this.t('subscription.edit.url.detail'))
 
@@ -226,7 +227,7 @@ struct SubscriptionEditPage {
             .width('100%')
             .padding({ left: Space.xs, right: Space.xs })
             .alignItems(VerticalAlign.Center)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+            .margin({ bottom: Space.lg })
 
             this.GroupLabel(this.t('subscription.edit.autoUpdate'))
             Column() {
@@ -304,7 +305,7 @@ struct SubscriptionEditPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+            .margin({ bottom: Space.lg })
 
             // 卡片四：自定义 User-Agent
             this.GroupLabel(this.t('subscription.edit.userAgent'))
@@ -330,7 +331,7 @@ struct SubscriptionEditPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
+            .margin({ bottom: Space.sm })
 
             this.FieldHint(this.t('subscription.edit.userAgent.detail'))
 
@@ -355,7 +356,7 @@ struct SubscriptionEditPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
+            .margin({ bottom: Space.sm })
 
             this.FieldHint(this.t('subscription.edit.filter.detail'))
 
@@ -392,17 +393,20 @@ struct SubscriptionEditPage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
+            .margin({ bottom: Space.sm })
 
             this.FieldHint(this.t('subscription.edit.profilePair.detail'))
 
           }
           .width('100%')
-          .padding({ top: 14, bottom: Space.sm })
+          .padding({ left: Space.lg, right: Space.lg, top: 14, bottom: Space.sm })
         }
-        .layoutWeight(1)
         .width('100%')
+        .height('100%')
         .align(Alignment.Top)
+      }
+      .layoutWeight(1)
+      .width('100%')
     }
     .height('100%')
     .width('100%')
