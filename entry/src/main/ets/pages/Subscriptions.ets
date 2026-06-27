@@ -272,7 +272,7 @@ struct SubscriptionsPage {
   private async loadState(): Promise<void> {
     this.isBusy = true;
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const settings = await SETTINGS_CONTROLLER.load(context);
       this.language = settings.language;
       this.confirmRemove = settings.confirmRemove;
@@ -290,25 +290,30 @@ struct SubscriptionsPage {
   }
 
   private async selectSubscriptionGroup(group: SubscriptionGroup): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.selectGroup(context, group, this.language);
     this.applySubscriptionsState(state);
-    router.pushUrl({
+    this.getUIContext().getRouter().pushUrl({
       url: AppRoute.SUBSCRIPTION_DETAIL,
       params: { groupId: group.id }
-    });
+    }).catch((err: Error) => {});
   }
 
   private async toggleSubscriptionGroup(group: SubscriptionGroup): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.toggleGroup(context, group, this.language);
     this.applySubscriptionsState(state);
-    promptAction.showToast({ message: state.subscriptionMessage });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: state.subscriptionMessage });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private removeSubscriptionGroup(group: SubscriptionGroup): void {
     if (this.confirmRemove) {
-      AlertDialog.show({
+      try {
+        this.getUIContext().showAlertDialog({
         title: this.t('menu.deleteConfig'),
         message: this.f1('subscription.deleteConfirm', 'name', group.name),
         autoCancel: true,
@@ -329,23 +334,34 @@ struct SubscriptionsPage {
           action: () => {}
         }
       });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     this.removeSubscriptionGroupImmediately(group);
   }
 
   private async removeSubscriptionGroupImmediately(group: SubscriptionGroup): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.removeGroup(context, group, this.language);
     this.applySubscriptionsState(state);
-    promptAction.showToast({ message: state.subscriptionMessage });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: state.subscriptionMessage });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async moveSubscriptionGroup(group: SubscriptionGroup, delta: number): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.moveGroup(context, group, delta, this.language);
     this.applySubscriptionsState(state);
-    promptAction.showToast({ message: state.subscriptionMessage });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: state.subscriptionMessage });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async updateAllSubscriptions(): Promise<void> {
@@ -354,26 +370,30 @@ struct SubscriptionsPage {
     }
     this.isUpdatingAll = true;
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const state = await SUBSCRIPTIONS_CONTROLLER.updateAll(context, this.language, this.subscriptionProxyPort);
       this.applySubscriptionsState(state);
-      promptAction.showToast({ message: state.subscriptionMessage });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: state.subscriptionMessage });
+      } catch (err) {
+        // ignore
+      }
     } finally {
       this.isUpdatingAll = false;
     }
   }
 
   private openAddPage() {
-    router.pushUrl({
+    this.getUIContext().getRouter().pushUrl({
       url: AppRoute.SUBSCRIPTION_EDIT
-    });
+    }).catch((err: Error) => {});
   }
 
   private openEditPage(group: SubscriptionGroup) {
-    router.pushUrl({
+    this.getUIContext().getRouter().pushUrl({
       url: AppRoute.SUBSCRIPTION_EDIT,
       params: { groupId: group.id }
-    });
+    }).catch((err: Error) => {});
   }
 
   private groupIndex(groupId: string): number {
@@ -396,21 +416,33 @@ struct SubscriptionsPage {
     if (url.length === 0) {
       return;
     }
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const result = await shareText(context, group.name, url);
     this.handleShareResult(result);
   }
 
   private handleShareResult(result: TextShareResult): void {
     if (result.systemShareStarted) {
-      promptAction.showToast({ message: this.t('share.started') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('share.started') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     if (result.copiedToClipboard) {
-      promptAction.showToast({ message: this.t('share.fallbackCopied') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('share.fallbackCopied') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    promptAction.showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private t(key: string): string {

@@ -25,7 +25,7 @@ import {
 } from '../core/Profile';
 import { applyColorMode } from '../core/ColorMode';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { V2RAYNG_FRAGMENT_PACKET_OPTIONS, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgMuxXudpQuic } from '../core/V2rayNgOptions';
+import { CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS, normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatMuxXudpQuic } from '../core/ClientCompatOptions';
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
 import { filterSettings, SETTINGS_CATALOG, SettingGroup, SettingInputKind, SettingItem } from '../features/settings/SettingsCatalog';
 import { findInputSpec, findSelectSpec, SettingInputSpec, SettingSelectSpec } from '../features/settings/SettingsOptions';
@@ -375,7 +375,7 @@ struct SettingsPage {
       return;
     }
     if (item.route !== undefined && item.route.length > 0) {
-      router.pushUrl({ url: item.route });
+      this.getUIContext().getRouter().pushUrl({ url: item.route }).catch((err: Error) => {});
     }
   }
 
@@ -490,7 +490,7 @@ struct SettingsPage {
 
   private async loadState(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.applyDraft(SETTINGS_CONTROLLER.toDraft(await SETTINGS_CONTROLLER.load(context)));
       this.settingCoreType = await CoreSelectionStore.load(context);
     } catch (error) {
@@ -659,7 +659,7 @@ struct SettingsPage {
 
   private async persistSettings(showMessage: boolean): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const saved = await SETTINGS_CONTROLLER.save(context, this.buildDraft());
       applyColorMode(context, saved.uiModeNight);
       this.applyDraft(SETTINGS_CONTROLLER.toDraft(saved));
@@ -855,7 +855,7 @@ struct SettingsPage {
   private openSelectSheet(item: SettingItem): void {
     const key = item.key;
     if (key === 'language') {
-      router.pushUrl({ url: AppRoute.LANGUAGE });
+      this.getUIContext().getRouter().pushUrl({ url: AppRoute.LANGUAGE }).catch((err: Error) => {});
       return;
     }
     const options = this.buildSheetOptions(key);
@@ -908,9 +908,9 @@ struct SettingsPage {
       return result;
     }
     if (key === 'fragmentPackets') {
-      const current = normalizeV2rayNgFragmentPackets(this.settingFragmentPackets);
-      for (let index = 0; index < V2RAYNG_FRAGMENT_PACKET_OPTIONS.length; index++) {
-        const value = V2RAYNG_FRAGMENT_PACKET_OPTIONS[index];
+      const current = normalizeClientCompatFragmentPackets(this.settingFragmentPackets);
+      for (let index = 0; index < CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS.length; index++) {
+        const value = CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS[index];
         result.push({ value: value, label: value, desc: '', selected: value === current });
       }
       return result;
@@ -938,10 +938,10 @@ struct SettingsPage {
       case 'coreType': return this.settingCoreType;
       case 'uiModeNight': return this.settingUiModeNight;
       case 'vpnBypassLan': return this.settingVpnBypassLan;
-      case 'logLevel': return normalizeV2rayNgCoreLogLevel(this.settingLogLevel);
+      case 'logLevel': return normalizeClientCompatCoreLogLevel(this.settingLogLevel);
       case 'hevTunLogLevel': return normalizeHevTunLogLevel(this.settingHevTunLogLevel);
       case 'outboundDomainResolveMethod': return this.settingOutboundDomainResolveMethod;
-      case 'muxXudpQuic': return normalizeV2rayNgMuxXudpQuic(this.settingMuxXudpQuic);
+      case 'muxXudpQuic': return normalizeClientCompatMuxXudpQuic(this.settingMuxXudpQuic);
       default: return '';
     }
   }
@@ -998,7 +998,7 @@ struct SettingsPage {
 
   private async persistCoreType(value: string): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.settingCoreType = await CoreSelectionStore.save(context, value as CoreType);
     } catch (error) {
       this.lastError = this.f1('error.saveSettings', 'error', JSON.stringify(error));
@@ -1248,7 +1248,7 @@ struct SettingsPage {
   }
 
   private fragmentPacketsLabel(): string {
-    return normalizeV2rayNgFragmentPackets(this.settingFragmentPackets);
+    return normalizeClientCompatFragmentPackets(this.settingFragmentPackets);
   }
 
   private isMuxXudpQuicAvailable(): boolean {

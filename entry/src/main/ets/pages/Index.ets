@@ -22,7 +22,7 @@ import { TrafficTotals, TrafficTotalsStore } from '../storage/TrafficTotalsStore
 import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
 import {
   applyDelayTestPostActionsToGroups,
-  buildV2rayNgNodeDescription,
+  buildClientCompatNodeDescription,
   dedupeVisibleNodesInGroups,
   exportNodesText,
   extractNodeEndpoint,
@@ -239,7 +239,7 @@ struct Index {
       await this.handleControlDeepLink(intent.action ?? '', intent.targetNodeId ?? '');
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     try {
       if (intent.kind === 'sub') {
         const name = subscriptionNameFromDeepLink(intent.payload);
@@ -285,7 +285,7 @@ struct Index {
     if (value.length === 0) {
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const lines = this.uniqueImportLines(value);
     const configLines = new Array<string>();
     let subscriptionCount = 0;
@@ -311,7 +311,11 @@ struct Index {
         const total = configCount + subscriptionCount;
         const message = total === 1 ? this.t('log.sharedTextImported') : this.f1('log.sharedTextImportedCount', 'count', `${total}`);
         SHARED_RUNTIME_CONTROLLER.appendLog(message);
-        promptAction.showToast({ message });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message });
+        } catch (err) {
+          // ignore
+        }
       }
     } catch (error) {
       this.lastError = this.f1('error.deepLinkImport', 'error', JSON.stringify(error));
@@ -402,7 +406,7 @@ struct Index {
 
   private async handleControlDeepLink(action: DeepLinkControlAction, targetNodeId: string = ''): Promise<void> {
     if (action === 'scan') {
-      router.pushUrl({ url: AppRoute.SCANNER });
+      this.getUIContext().getRouter().pushUrl({ url: AppRoute.SCANNER }).catch((err: Error) => {});
       SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.deepLinkControl', 'action', action));
       return;
     }
@@ -817,7 +821,7 @@ struct Index {
           .fontSize(FontSz.callout)
           .fontColor(AppColor.brand)
           .onClick(() => {
-            animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
+            this.getUIContext().animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
               this.showSearch = false;
               this.searchQuery = '';
             })
@@ -839,7 +843,7 @@ struct Index {
           iconSize: 24,
           iconColor: AppColor.textSecondary,
           onAction: () => {
-            animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
+            this.getUIContext().animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
               this.showSearch = true;
             })
           }
@@ -1256,7 +1260,7 @@ struct Index {
       return;
     }
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const totals = await TrafficTotalsStore.load(context);
       this.totalUpload = totals.lifetimeUpload;
       this.totalDownload = totals.lifetimeDownload;
@@ -1271,7 +1275,7 @@ struct Index {
 
   private async loadSettings(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.currentSettings = await SETTINGS_CONTROLLER.load(context);
       this.language = this.currentSettings.language;
       this.speedEnabled = this.currentSettings.speedEnabled;
@@ -1288,7 +1292,7 @@ struct Index {
 
   private async loadNodes(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.applyNodesState(await NODES_CONTROLLER.load(context, this.language));
     } catch (error) {
       this.lastError = this.f1('error.loadSubscription', 'error', JSON.stringify(error));
@@ -1305,7 +1309,7 @@ struct Index {
     this.lastAutoSubscriptionCheckAt = now;
     this.subscriptionUpdating = true;
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const result = await SUBSCRIPTIONS_CONTROLLER.updateDue(context, this.language, now, this.subscriptionProxyPort());
       if (result.updatedCount === 0 && result.failedCount === 0) {
         return;
@@ -1323,7 +1327,7 @@ struct Index {
 
   private async syncSubscriptionBackgroundSchedule(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       await SubscriptionBackgroundScheduler.sync(context);
     } catch (error) {
       SHARED_RUNTIME_CONTROLLER.appendLog(`Subscription background schedule sync failed: ${JSON.stringify(error)}`);
@@ -1332,7 +1336,11 @@ struct Index {
 
   private async startConnection(): Promise<void> {
     if (this.isBusy()) {
-      promptAction.showToast({ message: this.t('home.busy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('home.busy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
@@ -1345,7 +1353,7 @@ struct Index {
   }
 
   private async startConnectionInternal(): Promise<boolean> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const saved = await NODES_CONTROLLER.saveProfile(context, this.outboundJson, this.language);
     this.applySaveProfileResult(saved);
     if (saved.profile === null) {
@@ -1373,12 +1381,20 @@ struct Index {
     }
     const message = this.t('log.proxySharingWarning');
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async stopConnection(): Promise<void> {
     if (this.isBusy()) {
-      promptAction.showToast({ message: this.t('home.busy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('home.busy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
@@ -1392,7 +1408,7 @@ struct Index {
 
   private async stopConnectionInternal(): Promise<boolean> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.status = ConnectionStatus.STOPPING;
       const state = await SHARED_RUNTIME_CONTROLLER.stop(context, this.language);
       this.applyRuntimeState(state);
@@ -1413,7 +1429,7 @@ struct Index {
     this.subscriptionMessage = this.t('log.updatingSubscription');
     SHARED_RUNTIME_CONTROLLER.appendLog(this.subscriptionMessage);
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const state = await SUBSCRIPTIONS_CONTROLLER.update(context, this.selectedGroupId, this.subscriptionUrl, this.selectedNodeId, this.language, this.subscriptionProxyPort());
       this.applySubscriptionsState(state);
       SHARED_RUNTIME_CONTROLLER.appendLog(state.subscriptionMessage);
@@ -1425,10 +1441,14 @@ struct Index {
 
   private async selectNode(node: ProxyNode): Promise<void> {
     if (this.isBusy()) {
-      promptAction.showToast({ message: this.t('home.busy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('home.busy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const shouldSwitchConnection = this.isRunning() && node.id !== this.selectedNodeId;
     this.selectedNodeId = node.id;
     this.outboundJson = node.outboundJson;
@@ -1458,17 +1478,18 @@ struct Index {
   }
 
   private shareNode(node: ProxyNode): void {
-    router.pushUrl({
+    this.getUIContext().getRouter().pushUrl({
       url: AppRoute.EXPORT,
       params: {
         nodeId: node.id
       }
-    });
+    }).catch((err: Error) => {});
   }
 
   private removeNode(node: ProxyNode): void {
     if (this.currentSettings.confirmRemove) {
-      AlertDialog.show({
+      try {
+        this.getUIContext().showAlertDialog({
         title: this.t('menu.deleteConfig'),
         message: this.f1('node.deleteConfirm', 'name', node.name),
         autoCancel: true,
@@ -1489,6 +1510,9 @@ struct Index {
           action: () => {}
         }
       });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     this.removeNodeImmediately(node);
@@ -1499,16 +1523,20 @@ struct Index {
     if (!result.moved) {
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const subscription = await SubscriptionStore.saveGroups(context, result.groups);
     this.applySubscriptionsState(this.subscriptionStateFromProfile(subscription));
     const message = this.f1('log.nodeReordered', 'name', node.name);
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async removeNodeImmediately(node: ProxyNode): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = await NODES_CONTROLLER.removeNode(context, node.id, this.language);
     this.applyNodesState(state);
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.nodeRemoved', 'name', node.name));
@@ -1521,7 +1549,7 @@ struct Index {
       return;
     }
     this.allGroupsSelected = false;
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = await SUBSCRIPTIONS_CONTROLLER.selectGroup(context, group, this.language);
     this.applySubscriptionsState(state);
     SHARED_RUNTIME_CONTROLLER.appendLog(state.subscriptionMessage);
@@ -1532,7 +1560,7 @@ struct Index {
     if (targets.length === 0) {
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const result = dedupeVisibleNodesInGroups(this.subscriptionGroups, targets, Date.now());
     this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.nodesDeduped', 'count', result.removedCount.toString()));
@@ -1543,7 +1571,7 @@ struct Index {
     if (targets.length === 0) {
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const result = removeVisibleTestFailedNodesFromGroups(this.subscriptionGroups, targets, Date.now());
     this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.invalidNodesRemoved', 'count', result.removedCount.toString()));
@@ -1558,19 +1586,28 @@ struct Index {
     if (result.sortedGroupCount === 0) {
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
     const message = this.f1('log.nodesSortedByTestResult', 'count', result.sortedGroupCount.toString());
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private confirmClearNodes(): void {
     if (this.visibleNodes().length === 0) {
-      promptAction.showToast({ message: this.t('prompt.noNodesToDelete') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.noNodesToDelete') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    AlertDialog.show({
+    try {
+      this.getUIContext().showAlertDialog({
       title: this.t('menu.deleteConfig'),
       message: this.t('node.deleteAllConfirm'),
       autoCancel: true,
@@ -1590,23 +1627,34 @@ struct Index {
         backgroundColor: AppColor.bg,
         action: () => {}
       }
-    })
+    });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async clearActiveGroupNodes(): Promise<void> {
     const targets = this.visibleNodes();
     const result = removeVisibleNodesFromGroups(this.subscriptionGroups, targets, Date.now());
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.applySubscriptionsState(this.subscriptionStateFromProfile(await SubscriptionStore.saveGroups(context, result.groups)));
     const message = this.f1('log.nodesCleared', 'count', result.removedCount.toString());
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async testVisibleNodeDelay(mode: NodeDelayTestMode = 'real'): Promise<void> {
     if (this.delayTesting) {
       // 已有一轮测速在跑：给出提示，避免点击"完全没反应"被误判为功能坏掉（BUG-002）。
-      promptAction.showToast({ message: this.t('home.delayTesting') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('home.delayTesting') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     const targets = this.visibleNodes();
@@ -1617,7 +1665,7 @@ struct Index {
     this.delayTesting = true;
     SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.delayQueued'));
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const concurrency = normalizeRealPingConcurrency(this.currentSettings.realPingConcurrency);
       if (mode === 'real') {
         // 真实延迟走原生批量：一次 cgo 调用、Go 内并发测全部，避免逐节点串行（BUG-001）。
@@ -1856,7 +1904,7 @@ struct Index {
 
   private async refreshRuntime(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.applyRuntimeState(await SHARED_RUNTIME_CONTROLLER.refresh(context, this.language));
     } catch (error) {
       this.lastError = JSON.stringify(error);
@@ -1998,14 +2046,14 @@ struct Index {
       lastSessionUpload: this.lastSessionUpload,
       lastSessionDownload: this.lastSessionDownload
     };
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     TrafficTotalsStore.save(context, totals).catch((error: Error) => {
       SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
     });
   }
 
   private syncSpeedNotification(): void {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     SPEED_NOTIFICATION_MANAGER.sync(context, this.status, this.speedEnabled, this.stats, this.elapsedText, this.language)
       .catch((error: Error) => {
         SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
@@ -2013,7 +2061,7 @@ struct Index {
   }
 
   private syncControlCard(): void {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     CONTROL_CARD_MANAGER.sync(context, this.status, this.elapsedText, this.language, this.lastError)
       .catch((error: Error) => {
         SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
@@ -2090,7 +2138,7 @@ struct Index {
   }
 
   private nodeEndpointText(node: ProxyNode): string {
-    const description = buildV2rayNgNodeDescription(node);
+    const description = buildClientCompatNodeDescription(node);
     if (description.length > 0) {
       return description;
     }
@@ -2098,16 +2146,16 @@ struct Index {
   }
 
   private openRoute(route: AppRoute): void {
-    router.pushUrl({ url: route });
+    this.getUIContext().getRouter().pushUrl({ url: route }).catch((err: Error) => {});
   }
 
   private openNodeDetail(node: ProxyNode): void {
-    router.pushUrl({
+    this.getUIContext().getRouter().pushUrl({
       url: AppRoute.NODE_DETAIL,
       params: {
         nodeId: node.id
       }
-    });
+    }).catch((err: Error) => {});
   }
 
   private nodeDelayText(node: ProxyNode): string {
@@ -2179,7 +2227,11 @@ struct Index {
 
   private async reconnectService(): Promise<void> {
     if (this.isBusy()) {
-      promptAction.showToast({ message: this.t('home.busy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('home.busy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
@@ -2202,7 +2254,11 @@ struct Index {
   private async exportAllNodesToClipboard(): Promise<void> {
     const targets = this.visibleNodes();
     if (targets.length === 0) {
-      promptAction.showToast({ message: this.t('export.empty') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('export.empty') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     const text = exportNodesText(targets);
@@ -2210,61 +2266,80 @@ struct Index {
       const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
       const systemPasteboard = pasteboard.getSystemPasteboard();
       await systemPasteboard.setData(pasteData);
-      promptAction.showToast({ message: this.t('prompt.copiedToClipboard') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.copiedToClipboard') });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.exportCopied', 'count', targets.length.toString()));
     } catch (error) {
       const message = this.f1('export.copyFailed', 'error', JSON.stringify(error));
-      promptAction.showToast({ message: message });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: message });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(message);
     }
   }
 
   private async locateSelectedConfig(): Promise<void> {
     if (this.selectedNodeId.length === 0) {
-      promptAction.showToast({ message: this.t('prompt.noNodeToLocate') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.noNodeToLocate') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     const location = findSelectedNodeLocation(this.subscriptionGroups, this.selectedNodeId, this.searchQuery);
     if (!location.found || location.node === null) {
-      promptAction.showToast({ message: this.t('prompt.noNodeToLocate') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.noNodeToLocate') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     const targetGroup = this.findSubscriptionGroup(location.groupId);
     if (targetGroup === null) {
-      promptAction.showToast({ message: this.t('prompt.noNodeToLocate') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.noNodeToLocate') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     if (this.allGroupsSelected || this.selectedGroupId !== location.groupId) {
       await this.selectSubscriptionGroup(targetGroup);
     }
     if (location.visibleIndex < 0) {
-      promptAction.showToast({ message: this.t('prompt.selectedNodeNotVisible') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.selectedNodeNotVisible') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     setTimeout(() => {
       this.nodeListScroller.scrollToIndex(location.visibleIndex, true, ScrollAlign.CENTER);
     }, 200);
     const msg = this.f1('prompt.locatedNode', 'name', location.node.name);
-    promptAction.showToast({ message: msg });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: msg });
+    } catch (err) {
+      // ignore
+    }
     SHARED_RUNTIME_CONTROLLER.appendLog(msg);
   }
 
   private findSelectedNodeName(): string {
-    const node = this.findDisplayedNode(this.selectedNodeId);
-    if (node !== null) {
-      return node.name;
+    // 当前节点是全局值，可能不在当前浏览的活动组里 —— 跨所有组查找它的名称。
+    const location = findSelectedNodeLocation(this.subscriptionGroups, this.selectedNodeId);
+    if (location.found && location.node !== null) {
+      return location.node.name;
     }
     return this.t('home.noNodeSelected');
-  }
-
-  private findDisplayedNode(nodeId: string): ProxyNode | null {
-    const nodes = this.displayedNodes();
-    for (let i = 0; i < nodes.length; i++) {
-      if (nodes[i].id === nodeId) {
-        return nodes[i];
-      }
-    }
-    return null;
   }
 
   private findSubscriptionGroup(groupId: string): SubscriptionGroup | null {

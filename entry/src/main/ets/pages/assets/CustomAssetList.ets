@@ -243,17 +243,21 @@ export struct CustomAssetList {
 
   // 获取自定义文件大小
   private getCustomFileStatus(name: string): string {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     return ASSETS_CONTROLLER.getCustomFileStatus(context, name, this.language);
   }
 
   // 网络下载更新
   private async downloadCustomAsset(name: string, url: string): Promise<void> {
     if (this.downloadingFile.length > 0) {
-      promptAction.showToast({ message: this.t('assets.downloadBusy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('assets.downloadBusy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     await ASSETS_CONTROLLER.downloadAsset(
       context,
       name,
@@ -278,7 +282,7 @@ export struct CustomAssetList {
         return;
       }
       const fileUri = uris[0];
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       await ASSETS_CONTROLLER.copyLocalFileToAssets(
         context,
         fileUri,
@@ -288,7 +292,11 @@ export struct CustomAssetList {
         () => {}
       );
     } catch (error) {
-      promptAction.showToast({ message: this.f1('assets.reimportLocalFailed', 'error', JSON.stringify(error)) });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.f1('assets.reimportLocalFailed', 'error', JSON.stringify(error)) });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
@@ -298,22 +306,34 @@ export struct CustomAssetList {
     const trimmedUrl = url.trim();
 
     if (trimmedName.length === 0) {
-      promptAction.showToast({ message: this.t('assets.urlNameEmpty') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('assets.urlNameEmpty') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
     if (hasDuplicateAssetName(this.customAssets, trimmedName, this.editId)) {
-      promptAction.showToast({ message: this.t('assets.urlNameDuplicate') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('assets.urlNameDuplicate') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
     const isLocalImport = trimmedUrl.startsWith('local://');
     if (!isLocalImport && !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
-      promptAction.showToast({ message: this.t('assets.urlAddressInvalid') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('assets.urlAddressInvalid') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
 
     // 如果是本地导入且有临时导入的 URI，先执行文件拷贝
     if (isLocalImport && this.tempImportUri.length > 0) {
@@ -352,7 +372,11 @@ export struct CustomAssetList {
     await AssetStore.save(context, this.customAssets);
     this.showAddEditDialog = false;
     this.clearTemporaryImport();
-    promptAction.showToast({ message: this.t('assets.saveSuccess') });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.t('assets.saveSuccess') });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private clearTemporaryImport(): void {
@@ -363,7 +387,7 @@ export struct CustomAssetList {
 
   // 删除自定义 URL
   private async deleteCustomAsset(item: CustomAssetUrl): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.customAssets = await ASSETS_CONTROLLER.deleteCustomAsset(context, item, this.customAssets, this.language);
   }
 }

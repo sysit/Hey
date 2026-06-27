@@ -6,7 +6,7 @@ import { APP_MODE_PROXY_ONLY, APP_MODE_VPN, AppRuntimeMode, AppSettings, Connect
 import { resolveDynamicPolicyGroupConfigJson } from '../core/AdvancedOutboundBuilder';
 import { selectRuntimeLocalSocksPort, shouldExposeLocalHttpProxy, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../core/LocalProxy';
 import { buildRuntimeXrayConfig, injectXrayLogFile, LOCAL_HTTP_PROXY_PORT, METRICS_PORT, normalizeConfigInput, XRAY_CORE_LOG_FILE } from '../core/XrayConfig';
-import { normalizeV2rayNgCoreLogLevel } from '../core/V2rayNgOptions';
+import { normalizeClientCompatCoreLogLevel } from '../core/ClientCompatOptions';
 import { CORE_TYPE_SINGBOX, CoreSelectionStore, isSingboxCore } from '../core/CoreSelection';
 import { buildSingboxConfig } from '../core/SingboxConfig';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
@@ -101,7 +101,7 @@ export class ConnectionController {
     // 启动前清空旧文件：核心日志本就是逐会话的，避免跨会话累积、文件无限增长。
     clearCoreLog(context.filesDir);
     const coreLogPath = `${context.filesDir}/${XRAY_CORE_LOG_FILE}`;
-    const fallbackLogLevel = normalizeV2rayNgCoreLogLevel(resolvedRuntimeSettings?.logLevel ?? '');
+    const fallbackLogLevel = normalizeClientCompatCoreLogLevel(resolvedRuntimeSettings?.logLevel ?? '');
     this.generatedConfig.configJson = injectXrayLogFile(this.generatedConfig.configJson, coreLogPath, fallbackLogLevel);
     this.runtimeMode = normalizeAppRuntimeMode(resolvedRuntimeSettings?.mode ?? settings?.mode, APP_MODE_VPN);
     const requestedAt = Date.now();

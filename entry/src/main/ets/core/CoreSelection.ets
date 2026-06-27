@@ -37,9 +37,13 @@ export class CoreSelectionStore {
 
   static async save(context: common.Context, coreType: CoreType): Promise<CoreType> {
     const normalized = normalizeCoreType(coreType);
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(CORE_TYPE_KEY, normalized);
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(CORE_TYPE_KEY, normalized);
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
     return normalized;
   }
 }

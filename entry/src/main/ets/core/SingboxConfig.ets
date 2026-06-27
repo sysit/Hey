@@ -68,6 +68,8 @@ interface SbOutbound {
   method?: string;
   network?: string;
   packet_encoding?: string;
+  congestion_control?: string;
+  udp_relay_mode?: string;
   tls?: SbTls;
   transport?: SbTransport;
 }
@@ -425,6 +427,31 @@ function convertOutbound(outbound: JsonObject): SbOutbound | null {
     return out;
   }
 
+  if (protocol === 'tuic') {
+    const server = firstObject(settings['servers']);
+    if (server === undefined) {
+      return null;
+    }
+    const out: SbOutbound = {
+      type: 'tuic',
+      tag: 'proxy',
+      server: asString(server['address']),
+      server_port: asNumber(server['port']),
+      uuid: asString(server['uuid']),
+      password: asString(server['password']),
+      tls: buildServerTls(server)
+    };
+    const congestionControl = asString(server['congestionControl']);
+    if (congestionControl.length > 0) {
+      out.congestion_control = congestionControl;
+    }
+    const udpRelayMode = asString(server['udpRelayMode']);
+    if (udpRelayMode.length > 0) {
+      out.udp_relay_mode = udpRelayMode;
+    }
+    return out;
+  }
+
   return null;
 }
 
@@ -446,7 +473,7 @@ export function buildSingboxConfig(outboundJson: string, settings?: AppSettings)
   if (proxy === null) {
     return {
       ok: false,
-      message: `sing-box 暂不支持该节点（协议: ${protocol.length > 0 ? protocol : '未知'}）。当前预览仅支持 VLESS / VMess / Trojan / Shadowsocks / AnyTLS。`,
+      message: `sing-box 暂不支持该节点（协议: ${protocol.length > 0 ? protocol : '未知'}）。当前预览仅支持 VLESS / VMess / Trojan / Shadowsocks / AnyTLS / TUIC。`,
       configJson: ''
     };
   }

@@ -7,7 +7,7 @@ import {
   moveSubscriptionGroup,
   normalizeSubscriptionUpdateInterval
 } from '../core/SubscriptionGroups';
-import { resolveRetainedSelectedNodeId } from '../core/SubscriptionSelection';
+import { resolveGlobalSelectedNodeId, resolveRetainedSelectedNodeId } from '../core/SubscriptionSelection';
 import { normalizeConfigInput } from '../core/XrayConfig';
 
 const PREFERENCES_NAME: string = 'hey_vpn_subscription';
@@ -30,14 +30,13 @@ export interface NodeDelayUpdate {
 
 export class SubscriptionStore {
   static async load(context: common.Context): Promise<SubscriptionProfile> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    const rawValue = await store.get(SUBSCRIPTION_KEY, '');
-    const raw = rawValue.toString();
-    if (raw.length === 0) {
-      return SubscriptionStore.createEmpty();
-    }
-
     try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      const rawValue = await store.get(SUBSCRIPTION_KEY, '');
+      const raw = rawValue.toString();
+      if (raw.length === 0) {
+        return SubscriptionStore.createEmpty();
+      }
       return SubscriptionStore.normalize(JSON.parse(raw) as SubscriptionProfile);
     } catch (error) {
       return SubscriptionStore.createEmpty();
@@ -88,9 +87,15 @@ export class SubscriptionStore {
 
     const previousNodes = group.nodes;
     const mergedNodes = SubscriptionStore.mergeNodeRuntime(previousNodes, nodes);
+    const globalSelectedInThisGroup = profile.selectedNodeId.length > 0 &&
+      SubscriptionStore.findNode(previousNodes, profile.selectedNodeId) !== null;
     group.url = url;
     group.nodes = mergedNodes;
     group.selectedNodeId = resolveRetainedSelectedNodeId(previousNodes, mergedNodes, selectedNodeId);
+    // 全局当前节点属于本组时，让它跟随本组更新后的保留结果（节点可能被改名 / 重匹配 / 移除）。
+    if (globalSelectedInThisGroup) {
+      profile.selectedNodeId = group.selectedNodeId;
+    }
     group.updatedAt = Date.now();
     if (makeActive) {
       profile.selectedGroupId = group.id;
@@ -153,6 +158,12 @@ export class SubscriptionStore {
   static async saveGroups(context: common.Context, groups: Array<SubscriptionGroup>): Promise<SubscriptionProfile> {
     const profile = await SubscriptionStore.load(context);
     profile.groups = groups;
+    await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
+    return SubscriptionStore.load(context);
+  }
+
+  // 用整份订阅档案覆盖现有数据（配置恢复用）。normalize 负责字段归一化与容错。
+  static async restoreProfile(context: common.Context, profile: SubscriptionProfile): Promise<SubscriptionProfile> {
     await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
     return SubscriptionStore.load(context);
   }
@@ -231,6 +242,8 @@ export class SubscriptionStore {
       if (SubscriptionStore.findNode(group.nodes, selectedNodeId) !== null) {
         group.selectedNodeId = selectedNodeId;
         profile.selectedGroupId = group.id;
+        // 全局当前节点：手动点选节点是唯一改变它的途径。
+        profile.selectedNodeId = selectedNodeId;
         await SubscriptionStore.save(context, SubscriptionStore.normalize(profile));
         return SubscriptionStore.load(context);
       }
@@ -449,9 +462,13 @@ export class SubscriptionStore {
   }
 
   private static async save(context: common.Context, profile: SubscriptionProfile): Promise<void> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(SUBSCRIPTION_KEY, JSON.stringify(profile));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(SUBSCRIPTION_KEY, JSON.stringify(profile));
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
   }
 
   private static normalize(raw: SubscriptionProfile): SubscriptionProfile {
@@ -495,16 +512,17 @@ export class SubscriptionStore {
 
     const active = SubscriptionStore.activeGroup(profile);
     if (active !== null) {
+      // url / nodes / updatedAt 反映当前浏览的活动组（驱动首页节点列表）。
       profile.url = active.url;
       profile.nodes = active.nodes;
-      profile.selectedNodeId = active.selectedNodeId;
       profile.updatedAt = active.updatedAt;
     } else {
       profile.url = '';
       profile.nodes = [];
-      profile.selectedNodeId = '';
       profile.updatedAt = 0;
     }
+    // selectedNodeId 是「全局当前节点」，与浏览的活动组解耦：切组不改它，仅在它已不存在于任何组时回退。
+    profile.selectedNodeId = resolveGlobalSelectedNodeId(profile.groups, profile.selectedNodeId, active !== null ? active.selectedNodeId : '');
     return profile;
   }
 

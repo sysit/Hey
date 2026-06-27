@@ -48,7 +48,8 @@ export class NodesController {
     const subscription = await SubscriptionStore.load(context);
     let outboundJson = profile.outboundJson;
     let configType: XrayConfigType = profile.configType ?? 'outbound';
-    const selected = this.findNodeInList(subscription.nodes, subscription.selectedNodeId);
+    // 当前节点是全局值，可能不在当前浏览的活动组里 —— 跨所有组查找它的 outbound。
+    const selected = this.findNodeInGroups(subscription.groups, subscription.selectedNodeId);
     if (selected !== null) {
       outboundJson = selected.outboundJson;
       configType = selected.configType ?? 'outbound';
@@ -201,7 +202,7 @@ export class NodesController {
 
   private async stateFromSubscription(context: common.Context, subscription: SubscriptionProfile, language: AppLanguage, lastError: string): Promise<NodesControllerState> {
     const profile = await ProfileStore.load(context);
-    const selected = this.findNodeInList(subscription.nodes, subscription.selectedNodeId);
+    const selected = this.findNodeInGroups(subscription.groups, subscription.selectedNodeId);
     const outboundJson = selected !== null ? selected.outboundJson : profile.outboundJson;
     const configType = selected !== null ? (selected.configType ?? 'outbound') : (profile.configType ?? 'outbound');
     const validation = this.validateConfig(outboundJson, language, configType);
@@ -250,6 +251,20 @@ export class NodesController {
     for (let index = 0; index < nodes.length; index++) {
       if (nodes[index].id === nodeId) {
         return nodes[index];
+      }
+    }
+    return null;
+  }
+
+  // 跨所有订阅组查找节点：全局当前节点可能不在当前浏览的活动组中。
+  private findNodeInGroups(groups: Array<SubscriptionGroup>, nodeId: string): ProxyNode | null {
+    if (nodeId.length === 0) {
+      return null;
+    }
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      const found = this.findNodeInList(groups[groupIndex].nodes, nodeId);
+      if (found !== null) {
+        return found;
       }
     }
     return null;

@@ -213,7 +213,7 @@ struct LanguagePage {
       return;
     }
     if (code === this.language) {
-      router.back();
+      this.getUIContext().getRouter().back();
       return;
     }
     this.switching = true;
@@ -223,7 +223,7 @@ struct LanguagePage {
     this.toastVisible = true;
     // 3) 持久化（仅改语言，保留其它设置），失败也不阻断返回。
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       await SettingsStore.saveLanguage(context, code);
       SHARED_RUNTIME_CONTROLLER.appendLog(
         formatOne(code, 'log.languageChanged', 'language', this.nativeName(code))
@@ -236,7 +236,7 @@ struct LanguagePage {
     // 4) 约 0.5s 后自动滑回设置页。
     this.returnTimer = setTimeout(() => {
       this.returnTimer = -1;
-      router.back();
+      this.getUIContext().getRouter().back();
     }, RETURN_DELAY_MS);
   }
 

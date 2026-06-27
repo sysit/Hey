@@ -1,5 +1,5 @@
-// Deep-link (URL Scheme / Want) intents, mirroring v2rayNG's
-// import entry points plus shortcut/Tasker-like controls. The app registers the scheme
+// Deep-link (URL Scheme / Want) intents for import entry points plus
+// shortcut/automation controls. The app registers the scheme
 //   hey://install-sub?url=<encoded subscription url>
 //   hey://install-config?url=<encoded share link>
 //   hey://control?action=start|stop|toggle|scan[&guid=<node id>]

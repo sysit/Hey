@@ -1,6 +1,6 @@
 import { RoutingRule } from './Profile';
 
-export type RoutingPresetId = 'chinaWhite' | 'chinaBlack' | 'global' | 'iranWhite' | 'russiaWhite';
+export type RoutingPresetId = 'chinaWhite' | 'chinaBlack' | 'global' | 'iranWhite' | 'russiaWhite' | 'adBlock';
 
 export interface RoutingPresetInfo {
   id: RoutingPresetId;
@@ -19,7 +19,8 @@ export const ROUTING_RULE_PRESETS: Array<RoutingPresetInfo> = [
   { id: 'chinaBlack', titleKey: 'routing.preset.chinaBlack.title', detailKey: 'routing.preset.chinaBlack.detail' },
   { id: 'global', titleKey: 'routing.preset.global.title', detailKey: 'routing.preset.global.detail' },
   { id: 'iranWhite', titleKey: 'routing.preset.iranWhite.title', detailKey: 'routing.preset.iranWhite.detail' },
-  { id: 'russiaWhite', titleKey: 'routing.preset.russiaWhite.title', detailKey: 'routing.preset.russiaWhite.detail' }
+  { id: 'russiaWhite', titleKey: 'routing.preset.russiaWhite.title', detailKey: 'routing.preset.russiaWhite.detail' },
+  { id: 'adBlock', titleKey: 'routing.preset.adBlock.title', detailKey: 'routing.preset.adBlock.detail' }
 ];
 
 const CN_PUBLIC_DNS_IPS: Array<string> = [
@@ -192,6 +193,16 @@ export function hasRoutingMatcher(rule: RoutingRule): boolean {
 }
 
 function buildPresetRules(presetId: RoutingPresetId): Array<RoutingRule> {
+  if (presetId === 'adBlock') {
+    return withPresetIds(presetId, [
+      rule('Block ads', 'block', ['geosite:category-ads-all'], [], '', '', []),
+      rule('Block udp443', 'block', [], [], '443', 'udp', []),
+      rule('Direct LAN IP', 'direct', [], ['geoip:private'], '', '', []),
+      rule('Direct LAN domains', 'direct', ['geosite:private'], [], '', '', []),
+      rule('Final proxy', 'proxy', [], [], '0-65535', '', [])
+    ]);
+  }
+
   if (presetId === 'chinaBlack') {
     return withPresetIds(presetId, [
       rule('Bypass bittorrent', 'direct', [], [], '', '', ['bittorrent']),

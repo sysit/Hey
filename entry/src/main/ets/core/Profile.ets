@@ -6,7 +6,7 @@ export const APP_LANGUAGE_AUTO: AppLanguage = 'auto';
 export const APP_LANGUAGE_EN: ResolvedAppLanguage = 'en';
 export const APP_LANGUAGE_ZH_CN: ResolvedAppLanguage = 'zh-rCN';
 export const APP_LANGUAGE_ZH_TW: ResolvedAppLanguage = 'zh-rTW';
-export const V2RAYNG_LANGUAGE_OPTIONS: AppLanguage[] = [
+export const CLIENT_COMPAT_LANGUAGE_OPTIONS: AppLanguage[] = [
   APP_LANGUAGE_AUTO,
   APP_LANGUAGE_EN,
   APP_LANGUAGE_ZH_CN,

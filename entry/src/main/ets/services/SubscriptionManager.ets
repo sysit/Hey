@@ -344,10 +344,12 @@ export class SubscriptionManager {
       }
       if (response.result instanceof ArrayBuffer) {
         const decoder = util.TextDecoder.create('utf-8');
-        return decoder.decode(new Uint8Array(response.result));
+        return decoder.decodeToString(new Uint8Array(response.result));
       }
       const objectText = JSON.stringify(response.result);
       return objectText === undefined ? '' : objectText;
+    } catch (err) {
+      throw err as Error;
     } finally {
       request.destroy();
     }

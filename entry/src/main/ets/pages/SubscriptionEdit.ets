@@ -34,7 +34,7 @@ struct SubscriptionEditPage {
   private originalUpdateIntervalMinutes: number = DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
 
   aboutToAppear(): void {
-    const params = router.getParams() as Record<string, Object>;
+    const params = this.getUIContext().getRouter().getParams() as Record<string, Object>;
     this.groupId = (params?.groupId as string) ?? '';
     this.loadState();
   }
@@ -426,7 +426,7 @@ struct SubscriptionEditPage {
   }
 
   private async loadState(): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.language = (await SETTINGS_CONTROLLER.load(context)).language;
 
     if (this.groupId.length > 0) {
@@ -457,7 +457,11 @@ struct SubscriptionEditPage {
     const name = this.groupName.trim();
     const url = this.subscriptionUrl.trim();
     if (name.length === 0) {
-      promptAction.showToast({ message: this.t('subscription.edit.groupName.empty') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('subscription.edit.groupName.empty') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
@@ -471,17 +475,25 @@ struct SubscriptionEditPage {
     }
     this.isBusy = true;
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       let state: SubscriptionsControllerState;
       if (this.groupId.length === 0) {
         state = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, url, userAgent, filter, prevProfile, nextProfile, this.allowInsecureUrl, this.language, this.autoUpdate, updateIntervalMinutes);
       } else {
         state = await SUBSCRIPTIONS_CONTROLLER.updateGroup(context, this.groupId, name, url, userAgent, filter, prevProfile, nextProfile, this.allowInsecureUrl, this.language, this.autoUpdate, updateIntervalMinutes);
       }
-      promptAction.showToast({ message: state.subscriptionMessage });
-      router.back();
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: state.subscriptionMessage });
+      } catch (err) {
+        // ignore
+      }
+      this.getUIContext().getRouter().back();
     } catch (err) {
-      promptAction.showToast({ message: this.t('subscription.edit.saveFailed') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('subscription.edit.saveFailed') });
+      } catch (err) {
+        // ignore
+      }
     } finally {
       this.isBusy = false;
     }
@@ -489,9 +501,13 @@ struct SubscriptionEditPage {
 
   private async pasteFromClipboard() {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardReadFailed') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -500,29 +516,49 @@ struct SubscriptionEditPage {
         const text = pasteData.getPrimaryText();
         if (text && text.trim().length > 0) {
           this.subscriptionUrl = text.trim();
-          promptAction.showToast({ message: this.t('prompt.pastedSubscriptionUrl') });
+          try {
+            this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.pastedSubscriptionUrl') });
+          } catch (err) {
+            // ignore
+          }
         } else {
-          promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+          try {
+            this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+          } catch (err) {
+            // ignore
+          }
         }
       } else {
-        promptAction.showToast({ message: this.t('prompt.clipboardNoData') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardNoData') });
+        } catch (err) {
+          // ignore
+        }
       }
     } catch (error) {
-      promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardReadFailed') });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
   // 直接拉起相机扫码，将结果填入订阅链接输入框，扫码后仍停留在当前页面。
   private async scanSubscriptionUrl(): Promise<void> {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const value = await scanQrCode(context);
       if (value.length > 0) {
         this.subscriptionUrl = value;
       }
     } catch (error) {
       if (!isScanCancelled(error)) {
-        promptAction.showToast({ message: this.f1('scanner.scanFailed', 'error', JSON.stringify(error)) });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.f1('scanner.scanFailed', 'error', JSON.stringify(error)) });
+        } catch (err) {
+          // ignore
+        }
       }
     }
   }
@@ -534,10 +570,14 @@ struct SubscriptionEditPage {
         return DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES;
       }
       if (parsed < MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES) {
-        promptAction.showToast({
+        try {
+          this.getUIContext().getPromptAction().showToast({
           message: this.f1('subscription.edit.updateInterval.tooSmall',
             'min', MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES.toString())
         });
+        } catch (err) {
+          // ignore
+        }
         return -1;
       }
       return parsed;

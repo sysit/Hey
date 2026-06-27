@@ -224,7 +224,7 @@ struct LogsPage {
   }
 
   private async loadState(): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
     this.speedEnabled = settings.speedEnabled;
@@ -234,7 +234,7 @@ struct LogsPage {
 
   private async refreshRuntime(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.applyRuntimeState(await SHARED_RUNTIME_CONTROLLER.refresh(context, this.language));
     } catch (error) {
       // 刷新失败不阻断页面，保留上次状态，避免日志面板被异常清空。
@@ -248,17 +248,25 @@ struct LogsPage {
       // 恢复时立刻拉一次最新日志
       this.refreshRuntime();
     }
-    promptAction.showToast({ message: this.paused ? this.t('logs.pauseToast') : this.t('logs.resumeToast') });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.paused ? this.t('logs.pauseToast') : this.t('logs.resumeToast') });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private clearLogs(): void {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state = SHARED_RUNTIME_CONTROLLER.clearLogs(context, this.language);
     this.status = state.status;
     this.elapsedText = state.elapsedText;
     this.stats = state.stats;
     this.entries = state.entries; // 清空需立即反映，忽略暂停
-    promptAction.showToast({ message: this.t('logs.cleared') });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.t('logs.cleared') });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private copyVisibleLogs(): void {
@@ -268,10 +276,14 @@ struct LogsPage {
   private async shareVisibleLogs(): Promise<void> {
     const content = this.visibleLogText();
     if (content.trim().length === 0) {
-      promptAction.showToast({ message: this.t('logs.empty') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('logs.empty') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const result = await shareText(context, this.t('screen.logs.title'), content);
     this.handleShareResult(result);
   }
@@ -279,29 +291,53 @@ struct LogsPage {
   private copyLogText(content: string): void {
     const text = content.trim();
     if (text.length === 0) {
-      promptAction.showToast({ message: this.t('logs.empty') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('logs.empty') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     try {
       const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
       const systemPasteboard = pasteboard.getSystemPasteboard();
       systemPasteboard.setDataSync(pasteData);
-      promptAction.showToast({ message: this.t('logs.copied') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('logs.copied') });
+      } catch (err) {
+        // ignore
+      }
     } catch (error) {
-      promptAction.showToast({ message: this.f1('logs.copyFailed', 'error', JSON.stringify(error)) });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.f1('logs.copyFailed', 'error', JSON.stringify(error)) });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
   private handleShareResult(result: TextShareResult): void {
     if (result.systemShareStarted) {
-      promptAction.showToast({ message: this.t('share.started') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('share.started') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     if (result.copiedToClipboard) {
-      promptAction.showToast({ message: this.t('share.fallbackCopied') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('share.fallbackCopied') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    promptAction.showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private chips(): Array<LevelChip> {

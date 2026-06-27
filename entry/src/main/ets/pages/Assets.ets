@@ -219,10 +219,14 @@ struct AssetsPage {
   // 执行资源网络更新下载
   private async downloadAsset(fileName: string): Promise<void> {
     if (this.downloadingFile.length > 0) {
-      promptAction.showToast({ message: this.t('assets.downloadBusy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('assets.downloadBusy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     await ASSETS_CONTROLLER.downloadAsset(
       context,
       fileName,
@@ -244,10 +248,14 @@ struct AssetsPage {
   // 顺序一键更新全部 Geo 资源
   private async downloadAllAssets(): Promise<void> {
     if (this.downloadingFile.length > 0) {
-      promptAction.showToast({ message: this.t('assets.downloadBusy') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('assets.downloadBusy') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.downloadingFile = GEOSITE_FILE_NAME;
     this.updateFileStatus();
     await ASSETS_CONTROLLER.downloadAllAssets(
@@ -285,11 +293,11 @@ struct AssetsPage {
         { text: this.t('assets.importType.custom'), color: AppColor.brand } as promptAction.Button
       ];
 
-      promptAction.showActionMenu({
+      this.getUIContext().getPromptAction().showActionMenu({
         title: this.t('assets.selectImportType'),
         buttons: menu
       }).then(async (result) => {
-        const context = getContext(this) as common.Context;
+        const context = this.getUIContext().getHostContext() as common.Context;
         if (result.index === 0) {
           await ASSETS_CONTROLLER.copyLocalFileToAssets(context, fileUri, GEOSITE_FILE_NAME, this.language, () => this.updateFileStatus(), () => {});
         } else if (result.index === 1) {
@@ -303,15 +311,19 @@ struct AssetsPage {
           this.tempAssetUrl = '';
           this.showCustomUrls = true;
         }
-      });
+      }).catch((err: Error) => {});
     } catch (error) {
-      promptAction.showToast({ message: this.f1('assets.openPickerFailed', 'error', JSON.stringify(error)) });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.f1('assets.openPickerFailed', 'error', JSON.stringify(error)) });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
   private async scanAssetUrlFromQr(): Promise<void> {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const options: scanBarcode.ScanOptions = {
         scanTypes: [scanCore.ScanType.QR_CODE],
         enableMultiMode: false,
@@ -324,7 +336,11 @@ struct AssetsPage {
 
       const assetUrl = normalizeScannedAssetUrl(result.originalValue);
       if (!assetUrl.valid) {
-        promptAction.showToast({ message: this.t('assets.scanInvalidUrl') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('assets.scanInvalidUrl') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
 
@@ -338,7 +354,11 @@ struct AssetsPage {
       if (code === 20001 || code === '20001') {
         return;
       }
-      promptAction.showToast({ message: this.f1('assets.scanFailed', 'error', JSON.stringify(error)) });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.f1('assets.scanFailed', 'error', JSON.stringify(error)) });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
@@ -349,7 +369,7 @@ struct AssetsPage {
       buttons.push({ text: GEO_SOURCES[index].name, color: AppColor.brand } as promptAction.Button);
     }
 
-    promptAction.showActionMenu({
+    this.getUIContext().getPromptAction().showActionMenu({
       title: this.t('assets.source.title'),
       buttons: this.toActionMenuButtons(buttons)
     }).then(async (result) => {
@@ -358,13 +378,17 @@ struct AssetsPage {
         this.currentSourceUrl = selected.url;
         this.currentSourceName = selected.name;
 
-        const context = getContext(this) as common.Context;
+        const context = this.getUIContext().getHostContext() as common.Context;
         const assetStore = await preferences.getPreferences(context, 'hey_vpn_assets');
         await assetStore.put('geo_source_url', this.currentSourceUrl);
         await assetStore.flush();
-        promptAction.showToast({ message: this.f1('assets.source.changed', 'name', selected.name) });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.f1('assets.source.changed', 'name', selected.name) });
+        } catch (err) {
+          // ignore
+        }
       }
-    });
+    }).catch((err: Error) => {});
   }
 
   private toActionMenuButtons(buttons: Array<promptAction.Button>): [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?] {
@@ -373,12 +397,12 @@ struct AssetsPage {
 
   // 删除 Geo 资源
   private deleteAsset(fileName: string): void {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     ASSETS_CONTROLLER.deleteAsset(context, fileName, this.language, () => this.updateFileStatus());
   }
 
   private updateFileStatus(): void {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.geositeStatus = ASSETS_CONTROLLER.getFileStatus(context, GEOSITE_FILE_NAME, this.language);
     this.geoipStatus = ASSETS_CONTROLLER.getFileStatus(context, GEOIP_FILE_NAME, this.language);
     this.geoipOnlyCnPrivateStatus = ASSETS_CONTROLLER.getFileStatus(context, GEOIP_ONLY_CN_PRIVATE_FILE_NAME, this.language);
@@ -386,13 +410,13 @@ struct AssetsPage {
 
   // 加载自定义 Geo 链接
   private async loadCustomAssets(): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.customAssets = await AssetStore.load(context);
   }
 
   private async loadState(): Promise<void> {
     this.isStateLoaded = false;
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.language = (await SETTINGS_CONTROLLER.load(context)).language;
 
     // 从 preferences 加载下载源

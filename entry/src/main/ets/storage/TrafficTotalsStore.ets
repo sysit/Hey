@@ -53,8 +53,12 @@ export class TrafficTotalsStore {
   }
 
   static async save(context: common.Context, totals: TrafficTotals): Promise<void> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(TOTALS_KEY, JSON.stringify(normalize(totals)));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(TOTALS_KEY, JSON.stringify(normalize(totals)));
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
   }
 }

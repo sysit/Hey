@@ -1,18 +1,18 @@
 import { readKcpShareParamsFromFinalMask } from './KcpTransport';
 import {
-  V2RAYNG_DEFAULT_VMESS_SECURITY,
-  V2RAYNG_DEFAULT_BROWSER_DIALER_MODE,
-  V2RAYNG_KCP_HEADER_TYPE_OPTIONS,
-  V2RAYNG_SS_SECURITY_OPTIONS,
-  V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS,
-  V2RAYNG_TCP_HEADER_TYPE_OPTIONS,
-  V2RAYNG_UTLS_FINGERPRINT_OPTIONS,
-  V2RAYNG_VMESS_SECURITY_OPTIONS,
-  V2RAYNG_XHTTP_MODE_OPTIONS,
-  normalizeV2rayNgBrowserDialerMode,
-  normalizeV2rayNgHysteria2Security,
-  normalizeV2rayNgStreamAlpn
-} from './V2rayNgOptions';
+  CLIENT_COMPAT_DEFAULT_VMESS_SECURITY,
+  CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE,
+  CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS,
+  CLIENT_COMPAT_SS_SECURITY_OPTIONS,
+  CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS,
+  CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS,
+  CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS,
+  CLIENT_COMPAT_VMESS_SECURITY_OPTIONS,
+  CLIENT_COMPAT_XHTTP_MODE_OPTIONS,
+  normalizeClientCompatBrowserDialerMode,
+  normalizeClientCompatHysteria2Security,
+  normalizeClientCompatStreamAlpn
+} from './ClientCompatOptions';
 
 type JsonPrimitive = string | number | boolean;
 type JsonValue = Object | JsonPrimitive | undefined;
@@ -103,7 +103,7 @@ export function parseManualOutboundEditState(outboundJson: string, nodeName: str
       if (user !== null) {
         state.userIdOrPassword = stringValue(user, 'id', '');
         state.vmessAlterId = numberString(user, 'alterId', '0');
-        state.securityOrMethod = normalizeOption(stringValue(user, 'security', V2RAYNG_DEFAULT_VMESS_SECURITY), V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_DEFAULT_VMESS_SECURITY);
+        state.securityOrMethod = normalizeOption(stringValue(user, 'security', CLIENT_COMPAT_DEFAULT_VMESS_SECURITY), CLIENT_COMPAT_VMESS_SECURITY_OPTIONS, CLIENT_COMPAT_DEFAULT_VMESS_SECURITY);
       }
     } else if (protocol === 'trojan') {
       const server = firstArrayRecord(settings, 'servers');
@@ -117,7 +117,7 @@ export function parseManualOutboundEditState(outboundJson: string, nodeName: str
       applyServerAddress(state, server);
       if (server !== null) {
         state.userIdOrPassword = stringValue(server, 'password', '');
-        state.securityOrMethod = normalizeOption(stringValue(server, 'method', 'aes-128-gcm'), V2RAYNG_SS_SECURITY_OPTIONS, 'aes-128-gcm');
+        state.securityOrMethod = normalizeOption(stringValue(server, 'method', 'aes-128-gcm'), CLIENT_COMPAT_SS_SECURITY_OPTIONS, 'aes-128-gcm');
       }
     } else if (protocol === 'socks' || protocol === 'http') {
       const server = firstArrayRecord(settings, 'servers');
@@ -175,7 +175,7 @@ function createDefaultManualOutboundEditState(protocol: string): ManualOutboundE
     userIdOrPassword: '',
     proxyUser: '',
     proxyPass: '',
-    securityOrMethod: protocol === 'vmess' ? V2RAYNG_DEFAULT_VMESS_SECURITY : protocol === 'ss' ? 'aes-128-gcm' : 'none',
+    securityOrMethod: protocol === 'vmess' ? CLIENT_COMPAT_DEFAULT_VMESS_SECURITY : protocol === 'ss' ? 'aes-128-gcm' : 'none',
     vmessAlterId: '0',
     vlessFlow: 'none',
     transportType: 'tcp',
@@ -189,7 +189,7 @@ function createDefaultManualOutboundEditState(protocol: string): ManualOutboundE
     transportGrpcMode: 'gun',
     transportXhttpMode: 'auto',
     transportXhttpExtra: '',
-    browserDialerMode: V2RAYNG_DEFAULT_BROWSER_DIALER_MODE,
+    browserDialerMode: CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE,
     tlsSecurity: protocol === 'hysteria2' ? 'tls' : 'none',
     tlsSni: '',
     tlsAlpn: protocol === 'hysteria2' ? 'h3' : '',
@@ -257,9 +257,9 @@ function applyHysteria2State(state: ManualOutboundEditState, settings: JsonRecor
     return;
   }
   state.userIdOrPassword = stringValue(server, 'password', '');
-  state.tlsSecurity = normalizeV2rayNgHysteria2Security(stringValue(server, 'security', 'tls'));
+  state.tlsSecurity = normalizeClientCompatHysteria2Security(stringValue(server, 'security', 'tls'));
   state.tlsSni = stringValue(server, 'sni', '');
-  state.tlsAlpn = normalizeV2rayNgStreamAlpn(stringValue(server, 'alpn', 'h3'), 'h3');
+  state.tlsAlpn = normalizeClientCompatStreamAlpn(stringValue(server, 'alpn', 'h3'), 'h3');
   state.tlsAllowInsecure = booleanValue(server, 'insecure', false);
   state.hy2ObfsPassword = stringValue(server, 'obfsPassword', '');
   state.hy2PortHopping = stringValue(server, 'portHopping', '');
@@ -273,7 +273,7 @@ function applyStreamState(state: ManualOutboundEditState, stream: JsonRecord | n
   if (stream === null) {
     return;
   }
-  const network = normalizeOption(stringValue(stream, 'network', 'tcp'), V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, 'tcp');
+  const network = normalizeOption(stringValue(stream, 'network', 'tcp'), CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS, 'tcp');
   state.transportType = network;
   const security = stringValue(stream, 'security', 'none').toLowerCase();
   if (security === 'tls' || security === 'reality') {
@@ -283,7 +283,7 @@ function applyStreamState(state: ManualOutboundEditState, stream: JsonRecord | n
 
   if (network === 'tcp') {
     const header = recordValue(recordValue(stream, 'tcpSettings'), 'header');
-    state.transportTcpHeaderType = normalizeOption(stringValue(header, 'type', 'none'), V2RAYNG_TCP_HEADER_TYPE_OPTIONS, 'none');
+    state.transportTcpHeaderType = normalizeOption(stringValue(header, 'type', 'none'), CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS, 'none');
     const request = recordValue(header, 'request');
     state.transportHost = csvFromValue(recordValue(request, 'headers')?.['Host'], '');
     state.transportPath = csvFromValue(request?.['path'], '');
@@ -293,7 +293,7 @@ function applyStreamState(state: ManualOutboundEditState, stream: JsonRecord | n
     state.transportKcpTti = numberString(kcpSettings, 'tti', '');
     const finalMask = objectValue(stream, 'finalmask');
     const kcpParams = readKcpShareParamsFromFinalMask(finalMask);
-    state.transportKcpHeaderType = normalizeOption(kcpParams.headerType, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, 'none');
+    state.transportKcpHeaderType = normalizeOption(kcpParams.headerType, CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS, 'none');
     state.transportHost = kcpParams.host;
     state.transportPath = kcpParams.seed;
   } else if (network === 'ws') {
@@ -317,7 +317,7 @@ function applyStreamState(state: ManualOutboundEditState, stream: JsonRecord | n
     const settings = recordValue(stream, 'xhttpSettings');
     state.transportPath = stringValue(settings, 'path', '');
     state.transportHost = stringValue(settings, 'host', '');
-    state.transportXhttpMode = normalizeOption(stringValue(settings, 'mode', 'auto'), V2RAYNG_XHTTP_MODE_OPTIONS, 'auto');
+    state.transportXhttpMode = normalizeOption(stringValue(settings, 'mode', 'auto'), CLIENT_COMPAT_XHTTP_MODE_OPTIONS, 'auto');
     const extra = objectValue(settings, 'extra');
     if (extra !== undefined) {
       state.transportXhttpExtra = JSON.stringify(extra, null, 2);
@@ -332,10 +332,10 @@ function applyStreamState(state: ManualOutboundEditState, stream: JsonRecord | n
 
 function applyBrowserDialerMode(state: ManualOutboundEditState, root: JsonRecord): void {
   if (state.transportType !== 'ws' && state.transportType !== 'xhttp') {
-    state.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+    state.browserDialerMode = CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE;
     return;
   }
-  state.browserDialerMode = normalizeV2rayNgBrowserDialerMode(stringValue(root, 'browserDialerMode', V2RAYNG_DEFAULT_BROWSER_DIALER_MODE));
+  state.browserDialerMode = normalizeClientCompatBrowserDialerMode(stringValue(root, 'browserDialerMode', CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE));
 }
 
 function applyTlsState(state: ManualOutboundEditState, tls: JsonRecord | null, security: string): void {
@@ -343,9 +343,9 @@ function applyTlsState(state: ManualOutboundEditState, tls: JsonRecord | null, s
     return;
   }
   state.tlsSni = stringValue(tls, 'serverName', '');
-  state.tlsAlpn = normalizeV2rayNgStreamAlpn(csvFromValue(tls['alpn'], ''), '');
+  state.tlsAlpn = normalizeClientCompatStreamAlpn(csvFromValue(tls['alpn'], ''), '');
   state.tlsAllowInsecure = booleanValue(tls, 'allowInsecure', false);
-  state.tlsFingerprint = normalizeOption(stringValue(tls, 'fingerprint', 'none'), V2RAYNG_UTLS_FINGERPRINT_OPTIONS, 'none');
+  state.tlsFingerprint = normalizeOption(stringValue(tls, 'fingerprint', 'none'), CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS, 'none');
   state.tlsEchConfigList = stringValue(tls, 'echConfigList', '');
   state.tlsPinnedPeerCertSha256 = stringValue(tls, 'pinnedPeerCertSha256', '');
   if (security === 'reality') {

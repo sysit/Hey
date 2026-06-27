@@ -1,5 +1,5 @@
 // 把节点的 outboundJson 解析成「分组 + 字段」结构，供节点详情页只读展示。
-// 参照 V2rayNG ServerActivity 的字段维度，覆盖 基本信息 / 传输层 / 安全(TLS·REALITY)。
+// 参照主流 Android 代理客户端的字段维度，覆盖 基本信息 / 传输层 / 安全(TLS·REALITY)。
 // 纯逻辑、无闭包、严格类型，与 NodeOperations.ets 的安全取值风格保持一致。
 
 // 单个展示字段。labelKey 为 i18n key；sensitive=true 的字段（UUID/密码等）在 UI 默认打码。

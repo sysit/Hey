@@ -21,7 +21,6 @@ const REPO_DOCS_URL: string = 'https://github.com/popsiclelmlm/Hey#readme';
 const REPO_LICENSE_URL: string = 'https://github.com/popsiclelmlm/Hey/blob/main/LICENSE';
 const AUTHOR_URL: string = 'https://github.com/popsiclelmlm';
 const TELEGRAM_URL: string = 'https://t.me/HeyClient';
-const V2RAYNG_SOURCE_URL: string = 'https://github.com/2dust/v2rayNG';
 
 // 检查更新行的状态机：闲置 → 检查中 → 已是最新。
 enum UpdateState {
@@ -321,13 +320,6 @@ struct AboutPage {
         showDivider: true,
         onAction: () => {
           this.openUrl(REPO_LICENSE_URL, this.t('about.legal.license.title'));
-        }
-      })
-      LegalRow({
-        title: this.t('about.source.title'),
-        showDivider: true,
-        onAction: () => {
-          this.openUrl(V2RAYNG_SOURCE_URL, this.t('about.source.title'));
         }
       })
       LegalRow({

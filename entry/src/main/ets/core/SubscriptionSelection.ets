@@ -1,5 +1,26 @@
-import { ProxyNode } from './Profile';
+import { ProxyNode, SubscriptionGroup } from './Profile';
 import { normalizeConfigInput } from './XrayConfig';
+
+// 全局当前节点：浏览的活动组改变不应改变它（切组只是浏览）。只有当它已不存在于任何组时，
+// 才回退到活动组记忆的选择，再不行返回空。
+export function resolveGlobalSelectedNodeId(groups: Array<SubscriptionGroup>, currentSelectedId: string, activeGroupSelectedId: string): string {
+  if (currentSelectedId.length > 0 && nodeExistsInAnyGroup(groups, currentSelectedId)) {
+    return currentSelectedId;
+  }
+  if (activeGroupSelectedId.length > 0 && nodeExistsInAnyGroup(groups, activeGroupSelectedId)) {
+    return activeGroupSelectedId;
+  }
+  return '';
+}
+
+function nodeExistsInAnyGroup(groups: Array<SubscriptionGroup>, nodeId: string): boolean {
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    if (findNodeById(groups[groupIndex].nodes, nodeId) !== null) {
+      return true;
+    }
+  }
+  return false;
+}
 
 interface SubscriptionNodeIdentity {
   remarks: string;

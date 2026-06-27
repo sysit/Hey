@@ -48,7 +48,7 @@ struct SubscriptionDetailPage {
   private subscriptionQrSource: string = '';
 
   aboutToAppear(): void {
-    const params = router.getParams() as Record<string, Object>;
+    const params = this.getUIContext().getRouter().getParams() as Record<string, Object>;
     this.groupId = (params?.groupId as string) ?? '';
     this.loadState();
   }
@@ -332,13 +332,17 @@ struct SubscriptionDetailPage {
       this.subscriptionQrSource = '';
       this.showSubscriptionQr = false;
       const message = this.f1('error.qrGenerate', 'error', JSON.stringify(error));
-      promptAction.showToast({ message });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(message);
     }
   }
 
   private async loadState(): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
     this.groupName = this.t('subscription.detail.title');
@@ -384,7 +388,7 @@ struct SubscriptionDetailPage {
     this.onMessageChange();
 
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       const state = await SUBSCRIPTIONS_CONTROLLER.update(context, this.groupId, this.subscriptionUrl, this.selectedNodeId, this.language, this.subscriptionProxyPort);
       this.applySubscriptionsState(state);
       SHARED_RUNTIME_CONTROLLER.appendLog(state.subscriptionMessage);
@@ -395,7 +399,7 @@ struct SubscriptionDetailPage {
 
   private async selectNode(node: ProxyNode): Promise<void> {
     this.selectedNodeId = node.id;
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const state: NodesControllerState = await NODES_CONTROLLER.selectNode(context, node, this.language);
     this.nodes = state.nodes;
     this.selectedNodeId = state.selectedNodeId;
@@ -433,9 +437,13 @@ struct SubscriptionDetailPage {
 
   private async pasteFromClipboard() {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardReadFailed') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -444,29 +452,49 @@ struct SubscriptionDetailPage {
         const text = pasteData.getPrimaryText();
         if (text && text.trim().length > 0) {
           this.subscriptionUrl = text.trim();
-          promptAction.showToast({ message: this.t('prompt.pastedSubscriptionUrl') });
+          try {
+            this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.pastedSubscriptionUrl') });
+          } catch (err) {
+            // ignore
+          }
         } else {
-          promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+          try {
+            this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+          } catch (err) {
+            // ignore
+          }
         }
       } else {
-        promptAction.showToast({ message: this.t('prompt.clipboardNoData') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardNoData') });
+        } catch (err) {
+          // ignore
+        }
       }
     } catch (error) {
-      promptAction.showToast({ message: this.t('prompt.clipboardReadFailed') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardReadFailed') });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
   // 直接拉起相机扫码，将结果填入订阅链接输入框，扫码后仍停留在当前页面。
   private async scanSubscriptionUrl(): Promise<void> {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const value = await scanQrCode(context);
       if (value.length > 0) {
         this.subscriptionUrl = value;
       }
     } catch (error) {
       if (!isScanCancelled(error)) {
-        promptAction.showToast({ message: this.f1('scanner.scanFailed', 'error', JSON.stringify(error)) });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.f1('scanner.scanFailed', 'error', JSON.stringify(error)) });
+        } catch (err) {
+          // ignore
+        }
       }
     }
   }
@@ -480,9 +508,17 @@ struct SubscriptionDetailPage {
       const systemPasteboard = pasteboard.getSystemPasteboard();
       const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, url);
       systemPasteboard.setDataSync(pasteData);
-      promptAction.showToast({ message: this.t('subscription.detail.copied') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('subscription.detail.copied') });
+      } catch (err) {
+        // ignore
+      }
     } catch (error) {
-      promptAction.showToast({ message: this.t('subscription.detail.copied') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('subscription.detail.copied') });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
@@ -491,21 +527,33 @@ struct SubscriptionDetailPage {
     if (url.length === 0) {
       return;
     }
-    const context = getContext(this) as common.UIAbilityContext;
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
     const result = await shareText(context, this.groupName, url);
     this.handleShareResult(result);
   }
 
   private handleShareResult(result: TextShareResult): void {
     if (result.systemShareStarted) {
-      promptAction.showToast({ message: this.t('share.started') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('share.started') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     if (result.copiedToClipboard) {
-      promptAction.showToast({ message: this.t('share.fallbackCopied') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('share.fallbackCopied') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
-    promptAction.showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private subscriptionNodeRows(): Array<SubscriptionNodeRowModel> {

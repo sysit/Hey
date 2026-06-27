@@ -26,7 +26,7 @@ import { CORE_TYPE_SINGBOX, CORE_TYPE_XRAY } from '../../core/CoreSelection';
  *
  * 纯数据：每个选项配一句说明（descKey），抽屉标题下配一句提示（hintKey），
  * 由 Settings 页按当前值高亮当前项、点选即写回。值（value）复用 Profile /
- * V2rayNgOptions 既有常量，避免与持久化层分叉。动态选项（VPN 接口地址、
+ * ClientCompatOptions 既有常量，避免与持久化层分叉。动态选项（VPN 接口地址、
  * 分片 packets）选项随运行期数组变化，由页面就地构建，不在此声明。
  *
  * 采用「带 key 的数组 + 线性查找」而非 Record：ArkTS 不会把 Record 值类型

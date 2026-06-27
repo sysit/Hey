@@ -141,9 +141,13 @@ export class SubscriptionBackgroundScheduler {
         workId: groupPlans[index].workId
       });
     }
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(SCHEDULED_WORKS_KEY, JSON.stringify(records));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(SCHEDULED_WORKS_KEY, JSON.stringify(records));
+      await store.flush();
+    } catch (e) {
+      // ignore
+    }
   }
 
   private static parseScheduledWorks(raw: string): Array<SubscriptionScheduledWorkRecord> {

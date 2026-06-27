@@ -177,7 +177,7 @@ struct ImportPage {
       .backgroundColor(AppColor.surfaceAlt)
       .borderRadius(Radius.pill)
       .onClick(() => {
-        router.pushUrl({ url: AppRoute.SCANNER });
+        this.getUIContext().getRouter().pushUrl({ url: AppRoute.SCANNER });
       })
     }
     .width('100%')
@@ -235,7 +235,7 @@ struct ImportPage {
     .width('100%')
     .padding(Space.lg)
     .onClick(() => {
-      router.pushUrl({
+      this.getUIContext().getRouter().pushUrl({
         url: AppRoute.NODE_EDIT,
         params: { protocol: protocol }
       })
@@ -296,7 +296,7 @@ struct ImportPage {
     .width('100%')
     .padding(Space.lg)
     .onClick(() => {
-      router.pushUrl({
+      this.getUIContext().getRouter().pushUrl({
         url: AppRoute.ADVANCED_OUTBOUND,
         params: { mode: mode }
       })
@@ -331,7 +331,7 @@ struct ImportPage {
       .width('100%')
       .padding(Space.lg)
       .onClick(() => {
-        router.pushUrl({ url: AppRoute.JSON_IMPORT });
+        this.getUIContext().getRouter().pushUrl({ url: AppRoute.JSON_IMPORT });
       })
     }
     .width('100%')
@@ -343,7 +343,7 @@ struct ImportPage {
 
   private async loadState(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       this.language = (await SETTINGS_CONTROLLER.load(context)).language;
     } catch (error) {
       this.lastError = this.f1('import.loadStateFailed', 'error', JSON.stringify(error));
@@ -359,7 +359,7 @@ struct ImportPage {
 
     this.isBusy = true;
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       if (value.toLowerCase().startsWith('http://') || value.toLowerCase().startsWith('https://')) {
         this.lastError = this.t('error.importSubscriptionNotAllowed');
         return;
@@ -397,18 +397,26 @@ struct ImportPage {
         }
 
         markRuntimeSettingsRestartNeeded();
-        promptAction.showToast({
+        try {
+          this.getUIContext().getPromptAction().showToast({
           message: importedCount === 1 ? this.t('import.nodeImported') : this.f1('import.nodesImported', 'count', importedCount.toString())
         });
-        router.back();
+        } catch (err) {
+          // ignore
+        }
+        this.getUIContext().getRouter().back();
         return;
       }
 
       const nodeName = resolveImportedNodeName(saved.profile.outboundJson, this.t('import.linkNodeName'));
       await SubscriptionStore.addManualNode(context, nodeName, saved.profile.outboundJson, saved.profile.configType);
       markRuntimeSettingsRestartNeeded();
-      promptAction.showToast({ message: this.t('import.nodeImported') });
-      router.back();
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('import.nodeImported') });
+      } catch (err) {
+        // ignore
+      }
+      this.getUIContext().getRouter().back();
     } catch (error) {
       this.lastError = this.f1('import.parseFailed', 'error', JSON.stringify(error));
     } finally {

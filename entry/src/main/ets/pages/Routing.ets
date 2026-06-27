@@ -587,7 +587,8 @@ struct RoutingPage {
   }
 
   private showPresetDetails(title: string, detail: string, rules: string): void {
-    AlertDialog.show({
+    try {
+      this.getUIContext().showAlertDialog({
       title: title,
       message: detail + "\n\n" + this.t('routing.preset.detailHeader') + "\n" + rules,
       autoCancel: true,
@@ -607,12 +608,15 @@ struct RoutingPage {
         backgroundColor: AppColor.bg,
         action: () => {}
       }
-    })
+    });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async loadState(): Promise<void> {
     this.isStateLoaded = false;
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.draft = SETTINGS_CONTROLLER.toDraft(settings);
     this.language = this.draft.language;
@@ -635,7 +639,7 @@ struct RoutingPage {
     this.draft.routeOnlyEnabled = this.routeOnlyEnabled;
     this.draft.adBlockEnabled = this.adBlockEnabled;
     this.draft.routingRules = this.copyRules(this.routingRules);
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const saved = await SETTINGS_CONTROLLER.save(context, this.draft);
     this.draft = SETTINGS_CONTROLLER.toDraft(saved);
     this.language = this.draft.language;
@@ -690,7 +694,8 @@ struct RoutingPage {
   }
 
   private confirmClipboardImport(): void {
-    AlertDialog.show({
+    try {
+      this.getUIContext().showAlertDialog({
       title: this.t('action.import'),
       message: this.t('routing.preset.importConfirm'),
       autoCancel: true,
@@ -710,11 +715,15 @@ struct RoutingPage {
         backgroundColor: AppColor.bg,
         action: () => {}
       }
-    })
+    });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private confirmPresetImport(preset: RoutingPresetInfo): void {
-    AlertDialog.show({
+    try {
+      this.getUIContext().showAlertDialog({
       title: this.t(preset.titleKey),
       message: this.t('routing.preset.importConfirm') + '\n\n' + this.t(preset.detailKey),
       autoCancel: true,
@@ -734,44 +743,67 @@ struct RoutingPage {
         backgroundColor: AppColor.bg,
         action: () => {}
       }
-    })
+    });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async applyPresetImport(presetId: RoutingPresetId, presetName: string): Promise<void> {
     this.routingRules = resetRoutingRulesFromPreset(this.routingRules, presetId);
     await this.persistSettings(this.f1('log.routingPresetImported', 'name', presetName));
-    promptAction.showToast({ message: this.f1('log.routingPresetImported', 'name', presetName) });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.f1('log.routingPresetImported', 'name', presetName) });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async importRulesFromClipboard(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (!systemPasteboard.hasDataSync()) {
-        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       const pasteData = await systemPasteboard.getData();
       const text = pasteData.getPrimaryText();
       if (!text || text.trim().length === 0) {
-        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
 
       await this.importRulesFromText(text, 'log.routingRulesImported');
     } catch (error) {
-      promptAction.showToast({ message: this.t('routing.rule.importFailed') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('routing.rule.importFailed') });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
     }
   }
 
   private async scanRulesFromQr(): Promise<void> {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const options: scanBarcode.ScanOptions = {
         scanTypes: [scanCore.ScanType.QR_CODE],
         enableMultiMode: false,
@@ -789,13 +821,18 @@ struct RoutingPage {
         return;
       }
       const message = this.f1('routing.rule.scanFailed', 'error', JSON.stringify(error));
-      promptAction.showToast({ message });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(message);
     }
   }
 
   private confirmQrImport(content: string): void {
-    AlertDialog.show({
+    try {
+      this.getUIContext().showAlertDialog({
       title: this.t('routing.rule.importFromQr'),
       message: this.t('routing.preset.importConfirm'),
       autoCancel: true,
@@ -815,25 +852,40 @@ struct RoutingPage {
         backgroundColor: AppColor.bg,
         action: () => {}
       }
-    })
+    });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async importRulesFromText(content: string, logKey: string): Promise<void> {
     const result = importRoutingRulesJson(this.routingRules, content);
     if (!result.success) {
-      promptAction.showToast({ message: this.t('routing.rule.importFailed') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('routing.rule.importFailed') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
 
     this.routingRules = result.rules;
     const message = this.f1(logKey, 'count', result.count.toString());
     await this.persistSettings(message);
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private async exportRulesToClipboard(): Promise<void> {
     if (this.routingRules.length === 0) {
-      promptAction.showToast({ message: this.t('routing.rule.exportEmpty') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('routing.rule.exportEmpty') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     const systemPasteboard = pasteboard.getSystemPasteboard();
@@ -841,7 +893,11 @@ struct RoutingPage {
     await systemPasteboard.setData(pasteData);
     const message = this.f1('log.routingRulesExported', 'count', this.routingRules.length.toString());
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private pickerIndex(value: TextPickerResult): number {

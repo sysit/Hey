@@ -54,7 +54,7 @@ struct NodeDetailPage {
   @State private fullConfigModel: NodeFullConfigModel | null = null;
 
   aboutToAppear(): void {
-    const params = router.getParams() as NodeDetailParams;
+    const params = this.getUIContext().getRouter().getParams() as NodeDetailParams;
     this.nodeId = params?.nodeId ?? '';
     this.loadState();
   }
@@ -577,7 +577,7 @@ struct NodeDetailPage {
   }
 
   private async loadState(): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.settings = settings;
     this.language = settings.language;
@@ -651,33 +651,33 @@ struct NodeDetailPage {
     const configType: string = this.node.configType ?? 'outbound';
     // 代理链 / 策略组 → 高级出站编辑器
     if (configType === 'proxy-chain' || configType === 'policy-group') {
-      router.pushUrl({
+      this.getUIContext().getRouter().pushUrl({
         url: AppRoute.ADVANCED_OUTBOUND,
         params: {
           mode: configType,
           nodeId: this.node.id
         }
-      });
+      }).catch((err: Error) => {});
       return;
     }
     // 完整配置 / 自定义 / 表单无法表达的协议 → JSON 编辑器
     if (configType === 'full' || this.node.protocol === 'custom' || !isManualEditProtocol(this.node.protocol)) {
-      router.pushUrl({
+      this.getUIContext().getRouter().pushUrl({
         url: AppRoute.JSON_IMPORT,
         params: {
           nodeId: this.node.id
         }
-      });
+      }).catch((err: Error) => {});
       return;
     }
     // 标准分享链接节点 → 表单编辑器
-    router.pushUrl({
+    this.getUIContext().getRouter().pushUrl({
       url: AppRoute.NODE_EDIT,
       params: {
         nodeId: this.node.id,
         protocol: normalizeManualEditProtocol(this.node.protocol)
       }
-    });
+    }).catch((err: Error) => {});
   }
 
   private copyText(value: string): void {
@@ -690,7 +690,11 @@ struct NodeDetailPage {
     } catch (error) {
       // 复制失败仍给出反馈，避免静默
     }
-    promptAction.showToast({ message: this.t('node.detail.copied') });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.t('node.detail.copied') });
+    } catch (err) {
+      // ignore
+    }
   }
 
   private f1(key: string, name: string, value: string): string {

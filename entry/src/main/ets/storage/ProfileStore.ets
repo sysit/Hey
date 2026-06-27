@@ -7,14 +7,14 @@ const PROFILE_KEY: string = 'default_profile';
 
 export class ProfileStore {
   static async load(context: common.Context): Promise<ProxyProfile> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    const rawValue = await store.get(PROFILE_KEY, '');
-    const raw = rawValue.toString();
-    if (raw.length === 0) {
-      return ProfileStore.createEmptyProfile();
-    }
-
     try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      const rawValue = await store.get(PROFILE_KEY, '');
+      const raw = rawValue.toString();
+      if (raw.length === 0) {
+        return ProfileStore.createEmptyProfile();
+      }
+
       const profile = JSON.parse(raw) as ProxyProfile;
       if (profile.id === undefined || profile.id.length === 0) {
         return ProfileStore.createEmptyProfile();
@@ -39,9 +39,13 @@ export class ProfileStore {
       configType: ProfileStore.normalizeConfigType(configType),
       updatedAt: Date.now()
     };
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(PROFILE_KEY, JSON.stringify(profile));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(PROFILE_KEY, JSON.stringify(profile));
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
     return profile;
   }
 

@@ -24,22 +24,22 @@ export const GEOIP_FILE_NAME: string = 'geoip.dat';
 export const GEOIP_ONLY_CN_PRIVATE_FILE_NAME: string = 'geoip-only-cn-private.dat';
 export const GEOIP_ONLY_CN_PRIVATE_URL: string =
   'https://raw.githubusercontent.com/Loyalsoldier/geoip/release/geoip-only-cn-private.dat';
-export const V2RAYNG_GEO_FILE_SOURCE_REPOS: Array<string> = [
+export const CLIENT_COMPAT_GEO_FILE_SOURCE_REPOS: Array<string> = [
   'Loyalsoldier/v2ray-rules-dat',
   'runetfreedom/russia-v2ray-rules-dat',
   'Chocolate4U/Iran-v2ray-rules'
 ];
 export const GEO_FILE_SOURCES: Array<GeoSource> = [
   {
-    name: V2RAYNG_GEO_FILE_SOURCE_REPOS[0],
+    name: CLIENT_COMPAT_GEO_FILE_SOURCE_REPOS[0],
     url: 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/'
   },
   {
-    name: V2RAYNG_GEO_FILE_SOURCE_REPOS[1],
+    name: CLIENT_COMPAT_GEO_FILE_SOURCE_REPOS[1],
     url: 'https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/'
   },
   {
-    name: V2RAYNG_GEO_FILE_SOURCE_REPOS[2],
+    name: CLIENT_COMPAT_GEO_FILE_SOURCE_REPOS[2],
     url: 'https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/'
   },
   {

@@ -162,7 +162,7 @@ export struct BuiltinGeoCard {
   }
 
   private handleAssetMoreClick(fileName: string): void {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     const exists = this.checkFileExists(context, fileName);
 
     const menu: [promptAction.Button, promptAction.Button] = [
@@ -170,7 +170,7 @@ export struct BuiltinGeoCard {
       { text: this.t('action.del'), color: exists ? '#EF4444' : '#9CA3AF' } as promptAction.Button
     ];
 
-    promptAction.showActionMenu({
+    this.getUIContext().getPromptAction().showActionMenu({
       title: fileName,
       buttons: menu
     }).then((result) => {
@@ -179,7 +179,7 @@ export struct BuiltinGeoCard {
       } else if (result.index === 1 && exists) {
         this.onDeleteAsset(fileName);
       }
-    });
+    }).catch((err: Error) => {});
   }
 
   private checkFileExists(context: common.Context, fileName: string): boolean {

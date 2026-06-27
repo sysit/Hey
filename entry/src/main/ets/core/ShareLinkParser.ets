@@ -1,7 +1,7 @@
 import { decodeBase64ToUtf8, encodeUtf8ToBase64, encodeUtf8ToBase64NoPadding } from './Encoding';
 import { toIdnDomain } from './IdnUrl';
 import { buildKcpFinalMask, isCanonicalKcpFinalMask, readKcpShareParamsFromFinalMask } from './KcpTransport';
-import { normalizeV2rayNgXhttpMode } from './V2rayNgOptions';
+import { normalizeClientCompatXhttpMode } from './ClientCompatOptions';
 
 export interface ShareLinkParseResult {
   success: boolean;
@@ -230,10 +230,26 @@ interface XrayAnytlsSettings {
   servers: Array<XrayAnytlsServer>;
 }
 
+interface XrayTuicServer {
+  address: string;
+  port: number;
+  uuid: string;
+  password: string;
+  sni?: string;
+  alpn?: string;
+  insecure?: boolean;
+  congestionControl?: string;
+  udpRelayMode?: string;
+}
+
+interface XrayTuicSettings {
+  servers: Array<XrayTuicServer>;
+}
+
 interface XrayOutbound {
   protocol: string;
   tag: string;
-  settings: XrayVlessSettings | XrayVmessSettings | XrayTrojanSettings | XrayShadowsocksSettings | XrayServerSettings | XrayWireguardSettings | XrayHysteria2Settings | XrayAnytlsSettings;
+  settings: XrayVlessSettings | XrayVmessSettings | XrayTrojanSettings | XrayShadowsocksSettings | XrayServerSettings | XrayWireguardSettings | XrayHysteria2Settings | XrayAnytlsSettings | XrayTuicSettings;
   streamSettings?: XrayStreamSettings;
 }
 
@@ -295,7 +311,8 @@ export const SUPPORTED_SHARE_LINK_SCHEMES: Array<string> = [
   'wireguard://',
   'hysteria2://',
   'hy2://',
-  'anytls://'
+  'anytls://',
+  'tuic://'
 ];
 
 export function buildUnsupportedShareLinkMessage(): string {
@@ -357,6 +374,9 @@ export function parseShareLinkToOutboundJson(input: string): ShareLinkParseResul
     }
     if (lower.startsWith('anytls://')) {
       return parseAnytlsLink(trimmed);
+    }
+    if (lower.startsWith('tuic://')) {
+      return parseTuicLink(trimmed);
     }
     return makeFailure(buildUnsupportedShareLinkMessage());
   } catch (error) {
@@ -821,6 +841,53 @@ function parseAnytlsLink(input: string): ShareLinkParseResult {
   return makeSuccess('anytls', defaultShareName(parsed.fragment), outbound);
 }
 
+function parseTuicLink(input: string): ShareLinkParseResult {
+  const parsed = parseOptionalUserShareLink(input, 'tuic');
+  // userInfo 已解码，形如 "uuid:password"，按第一个冒号拆分。
+  const colonIndex = parsed.userInfo.indexOf(':');
+  if (colonIndex <= 0 || colonIndex >= parsed.userInfo.length - 1) {
+    return makeFailure('TUIC 链接缺少 UUID 或密码。', 'tuic');
+  }
+  const uuid = parsed.userInfo.substring(0, colonIndex);
+  const password = parsed.userInfo.substring(colonIndex + 1);
+
+  const server: XrayTuicServer = {
+    address: parsed.host,
+    port: parsed.port,
+    uuid,
+    password
+  };
+  const sni = queryValue(parsed.query, 'sni', '');
+  if (sni.length > 0) {
+    server.sni = sni;
+  }
+  const alpn = queryValue(parsed.query, 'alpn', '');
+  if (alpn.length > 0) {
+    server.alpn = alpn;
+  }
+  const congestionControl = queryValue(parsed.query, 'congestion_control', '');
+  if (congestionControl.length > 0) {
+    server.congestionControl = congestionControl;
+  }
+  const udpRelayMode = queryValue(parsed.query, 'udp_relay_mode', '');
+  if (udpRelayMode.length > 0) {
+    server.udpRelayMode = udpRelayMode;
+  }
+  const insecure = queryValue(parsed.query, 'allow_insecure', '');
+  if (insecure.length > 0) {
+    server.insecure = insecure === '1' || insecure.toLowerCase() === 'true';
+  }
+
+  const outbound: XrayOutbound = {
+    protocol: 'tuic',
+    tag: 'proxy',
+    settings: {
+      servers: [server]
+    }
+  };
+  return makeSuccess('tuic', defaultShareName(parsed.fragment), outbound);
+}
+
 function tryParseUrlStyleShareLink(input: string, scheme: string): ParsedShareUrl | null {
   try {
     return parseUrlStyleShareLink(input, scheme);
@@ -1050,7 +1117,7 @@ function buildStreamSettings(query: Map<string, string>, defaultSecurity: string
       path: path.length > 0 ? path : '/',
       host
     };
-    const mode = normalizeV2rayNgXhttpMode(queryValue(query, 'mode', ''));
+    const mode = normalizeClientCompatXhttpMode(queryValue(query, 'mode', ''));
     if (mode.length > 0) {
       xhttpSettings.mode = mode;
     }
@@ -1530,7 +1597,7 @@ function appendStreamSettingsToQuery(queryParams: Map<string, string>, stream?: 
       queryParams.set('host', stream.xhttpSettings.host);
     }
     if (stream.xhttpSettings.mode) {
-      queryParams.set('mode', normalizeV2rayNgXhttpMode(stream.xhttpSettings.mode));
+      queryParams.set('mode', normalizeClientCompatXhttpMode(stream.xhttpSettings.mode));
     }
     if (stream.xhttpSettings.extra) {
       queryParams.set('extra', JSON.stringify(stream.xhttpSettings.extra));
@@ -1616,7 +1683,7 @@ function formatVmess(outbound: XrayOutbound, name: string): string {
   } else if (network === 'xhttp' && stream?.xhttpSettings) {
     vmessObj.path = stream.xhttpSettings.path || '/';
     vmessObj.host = stream.xhttpSettings.host || '';
-    vmessObj.type = normalizeV2rayNgXhttpMode(stream.xhttpSettings.mode || '');
+    vmessObj.type = normalizeClientCompatXhttpMode(stream.xhttpSettings.mode || '');
   }
 
   const jsonStr = JSON.stringify(vmessObj);
@@ -1777,6 +1844,33 @@ function formatHysteria2(outbound: XrayOutbound, name: string): string {
   return `hysteria2://${formatUserInfo(server.password)}@${formatHostPort(server.address, server.port)}${queryStr}${hashStr}`;
 }
 
+function formatTuic(outbound: XrayOutbound, name: string): string {
+  const settings = outbound.settings as XrayTuicSettings;
+  const server = settings?.servers?.[0];
+  if (!server) {
+    throw new Error('TUIC settings 缺少服务器配置。');
+  }
+
+  const queryParams = new Map<string, string>();
+  if (server.congestionControl && server.congestionControl.length > 0) {
+    queryParams.set('congestion_control', server.congestionControl);
+  }
+  if (server.udpRelayMode && server.udpRelayMode.length > 0) {
+    queryParams.set('udp_relay_mode', server.udpRelayMode);
+  }
+  if (server.sni) {
+    queryParams.set('sni', server.sni);
+  }
+  if (server.alpn) {
+    queryParams.set('alpn', server.alpn);
+  }
+  queryParams.set('allow_insecure', server.insecure ? '1' : '0');
+
+  const queryStr = formatQueryParams(queryParams);
+  const hashStr = name.length > 0 ? `#${encodeURIComponent(name)}` : '';
+  return `tuic://${formatUserInfo(server.uuid)}:${formatUserInfo(server.password)}@${formatHostPort(server.address, server.port)}${queryStr}${hashStr}`;
+}
+
 export function formatOutboundJsonToShareLink(outboundJson: string, name: string): string {
   try {
     const outbound = JSON.parse(outboundJson) as XrayOutbound;
@@ -1804,6 +1898,9 @@ export function formatOutboundJsonToShareLink(outboundJson: string, name: string
     }
     if (protocol === 'hysteria2') {
       return formatHysteria2(outbound, name);
+    }
+    if (protocol === 'tuic') {
+      return formatTuic(outbound, name);
     }
     return '';
   } catch (error) {

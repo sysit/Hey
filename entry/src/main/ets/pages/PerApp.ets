@@ -560,7 +560,11 @@ struct PerAppPage {
     }
     this.isAutoSelectingProxyApps = true;
     this.enablePerAppProxy();
-    promptAction.showToast({ message: this.f1('assets.downloading', 'title', this.t('perApp.action.autoProxy')) });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: this.f1('assets.downloading', 'title', this.t('perApp.action.autoProxy')) });
+    } catch (err) {
+      // ignore
+    }
     try {
       const packageList = await PER_APP_PROXY_LIST_MANAGER.loadProxyPackageList(this.resolveAutoProxyListProxyPort());
       this.perAppProxyList = selectAutoProxyPackages(
@@ -571,7 +575,11 @@ struct PerAppPage {
       );
       await this.saveSettings();
       const message = this.f1('perApp.autoSelected', 'count', this.perAppProxyList.length.toString());
-      promptAction.showToast({ message });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message });
+      } catch (err) {
+        // ignore
+      }
       const sourceLabel = packageList.source === 'remote' ? this.t('perApp.autoSource.remote') :
         this.t('perApp.autoSource.fallback');
       SHARED_RUNTIME_CONTROLLER.appendLog(`${message} (${sourceLabel})`);
@@ -596,26 +604,42 @@ struct PerAppPage {
 
   private async importProxyAppsFromClipboard(): Promise<void> {
     try {
-      const context = getContext(this) as common.Context;
+      const context = this.getUIContext().getHostContext() as common.Context;
       if (!await ensureReadPasteboardPermission(context)) {
-        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       const systemPasteboard = pasteboard.getSystemPasteboard();
       if (!systemPasteboard.hasDataSync()) {
-        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       const pasteData = await systemPasteboard.getData();
       const text = pasteData.getPrimaryText();
       if (!text || text.trim().length === 0) {
-        promptAction.showToast({ message: this.t('prompt.clipboardEmpty') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('prompt.clipboardEmpty') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
 
       const result = importPerAppProxyList(text, this.perAppProxyBypass, SELF_BUNDLE_NAME);
       if (!result.success) {
-        promptAction.showToast({ message: this.t('perApp.importFailed') });
+        try {
+          this.getUIContext().getPromptAction().showToast({ message: this.t('perApp.importFailed') });
+        } catch (err) {
+          // ignore
+        }
         return;
       }
       this.perAppProxyBypass = result.bypass;
@@ -623,10 +647,18 @@ struct PerAppPage {
       this.enablePerAppProxy();
       await this.saveSettings();
       const message = this.f1('perApp.imported', 'count', result.count.toString());
-      promptAction.showToast({ message });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(message);
     } catch (error) {
-      promptAction.showToast({ message: this.t('perApp.importFailed') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('perApp.importFailed') });
+      } catch (err) {
+        // ignore
+      }
       SHARED_RUNTIME_CONTROLLER.appendLog(JSON.stringify(error));
     }
   }
@@ -639,12 +671,16 @@ struct PerAppPage {
     );
     await systemPasteboard.setData(pasteData);
     const message = this.f1('perApp.exported', 'count', this.perAppProxyList.length.toString());
-    promptAction.showToast({ message });
+    try {
+      this.getUIContext().getPromptAction().showToast({ message });
+    } catch (err) {
+      // ignore
+    }
     SHARED_RUNTIME_CONTROLLER.appendLog(message);
   }
 
   private async loadState(): Promise<void> {
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.draft = SETTINGS_CONTROLLER.toDraft(await SETTINGS_CONTROLLER.load(context));
     this.language = this.draft.language;
     this.perAppProxyEnabled = this.draft.perAppProxyEnabled;
@@ -659,7 +695,7 @@ struct PerAppPage {
     this.draft.perAppProxyEnabled = this.perAppProxyEnabled;
     this.draft.perAppProxyList = this.perAppProxyList;
     this.draft.perAppProxyBypass = this.perAppProxyBypass;
-    const context = getContext(this) as common.Context;
+    const context = this.getUIContext().getHostContext() as common.Context;
     this.draft = SETTINGS_CONTROLLER.toDraft(await SETTINGS_CONTROLLER.save(context, this.draft));
     markRuntimeSettingsRestartNeeded();
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', 'perApp'));

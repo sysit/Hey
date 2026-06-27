@@ -1,10 +1,9 @@
 // Loopback / private IPv4 network detection.
 //
-// Mirrors v2rayNG `AppConfig.PRIVATE_IP_LIST`, `Utils.isIpInCidr` and the host
-// check in `Utils.isValidSubUrl`: a plaintext HTTP subscription URL is treated
-// as safe (no insecure toggle required) when it targets loopback or a private
-// network host. v2rayNG's `isIpInCidr` is IPv4-only (32-bit mask math), and
-// `PRIVATE_IP_LIST` only contains IPv4 ranges, so this mirror is IPv4-only too.
+// Compatibility rules for private subscription hosts: a plaintext HTTP
+// subscription URL is treated as safe (no insecure toggle required) when it
+// targets loopback or a private network host. The CIDR check is IPv4-only to
+// match the supported private range list.
 
 const LOOPBACK_IPV4: string = '127.0.0.1';
 
@@ -40,7 +39,7 @@ function parseIpv4ToLong(ip: string): number {
   return result;
 }
 
-// IPv4 CIDR containment check, mirroring v2rayNG `Utils.isIpInCidr` (IPv4 only).
+// IPv4 CIDR containment check for the private subscription host allowlist.
 export function isIpv4InCidr(ip: string, cidr: string): boolean {
   const slash = cidr.indexOf('/');
   if (slash < 0) {
@@ -104,8 +103,8 @@ function extractUrlHost(url: string): string {
   return colon >= 0 ? authority.substring(0, colon) : authority;
 }
 
-// Mirrors v2rayNG `Utils.isValidSubUrl`: a plaintext HTTP subscription URL is
-// safe without the insecure toggle when it targets loopback or a private host.
+// Plaintext HTTP subscription URLs are safe without the insecure toggle when
+// they target loopback or a private host.
 export function isLoopbackOrPrivateHttpUrl(url: string): boolean {
   const trimmed = url.trim();
   if (trimmed.indexOf(LOOPBACK_IPV4) >= 0) {

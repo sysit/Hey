@@ -289,11 +289,8 @@ export class SubscriptionsController {
 
   async selectGroup(context: common.Context, group: SubscriptionGroup, language: AppLanguage): Promise<SubscriptionsControllerState> {
     try {
+      // 切组只是「浏览」该组节点列表：仅切换活动组，不改写当前节点 / 连接配置（解耦）。
       const subscription = await SubscriptionStore.selectGroup(context, group.id);
-      const selected = this.findNode(subscription.nodes, subscription.selectedNodeId);
-      if (selected !== null) {
-        await ProfileStore.save(context, selected.outboundJson, selected.configType);
-      }
       return this.buildState(subscription, language, formatOne(language, 'log.openedSubscriptionGroup', 'name', group.name));
     } catch (error) {
       return this.buildState(await SubscriptionStore.load(context), language, formatOne(language, 'error.selectSubscriptionGroup', 'error', this.stringifyError(error)));

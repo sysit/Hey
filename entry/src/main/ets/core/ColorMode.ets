@@ -8,5 +8,9 @@ export function applyColorMode(context: common.Context, uiModeNight: AppUiModeNi
   } else if (uiModeNight === UI_MODE_NIGHT_DARK) {
     colorMode = ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
   }
-  context.getApplicationContext().setColorMode(colorMode);
+  try {
+    context.getApplicationContext().setColorMode(colorMode);
+  } catch (e) {
+    // ignore
+  }
 }

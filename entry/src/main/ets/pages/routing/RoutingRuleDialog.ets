@@ -251,11 +251,19 @@ export struct RoutingRuleDialog {
     };
 
     if (rule.remarks.length === 0) {
-      promptAction.showToast({ message: this.t('routing.rule.error.remarks') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('routing.rule.error.remarks') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     if (!this.hasMatcher(rule)) {
-      promptAction.showToast({ message: this.t('routing.rule.error.matcher') });
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: this.t('routing.rule.error.matcher') });
+      } catch (err) {
+        // ignore
+      }
       return;
     }
     this.onConfirm(rule);

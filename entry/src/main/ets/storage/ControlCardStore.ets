@@ -8,9 +8,13 @@ const STATE_KEY: string = 'state';
 
 export class ControlCardStore {
   static async loadFormIds(context: common.Context): Promise<Array<string>> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    const rawValue = await store.get(FORM_IDS_KEY, '[]');
-    return ControlCardStore.parseIds(rawValue.toString());
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      const rawValue = await store.get(FORM_IDS_KEY, '[]');
+      return ControlCardStore.parseIds(rawValue.toString());
+    } catch (e) {
+      return [];
+    }
   }
 
   static async addFormId(context: common.Context, formId: string): Promise<Array<string>> {
@@ -35,13 +39,13 @@ export class ControlCardStore {
   }
 
   static async loadState(context: common.Context): Promise<ControlCardFormData> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    const rawValue = await store.get(STATE_KEY, '');
-    const raw = rawValue.toString();
-    if (raw.length === 0) {
-      return buildControlCardFormData();
-    }
     try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      const rawValue = await store.get(STATE_KEY, '');
+      const raw = rawValue.toString();
+      if (raw.length === 0) {
+        return buildControlCardFormData();
+      }
       return normalizeControlCardFormData(JSON.parse(raw) as ControlCardFormData);
     } catch (error) {
       return buildControlCardFormData();
@@ -50,16 +54,24 @@ export class ControlCardStore {
 
   static async saveState(context: common.Context, state: ControlCardFormData): Promise<ControlCardFormData> {
     const normalized = normalizeControlCardFormData(state);
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(STATE_KEY, JSON.stringify(normalized));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(STATE_KEY, JSON.stringify(normalized));
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
     return normalized;
   }
 
   private static async saveFormIds(context: common.Context, ids: Array<string>): Promise<void> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(FORM_IDS_KEY, JSON.stringify(ControlCardStore.uniqueIds(ids)));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(FORM_IDS_KEY, JSON.stringify(ControlCardStore.uniqueIds(ids)));
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
   }
 
   private static parseIds(raw: string): Array<string> {

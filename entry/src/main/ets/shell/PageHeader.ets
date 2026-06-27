@@ -11,7 +11,7 @@ export struct PageHeader {
   @Prop statusColor: ResourceColor = AppColor.textSecondary;
   @Prop statusBackground: ResourceColor = AppColor.surfaceAlt;
   onBack: () => void = () => {
-    router.back();
+    this.getUIContext().getRouter().back();
   };
   @BuilderParam rightActions?: () => void;
 

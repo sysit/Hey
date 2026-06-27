@@ -147,7 +147,7 @@ function nodeSearchFields(node: ProxyNode): Array<string> {
   const fields = new Array<string>();
   appendSearchField(fields, node.name);
   appendSearchField(fields, node.sourceUrl);
-  appendSearchField(fields, buildV2rayNgNodeDescription(node));
+  appendSearchField(fields, buildClientCompatNodeDescription(node));
   appendSearchField(fields, extractOutboundServer(node.outboundJson));
   appendSearchField(fields, node.protocol);
   return fields;
@@ -188,18 +188,18 @@ export function extractNodeEndpoint(outboundJson: string): NodeEndpoint {
   }
 }
 
-export function buildV2rayNgNodeDescription(node: ProxyNode): string {
+export function buildClientCompatNodeDescription(node: ProxyNode): string {
   const endpoint = extractNodeEndpoint(node.outboundJson);
-  return formatV2rayNgEndpointDescription(endpoint.address, endpoint.port);
+  return formatClientCompatEndpointDescription(endpoint.address, endpoint.port);
 }
 
-export function formatV2rayNgEndpointDescription(address: string, port: string): string {
+export function formatClientCompatEndpointDescription(address: string, port: string): string {
   const server = address.trim();
   const serverPort = port.trim();
   if (server.length === 0 && serverPort.length === 0) {
     return '';
   }
-  return `${maskV2rayNgEndpointAddress(server)} : ${serverPort}`;
+  return `${maskClientCompatEndpointAddress(server)} : ${serverPort}`;
 }
 
 function extractOutboundServer(outboundJson: string): string {
@@ -262,7 +262,7 @@ function parseEndpointAddressAndPort(endpoint: string): NodeEndpoint {
   };
 }
 
-function maskV2rayNgEndpointAddress(address: string): string {
+function maskClientCompatEndpointAddress(address: string): string {
   if (address.length === 0) {
     return '';
   }
@@ -446,6 +446,34 @@ export function sortGroupsByDelayTargets(
     const group = sourceGroups[index];
     if (containsAnyNodeId(group.nodes, sortIds)) {
       group.nodes = sortNodesByTestResults(group.nodes);
+      group.selectedNodeId = resolveSelectedNodeId(group.nodes, group.selectedNodeId);
+      group.updatedAt = updatedAt > 0 ? updatedAt : group.updatedAt;
+      sortedCount++;
+    }
+    sortedGroups.push(group);
+  }
+
+  return {
+    groups: sortedGroups,
+    removedCount: 0,
+    sortedGroupCount: sortedCount
+  };
+}
+
+// 按节点名称（A-Z）排序，仅重排包含目标节点的分组，结构同 sortGroupsByDelayTargets。
+export function sortGroupsByNodeName(
+  groups: Array<SubscriptionGroup>,
+  sortTargets: Array<ProxyNode>,
+  updatedAt: number = 0
+): NodeBatchMutationResult {
+  const sortIds = nodeIdSet(sortTargets);
+  const sortedGroups = new Array<SubscriptionGroup>();
+  let sortedCount = 0;
+  const sourceGroups = copySubscriptionGroups(groups);
+  for (let index = 0; index < sourceGroups.length; index++) {
+    const group = sourceGroups[index];
+    if (containsAnyNodeId(group.nodes, sortIds)) {
+      group.nodes = sortNodes(group.nodes, 'name');
       group.selectedNodeId = resolveSelectedNodeId(group.nodes, group.selectedNodeId);
       group.updatedAt = updatedAt > 0 ? updatedAt : group.updatedAt;
       sortedCount++;

@@ -25,7 +25,7 @@ import {
   normalizeVpnMtuValue,
   RoutingRule
 } from '../core/Profile';
-import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, V2RAYNG_DEFAULT_MUX_XUDP_QUIC, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgMuxXudpQuic } from '../core/V2rayNgOptions';
+import { CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL, CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC, normalizeClientCompatCoreLogLevel, normalizeClientCompatMuxXudpQuic } from '../core/ClientCompatOptions';
 
 const PREFERENCES_NAME: string = 'hey_vpn_settings';
 const SETTINGS_KEY: string = 'app_settings';
@@ -60,7 +60,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   muxEnabled: false,
   muxConcurrency: 8,
   muxXudpConcurrency: 8,
-  muxXudpQuic: V2RAYNG_DEFAULT_MUX_XUDP_QUIC,
+  muxXudpQuic: CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC,
   fragmentEnabled: false,
   fragmentPackets: 'tlshello',
   fragmentLength: '50-100',
@@ -80,7 +80,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   delayTestUrl: DEFAULT_DELAY_TEST_URL,
   ipApiUrl: DEFAULT_IP_API_URL,
   realPingConcurrency: 16,
-  logLevel: V2RAYNG_DEFAULT_CORE_LOG_LEVEL,
+  logLevel: CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL,
   outboundDomainResolveMethod: OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
   mode: APP_MODE_VPN,
   trafficMode: 'rules',
@@ -93,14 +93,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 
 export class SettingsStore {
   static async load(context: common.Context): Promise<AppSettings> {
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    const rawValue = await store.get(SETTINGS_KEY, '');
-    const raw = rawValue.toString();
-    if (raw.length === 0) {
-      return SettingsStore.copy(DEFAULT_APP_SETTINGS);
-    }
-
     try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      const rawValue = await store.get(SETTINGS_KEY, '');
+      const raw = rawValue.toString();
+      if (raw.length === 0) {
+        return SettingsStore.copy(DEFAULT_APP_SETTINGS);
+      }
       return SettingsStore.normalize(JSON.parse(raw) as AppSettings);
     } catch (error) {
       return SettingsStore.copy(DEFAULT_APP_SETTINGS);
@@ -109,9 +108,13 @@ export class SettingsStore {
 
   static async save(context: common.Context, settings: AppSettings): Promise<AppSettings> {
     const normalized = SettingsStore.normalize(settings);
-    const store = await preferences.getPreferences(context, PREFERENCES_NAME);
-    await store.put(SETTINGS_KEY, JSON.stringify(normalized));
-    await store.flush();
+    try {
+      const store = await preferences.getPreferences(context, PREFERENCES_NAME);
+      await store.put(SETTINGS_KEY, JSON.stringify(normalized));
+      await store.flush();
+    } catch (error) {
+      // ignore
+    }
     return normalized;
   }
 
@@ -156,7 +159,7 @@ export class SettingsStore {
       muxEnabled: SettingsStore.boolValue(raw.muxEnabled, base.muxEnabled),
       muxConcurrency: SettingsStore.numberValue(raw.muxConcurrency, base.muxConcurrency),
       muxXudpConcurrency: SettingsStore.numberValue(raw.muxXudpConcurrency, base.muxXudpConcurrency),
-      muxXudpQuic: normalizeV2rayNgMuxXudpQuic(SettingsStore.stringValue(raw.muxXudpQuic, base.muxXudpQuic), base.muxXudpQuic),
+      muxXudpQuic: normalizeClientCompatMuxXudpQuic(SettingsStore.stringValue(raw.muxXudpQuic, base.muxXudpQuic), base.muxXudpQuic),
       fragmentEnabled: SettingsStore.boolValue(raw.fragmentEnabled, base.fragmentEnabled),
       fragmentPackets: SettingsStore.stringValue(raw.fragmentPackets, base.fragmentPackets),
       fragmentLength: SettingsStore.stringValue(raw.fragmentLength, base.fragmentLength),
@@ -176,7 +179,7 @@ export class SettingsStore {
       delayTestUrl: SettingsStore.stringValue(raw.delayTestUrl, base.delayTestUrl),
       ipApiUrl: SettingsStore.stringValue(raw.ipApiUrl, base.ipApiUrl),
       realPingConcurrency: normalizeRealPingConcurrency(raw.realPingConcurrency, base.realPingConcurrency),
-      logLevel: normalizeV2rayNgCoreLogLevel(SettingsStore.stringValue(raw.logLevel, base.logLevel), base.logLevel),
+      logLevel: normalizeClientCompatCoreLogLevel(SettingsStore.stringValue(raw.logLevel, base.logLevel), base.logLevel),
       outboundDomainResolveMethod: normalizeOutboundDomainResolveMethod(raw.outboundDomainResolveMethod, base.outboundDomainResolveMethod),
       mode: normalizeAppRuntimeMode(raw.mode, base.mode),
       trafficMode: SettingsStore.trafficModeValue(raw.trafficMode, base.trafficMode),

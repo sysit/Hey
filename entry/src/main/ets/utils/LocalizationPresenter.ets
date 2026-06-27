@@ -213,6 +213,10 @@ export function localizeCoreMessage(language: AppLanguage, message: string): str
     return translate(language, 'manualEdit.missingSettings');
   }
 
+  if (message.startsWith('暂不支持 tuic') || message.startsWith('暂不支持 TUIC')) {
+    return translate(language, 'core.tuicNeedsSingbox');
+  }
+
   const unsupportedPrefix = '暂不支持 ';
   const unsupportedEnd = '，当前支持 VLESS、VMess、Trojan、Shadowsocks、SOCKS、HTTP、WireGuard 和 Hysteria2。';
   if (message.startsWith(unsupportedPrefix) && message.endsWith(unsupportedEnd)) {

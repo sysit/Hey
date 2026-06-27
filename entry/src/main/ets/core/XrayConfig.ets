@@ -1,10 +1,10 @@
 import { bundleManager } from '@kit.AbilityKit';
-import { V2RAYNG_DNS_DIRECT, V2RAYNG_DNS_PROXY, normalizeV2rayNgDnsServers } from './DnsAddresses';
+import { CLIENT_COMPAT_DNS_DIRECT, CLIENT_COMPAT_DNS_PROXY, normalizeClientCompatDnsServers } from './DnsAddresses';
 import { toIdnDomain } from './IdnUrl';
 import { shouldExposeLocalHttpProxy } from './LocalProxy';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
-import { V2RAYNG_DEFAULT_CORE_LOG_LEVEL, normalizeV2rayNgCoreLogLevel, normalizeV2rayNgFragmentPackets, normalizeV2rayNgHysteria2Security, normalizeV2rayNgMuxXudpQuic, normalizeV2rayNgStreamAlpnWithFallback, normalizeV2rayNgXhttpMode } from './V2rayNgOptions';
+import { CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL, normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatHysteria2Security, normalizeClientCompatMuxXudpQuic, normalizeClientCompatStreamAlpnWithFallback, normalizeClientCompatXhttpMode } from './ClientCompatOptions';
 
 interface XrayOutbound {
   protocol?: string;
@@ -375,7 +375,7 @@ const DNS_OUT_TAG: string = 'dns-out';
 const DNS_TAG: string = 'dns';
 const DOMESTIC_DNS_TAG_PREFIX: string = 'domestic-dns-';
 const DEFAULT_WIREGUARD_IPV4_ADDRESS: string = '172.16.0.2/32';
-const DEFAULT_LOG_LEVEL: string = V2RAYNG_DEFAULT_CORE_LOG_LEVEL;
+const DEFAULT_LOG_LEVEL: string = CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL;
 const DEFAULT_ROUTING_DOMAIN_STRATEGY: string = 'AsIs';
 const GEOSITE_CN_DOMAIN: string = 'geosite:cn';
 const GEOIP_CN_EXPECT: string = 'geoip:cn';
@@ -1203,7 +1203,7 @@ function applyXhttpModeParity(outbound: XrayOutbound): void {
   }
   const xhttpSettings = settingsValue as Record<string, Object | string | number | boolean | undefined>;
   const mode = xhttpSettings['mode'];
-  xhttpSettings['mode'] = normalizeV2rayNgXhttpMode(typeof mode === 'string' ? mode : '');
+  xhttpSettings['mode'] = normalizeClientCompatXhttpMode(typeof mode === 'string' ? mode : '');
 }
 
 function applyMuxRuntimeSettings(outbound: XrayOutbound, settings: AppSettings | undefined): void {
@@ -1212,7 +1212,7 @@ function applyMuxRuntimeSettings(outbound: XrayOutbound, settings: AppSettings |
       enabled: true,
       concurrency: shouldUseVlessFlowMuxConcurrency(outbound) ? -1 : settings.muxConcurrency,
       xudpConcurrency: settings.muxXudpConcurrency,
-      xudpProxyUDP443: normalizeV2rayNgMuxXudpQuic(settings.muxXudpQuic)
+      xudpProxyUDP443: normalizeClientCompatMuxXudpQuic(settings.muxXudpQuic)
     };
     outbound.mux = mux;
     return;
@@ -1455,7 +1455,7 @@ function applyFragmentFinalMaskSettings(outbound: XrayOutbound, settings: AppSet
 }
 
 function normalizeFragmentPackets(security: string, packets: string): string {
-  const normalizedPackets = normalizeV2rayNgFragmentPackets(packets);
+  const normalizedPackets = normalizeClientCompatFragmentPackets(packets);
   if (security === 'reality' && normalizedPackets === 'tlshello') {
     return '1-3';
   }
@@ -1590,7 +1590,7 @@ function applyHysteria2RuntimeShape(outbound: XrayOutbound): void {
     auth: server.password ?? ''
   };
   streamSettings['hysteriaSettings'] = hysteriaRuntimeSettings as Object;
-  const security = normalizeV2rayNgHysteria2Security(optionalTrim(server.security) ?? 'tls');
+  const security = normalizeClientCompatHysteria2Security(optionalTrim(server.security) ?? 'tls');
   streamSettings['security'] = security;
   if (security === 'tls') {
     streamSettings['tlsSettings'] = buildHysteria2TlsSettings(server) as Object;
@@ -1614,7 +1614,7 @@ function buildHysteria2TlsSettings(server: XrayHysteria2Server): XrayHysteriaRun
     tlsSettings.serverName = serverName;
   }
 
-  const alpn = parseCsvStrings(normalizeV2rayNgStreamAlpnWithFallback(server.alpn ?? '', 'h3'));
+  const alpn = parseCsvStrings(normalizeClientCompatStreamAlpnWithFallback(server.alpn ?? '', 'h3'));
   if (alpn.length > 0) {
     tlsSettings.alpn = alpn;
   }
@@ -1814,7 +1814,7 @@ function buildXrayConfigFromOutbounds(
 
   const config: XrayFullConfig = {
     log: {
-      loglevel: normalizeV2rayNgCoreLogLevel(settings?.logLevel ?? DEFAULT_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+      loglevel: normalizeClientCompatCoreLogLevel(settings?.logLevel ?? DEFAULT_LOG_LEVEL, DEFAULT_LOG_LEVEL)
     },
     dns,
     inbounds,
@@ -2121,8 +2121,8 @@ function buildDnsConfig(settings: AppSettings | undefined): XrayDnsConfig {
     };
     return defaultDns;
   }
-  const remoteDns = normalizeV2rayNgDnsServers(settings.remoteDns, V2RAYNG_DNS_PROXY, true);
-  const domesticDns = normalizeV2rayNgDnsServers(settings.domesticDns, V2RAYNG_DNS_DIRECT, true);
+  const remoteDns = normalizeClientCompatDnsServers(settings.remoteDns, CLIENT_COMPAT_DNS_PROXY, true);
+  const domesticDns = normalizeClientCompatDnsServers(settings.domesticDns, CLIENT_COMPAT_DNS_DIRECT, true);
   const servers: Array<string | XrayDnsServerConfig> = [];
   addDnsServerValues(servers, remoteDns);
   addDnsProxyDomainServer(servers, remoteDns, collectDnsRuleDomains(settings, ['proxy', 'proxy-chain', 'policy-group']));

@@ -1,13 +1,13 @@
 import { common } from '@kit.AbilityKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, formatTranslation, translate } from '../core/I18n';
-import { buildV2rayNgH2HttpSettings } from '../core/H2Transport';
+import { buildClientCompatH2HttpSettings } from '../core/H2Transport';
 import { buildKcpFinalMask } from '../core/KcpTransport';
 import { isManualEditProtocol, ManualOutboundEditState, normalizeManualEditProtocol, parseManualOutboundEditState } from '../core/ManualOutboundEditState';
 import { buildManualHysteria2Outbound, buildManualWireguardOutbound } from '../core/ManualOutboundBuilder';
 import { AppLanguage } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { V2RAYNG_BROWSER_DIALER_MODE_OPTIONS, V2RAYNG_DEFAULT_BROWSER_DIALER_MODE, V2RAYNG_DEFAULT_VMESS_SECURITY, V2RAYNG_FLOW_OPTIONS, V2RAYNG_GRPC_MODE_OPTIONS, V2RAYNG_HYSTERIA2_SECURITY_OPTIONS, V2RAYNG_KCP_HEADER_TYPE_OPTIONS, V2RAYNG_SS_SECURITY_OPTIONS, V2RAYNG_STREAM_ALPN_OPTIONS, V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS, V2RAYNG_TCP_HEADER_TYPE_OPTIONS, V2RAYNG_UTLS_FINGERPRINT_OPTIONS, V2RAYNG_VMESS_SECURITY_OPTIONS, V2RAYNG_XHTTP_MODE_OPTIONS, normalizeV2rayNgBrowserDialerMode, normalizeV2rayNgHysteria2Security, normalizeV2rayNgStreamAlpn, normalizeV2rayNgXhttpMode } from '../core/V2rayNgOptions';
+import { CLIENT_COMPAT_BROWSER_DIALER_MODE_OPTIONS, CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE, CLIENT_COMPAT_DEFAULT_VMESS_SECURITY, CLIENT_COMPAT_FLOW_OPTIONS, CLIENT_COMPAT_GRPC_MODE_OPTIONS, CLIENT_COMPAT_HYSTERIA2_SECURITY_OPTIONS, CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS, CLIENT_COMPAT_SS_SECURITY_OPTIONS, CLIENT_COMPAT_STREAM_ALPN_OPTIONS, CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS, CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS, CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS, CLIENT_COMPAT_VMESS_SECURITY_OPTIONS, CLIENT_COMPAT_XHTTP_MODE_OPTIONS, normalizeClientCompatBrowserDialerMode, normalizeClientCompatHysteria2Security, normalizeClientCompatStreamAlpn, normalizeClientCompatXhttpMode } from '../core/ClientCompatOptions';
 import { NODES_CONTROLLER } from '../features/nodes/NodesController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
@@ -398,7 +398,7 @@ struct NodeEditPage {
   @State private transportGrpcMode: string = 'gun';
   @State private transportXhttpMode: string = 'auto';
   @State private transportXhttpExtra: string = '';
-  @State private browserDialerMode: string = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+  @State private browserDialerMode: string = CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE;
   
   // 安全传输层设置 (TLS / Reality)
   @State private tlsSecurity: string = 'none';
@@ -526,13 +526,13 @@ struct NodeEditPage {
                 })
                 PickerRow({
                   label: this.t('nodeEdit.flow'),
-                  options: V2RAYNG_FLOW_OPTIONS,
+                  options: CLIENT_COMPAT_FLOW_OPTIONS,
                   selectedValue: $vlessFlow
                 })
               } else if (this.protocol === 'vmess') {
                 PickerRow({
                   label: this.t('nodeEdit.vmessSecurity'),
-                  options: V2RAYNG_VMESS_SECURITY_OPTIONS,
+                  options: CLIENT_COMPAT_VMESS_SECURITY_OPTIONS,
                   selectedValue: $securityOrMethod
                 })
                 this.EditorRow('nodeEdit.alterId', this.vmessAlterId, 'nodeEdit.alterId.placeholder', (value: string) => {
@@ -541,7 +541,7 @@ struct NodeEditPage {
               } else if (this.protocol === 'ss') {
                 PickerRow({
                   label: this.t('nodeEdit.method'),
-                  options: V2RAYNG_SS_SECURITY_OPTIONS,
+                  options: CLIENT_COMPAT_SS_SECURITY_OPTIONS,
                   selectedValue: $securityOrMethod
                 })
               }
@@ -601,7 +601,7 @@ struct NodeEditPage {
 
                 PickerRow({
                   label: this.t('nodeEdit.hy2Security'),
-                  options: V2RAYNG_HYSTERIA2_SECURITY_OPTIONS,
+                  options: CLIENT_COMPAT_HYSTERIA2_SECURITY_OPTIONS,
                   selectedValue: $tlsSecurity
                 })
 
@@ -632,20 +632,20 @@ struct NodeEditPage {
               Column({ space: Space.md }) {
                 PickerRow({
                   label: this.t('nodeEdit.transportNetwork'),
-                  options: V2RAYNG_SUPPORTED_TRANSPORT_OPTIONS,
+                  options: CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS,
                   selectedValue: $transportType
                 })
                 if (this.transportType === 'tcp') {
                   PickerRow({
                     label: this.t('nodeEdit.tcpHeaderType'),
-                    options: V2RAYNG_TCP_HEADER_TYPE_OPTIONS,
+                    options: CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS,
                     selectedValue: $transportTcpHeaderType
                   })
                 }
                 if (this.transportType === 'kcp') {
                   PickerRow({
                     label: this.t('nodeEdit.kcpHeaderType'),
-                    options: V2RAYNG_KCP_HEADER_TYPE_OPTIONS,
+                    options: CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS,
                     selectedValue: $transportKcpHeaderType
                   })
                   this.EditorRow('nodeEdit.kcpDnsHost', this.transportHost, 'nodeEdit.kcpDnsHost.placeholder', (value: string) => {
@@ -671,14 +671,14 @@ struct NodeEditPage {
                 if (this.transportType === 'grpc') {
                   PickerRow({
                     label: this.t('nodeEdit.grpcMode'),
-                    options: V2RAYNG_GRPC_MODE_OPTIONS,
+                    options: CLIENT_COMPAT_GRPC_MODE_OPTIONS,
                     selectedValue: $transportGrpcMode
                   })
                 }
                 if (this.transportType === 'xhttp') {
                   PickerRow({
                     label: this.t('nodeEdit.xhttpMode'),
-                    options: V2RAYNG_XHTTP_MODE_OPTIONS,
+                    options: CLIENT_COMPAT_XHTTP_MODE_OPTIONS,
                     selectedValue: $transportXhttpMode
                   })
                   this.EditorRow('nodeEdit.xhttpExtra', this.transportXhttpExtra, '{ "headers": {} }', (value: string) => {
@@ -688,7 +688,7 @@ struct NodeEditPage {
                 if (this.transportType === 'ws' || this.transportType === 'xhttp') {
                   PickerRow({
                     label: this.t('nodeEdit.browserDialer'),
-                    options: V2RAYNG_BROWSER_DIALER_MODE_OPTIONS,
+                    options: CLIENT_COMPAT_BROWSER_DIALER_MODE_OPTIONS,
                     selectedValue: $browserDialerMode
                   })
                 }
@@ -711,7 +711,7 @@ struct NodeEditPage {
                     })
                     PickerRow({
                       label: this.t('nodeEdit.alpn'),
-                      options: V2RAYNG_STREAM_ALPN_OPTIONS,
+                      options: CLIENT_COMPAT_STREAM_ALPN_OPTIONS,
                       selectedValue: $tlsAlpn
                     })
                     this.EditorRow('nodeEdit.ech', this.tlsEchConfigList, 'nodeEdit.ech.placeholder', (value: string) => {
@@ -726,7 +726,7 @@ struct NodeEditPage {
                     })
                     PickerRow({
                       label: this.t('nodeEdit.fingerprint'),
-                      options: V2RAYNG_UTLS_FINGERPRINT_OPTIONS,
+                      options: CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS,
                       selectedValue: $tlsFingerprint
                     })
                   }
@@ -755,7 +755,7 @@ struct NodeEditPage {
                     })
                     PickerRow({
                       label: this.t('nodeEdit.fingerprint'),
-                      options: V2RAYNG_UTLS_FINGERPRINT_OPTIONS,
+                      options: CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS,
                       selectedValue: $tlsFingerprint
                     })
                   }
@@ -922,7 +922,7 @@ struct NodeEditPage {
         const user: FormVmessUser = {
           id: this.userIdOrPassword.trim(),
           alterId: this.numberOr(this.vmessAlterId, 0),
-          security: this.valueOr(this.securityOrMethod, V2RAYNG_DEFAULT_VMESS_SECURITY)
+          security: this.valueOr(this.securityOrMethod, CLIENT_COMPAT_DEFAULT_VMESS_SECURITY)
         };
         const server: FormVmessServer = {
           address: host,
@@ -999,7 +999,7 @@ struct NodeEditPage {
           host,
           port: this.serverPort,
           password: this.userIdOrPassword,
-          security: normalizeV2rayNgHysteria2Security(this.tlsSecurity),
+          security: normalizeClientCompatHysteria2Security(this.tlsSecurity),
           sni: this.tlsSni,
           alpn: this.tlsAlpn,
           allowInsecure: this.tlsAllowInsecure,
@@ -1036,7 +1036,7 @@ struct NodeEditPage {
             if (this.tlsSni.trim().length > 0) {
               tlsConfig.serverName = this.tlsSni.trim();
             }
-            const normalizedAlpn = normalizeV2rayNgStreamAlpn(this.tlsAlpn);
+            const normalizedAlpn = normalizeClientCompatStreamAlpn(this.tlsAlpn);
             if (normalizedAlpn.length > 0) {
               tlsConfig.alpn = normalizedAlpn.split(',').map(s => s.trim()).filter(s => s.length > 0);
             }
@@ -1129,7 +1129,7 @@ struct NodeEditPage {
           streamSettings.grpcSettings = grpcSettings;
         } 
         else if (network === 'h2') {
-          const h2Settings = buildV2rayNgH2HttpSettings(this.transportHost, this.transportPath);
+          const h2Settings = buildClientCompatH2HttpSettings(this.transportHost, this.transportPath);
           const httpSettings: FormHttpSettings = {
             path: h2Settings.path,
             host: h2Settings.host
@@ -1140,7 +1140,7 @@ struct NodeEditPage {
           const xhttpSettings: FormXhttpSettings = {
             path: this.valueOr(this.transportPath, '/'),
             host: this.transportHost.trim(),
-            mode: normalizeV2rayNgXhttpMode(this.transportXhttpMode)
+            mode: normalizeClientCompatXhttpMode(this.transportXhttpMode)
           };
           const xhttpExtraText = this.transportXhttpExtra.trim();
           if (xhttpExtraText.length > 0) {
@@ -1176,8 +1176,8 @@ struct NodeEditPage {
         
         outbound.streamSettings = streamSettings;
         if (network === 'ws' || network === 'xhttp') {
-          const mode = normalizeV2rayNgBrowserDialerMode(this.browserDialerMode);
-          if (mode !== V2RAYNG_DEFAULT_BROWSER_DIALER_MODE) {
+          const mode = normalizeClientCompatBrowserDialerMode(this.browserDialerMode);
+          if (mode !== CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE) {
             outbound.browserDialerMode = mode;
           }
         }
@@ -1264,29 +1264,29 @@ struct NodeEditPage {
       this.serverPort = '443';
       this.securityOrMethod = 'none';
       this.transportType = 'tcp';
-      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+      this.browserDialerMode = CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'reality';
       this.tlsFingerprint = 'chrome';
       this.vlessFlow = 'xtls-rprx-vision';
     } else if (protocol === 'vmess') {
       this.serverPort = '443';
-      this.securityOrMethod = V2RAYNG_DEFAULT_VMESS_SECURITY;
+      this.securityOrMethod = CLIENT_COMPAT_DEFAULT_VMESS_SECURITY;
       this.vmessAlterId = '0';
       this.transportType = 'tcp';
-      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+      this.browserDialerMode = CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'tls';
       this.tlsFingerprint = 'chrome';
     } else if (protocol === 'trojan') {
       this.serverPort = '443';
       this.transportType = 'tcp';
-      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+      this.browserDialerMode = CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'tls';
       this.tlsFingerprint = 'chrome';
     } else if (protocol === 'ss') {
       this.serverPort = '8388';
       this.securityOrMethod = 'aes-128-gcm';
       this.transportType = 'tcp';
-      this.browserDialerMode = V2RAYNG_DEFAULT_BROWSER_DIALER_MODE;
+      this.browserDialerMode = CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE;
       this.tlsSecurity = 'none';
     } else if (protocol === 'socks') {
       this.serverPort = '1080';
