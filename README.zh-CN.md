@@ -98,6 +98,10 @@ docs/                             原生构建与 HarmonyOS 相关说明
 
 ## 构建与安装
 
+`build-profile.json5` 是 DevEco Studio 的本地配置文件，方便个人调试，因此不会提交到仓库。
+首次打开新拉取的工程前，请先把 `build-profile.example.json5` 复制为 `build-profile.json5`，然后在
+DevEco Studio 里配置本机的调试或发布签名。证书路径、密钥密码等签名内容只保留在本地。
+
 当前构建配置里的 target SDK 是 `6.0.1(21)`，compatible SDK 是 `5.1.1(19)`。
 项目里的烟测脚本封装了 `hvigorw` 和 `hdc`。
 

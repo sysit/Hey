@@ -116,6 +116,12 @@ docs/                             Native build and HarmonyOS notes
 
 ## Build And Install
 
+`build-profile.json5` is a local DevEco Studio file and is ignored by Git because
+it may contain personal signing material. Before opening a fresh checkout, copy
+`build-profile.example.json5` to `build-profile.json5`, then configure debug or
+release signing in DevEco Studio on your own machine. Keep certificate paths, key
+passwords, and other signing material local.
+
 The app is configured for HarmonyOS target SDK `6.0.1(21)` and compatible SDK
 `5.1.1(19)`. The project smoke-test script wraps `hvigorw` and `hdc`.
 
