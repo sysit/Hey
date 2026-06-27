@@ -113,7 +113,8 @@ export const SETTINGS_CATALOG: SettingGroup[] = [
       { key: 'outboundDomainResolveMethod', titleKey: 'settings.outboundDomainResolveMethod', type: 'option' },
       { key: 'delayTestUrl', titleKey: 'settings.delayTestUrl', type: 'input' },
       { key: 'ipApiUrl', titleKey: 'settings.ipApiUrl', type: 'input' },
-      { key: 'logLevel', titleKey: 'settings.logLevel', type: 'option' }
+      { key: 'logLevel', titleKey: 'settings.logLevel', type: 'option' },
+      { key: 'backup', titleKey: 'settings.backup.title', type: 'nav', descKey: 'settings.backup.detail', route: AppRoute.BACKUP }
     ]
   },
   {
