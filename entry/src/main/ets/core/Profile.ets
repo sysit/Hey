@@ -108,14 +108,18 @@ export interface VpnInterfaceAddressConfig {
   ipv6Router: string;
 }
 
+// TUN 的 IPv6 客户端地址必须用「全局单播 scope」的段(这里用 RFC 3849 文档段 2001:db8::/32,
+// 不会在公网路由、不撞真实主机)。若用 ULA(fc00::/7),按 RFC 6724 源地址选择,访问全局 v6
+// 目标(2000::/3)时系统会优先挑物理网卡的全局源地址 → v6 绕过 TUN 从物理口直出 → 泄漏(测速
+// 显示本地运营商)。改成全局段后,源地址 label 与目标匹配,全局 v6 才会真正走 TUN。
 export const VPN_INTERFACE_ADDRESS_CONFIGS: Array<VpnInterfaceAddressConfig> = [
-  { displayName: '10.10.14.x', ipv4Client: '10.10.14.1', ipv4Router: '10.10.14.2', ipv6Client: 'fc00::10:10:14:1', ipv6Router: 'fc00::10:10:14:2' },
-  { displayName: '10.1.0.x', ipv4Client: '10.1.0.1', ipv4Router: '10.1.0.2', ipv6Client: 'fc00::10:1:0:1', ipv6Router: 'fc00::10:1:0:2' },
-  { displayName: '10.0.0.x', ipv4Client: '10.0.0.1', ipv4Router: '10.0.0.2', ipv6Client: 'fc00::10:0:0:1', ipv6Router: 'fc00::10:0:0:2' },
-  { displayName: '172.31.0.x', ipv4Client: '172.31.0.1', ipv4Router: '172.31.0.2', ipv6Client: 'fc00::172:31:0:1', ipv6Router: 'fc00::172:31:0:2' },
-  { displayName: '172.20.0.x', ipv4Client: '172.20.0.1', ipv4Router: '172.20.0.2', ipv6Client: 'fc00::172:20:0:1', ipv6Router: 'fc00::172:20:0:2' },
-  { displayName: '172.16.0.x', ipv4Client: '172.16.0.1', ipv4Router: '172.16.0.2', ipv6Client: 'fc00::172:16:0:1', ipv6Router: 'fc00::172:16:0:2' },
-  { displayName: '192.168.100.x', ipv4Client: '192.168.100.1', ipv4Router: '192.168.100.2', ipv6Client: 'fc00::192:168:100:1', ipv6Router: 'fc00::192:168:100:2' }
+  { displayName: '10.10.14.x', ipv4Client: '10.10.14.1', ipv4Router: '10.10.14.2', ipv6Client: '2001:db8::10:10:14:1', ipv6Router: '2001:db8::10:10:14:2' },
+  { displayName: '10.1.0.x', ipv4Client: '10.1.0.1', ipv4Router: '10.1.0.2', ipv6Client: '2001:db8::10:1:0:1', ipv6Router: '2001:db8::10:1:0:2' },
+  { displayName: '10.0.0.x', ipv4Client: '10.0.0.1', ipv4Router: '10.0.0.2', ipv6Client: '2001:db8::10:0:0:1', ipv6Router: '2001:db8::10:0:0:2' },
+  { displayName: '172.31.0.x', ipv4Client: '172.31.0.1', ipv4Router: '172.31.0.2', ipv6Client: '2001:db8::172:31:0:1', ipv6Router: '2001:db8::172:31:0:2' },
+  { displayName: '172.20.0.x', ipv4Client: '172.20.0.1', ipv4Router: '172.20.0.2', ipv6Client: '2001:db8::172:20:0:1', ipv6Router: '2001:db8::172:20:0:2' },
+  { displayName: '172.16.0.x', ipv4Client: '172.16.0.1', ipv4Router: '172.16.0.2', ipv6Client: '2001:db8::172:16:0:1', ipv6Router: '2001:db8::172:16:0:2' },
+  { displayName: '192.168.100.x', ipv4Client: '192.168.100.1', ipv4Router: '192.168.100.2', ipv6Client: '2001:db8::192:168:100:1', ipv6Router: '2001:db8::192:168:100:2' }
 ];
 
 export const DEFAULT_VPN_INTERFACE_ADDRESS_INDEX: number = 0;

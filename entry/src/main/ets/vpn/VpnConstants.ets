@@ -105,7 +105,11 @@ export function createDefaultVpnConfig(
   routeOnlyBypassesPrivate?: boolean
 ): vpnExtension.VpnConfig {
   const selfBundle = BUNDLE_NAME;
-  const routeIpv6 = ipv6Enabled === true;
+  // 始终接管 v6(不论开关开不开)。配合下方 createVpnRoute 对 v6 用「空 gateway +
+  // isDefaultRoute:false」的写法,HarmonyOS 才会把 ::/0 v6 默认路由真正装到 TUN(否则全局 v6 从
+  // 物理网卡直出泄漏)。开关语义由核心承担:关=核心 blackhole 丢弃 v6(逼应用回落 IPv4 走节点);
+  // 开=核心把 v6 转发到节点(需节点支持 v6)。节点没 v6 就保持开关关。
+  const routeIpv6 = true;
   const addressConfig = resolveVpnInterfaceAddressConfig(vpnInterfaceAddressIndex);
   const bypassLan = resolveVpnBypassLan(vpnBypassLan, routingRules, routeOnlyBypassesPrivate);
   let blockedApps: string[] = [];
@@ -142,7 +146,7 @@ export function createDefaultVpnConfig(
         address: addressConfig.ipv6Client,
         family: ADDRESS_FAMILY_IPV6
       },
-      prefixLength: 126
+      prefixLength: 64
     });
   }
 
@@ -199,8 +203,10 @@ function buildVpnRoutes(bypassLan: boolean, ipv6Enabled: boolean): Array<vpnExte
       routes.push(createVpnRoute(parts[0], Number(parts[1]), ADDRESS_FAMILY_IPV4));
     }
     if (ipv6Enabled) {
-      routes.push(createVpnRoute('2000::', 3, ADDRESS_FAMILY_IPV6));
-      routes.push(createVpnRoute('fc00::', 18, ADDRESS_FAMILY_IPV6));
+      // 即使在绕过局域网模式,v6 也用完整 ::/0 默认路由(isDefaultRoute=true)。HarmonyOS
+      // 对 2000::/3 这类非默认 v6 路由似乎不安装(实测 vpn-tun 上只有连接路由,全局 v6 仍走
+      // 物理口泄漏)。v6 没有 v4 那种私网绕过需求,直接全量接管,残余 v6 由核心决定转发/丢弃。
+      routes.push(createVpnRoute('::', 0, ADDRESS_FAMILY_IPV6));
     }
     return routes;
   }
@@ -213,7 +219,24 @@ function buildVpnRoutes(bypassLan: boolean, ipv6Enabled: boolean): Array<vpnExte
 }
 
 function createVpnRoute(address: string, prefixLength: number, family: number): vpnExtension.RouteInfo {
-  const gatewayAddress = family === ADDRESS_FAMILY_IPV6 ? '::' : '0.0.0.0';
+  if (family === ADDRESS_FAMILY_IPV6) {
+    // v6 路由必须用「空 gateway:{address:''} + isDefaultRoute:false」(参考 arror/x4h)。
+    // 实测:用 {address:'::',family:2,port:0}+isDefaultRoute:true 时 HarmonyOS 会丢弃 v6 路由,
+    // ::/0 装不进 TUN → 全局 v6 从物理口泄漏。改成此写法后 ::/0 才真正生效到 vpn-tun。
+    return {
+      interface: VPN_INTERFACE_NAME,
+      destination: {
+        address: {
+          address,
+          family
+        },
+        prefixLength
+      },
+      gateway: { address: '' },
+      hasGateway: false,
+      isDefaultRoute: false
+    };
+  }
   return {
     interface: VPN_INTERFACE_NAME,
     destination: {
@@ -224,7 +247,7 @@ function createVpnRoute(address: string, prefixLength: number, family: number): 
       prefixLength
     },
     gateway: {
-      address: gatewayAddress,
+      address: '0.0.0.0',
       family,
       port: 0
     },
