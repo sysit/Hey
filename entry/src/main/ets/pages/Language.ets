@@ -107,9 +107,8 @@ struct LanguagePage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
 
-            SectionHeader({ title: this.t('settings.language.listTitle') })
+            SectionHeader({ title: this.t('settings.language.listTitle'), sidePadding: 0 })
 
             // 其余语言
             Column() {
@@ -122,10 +121,9 @@ struct LanguagePage {
             .borderRadius(Radius.lg)
             .border({ width: 0.5, color: AppColor.border })
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
           }
           .width('100%')
-          .padding({ top: Space.md, bottom: Space.xxl })
+          .padding({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.xxl })
         }
         .width('100%')
         .height('100%')

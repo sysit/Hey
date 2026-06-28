@@ -93,7 +93,7 @@ struct NodeDetailPage {
               .borderRadius(Radius.lg)
               .clip(true)
               .border({ width: 0.5, color: AppColor.border })
-              .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+              .margin({ bottom: Space.lg })
             }
             .width('100%')
           }, (section: NodeDetailSection, sIndex: number) =>
@@ -106,11 +106,11 @@ struct NodeDetailPage {
             Text(this.lastError)
               .fontSize(FontSz.footnote)
               .fontColor(AppColor.danger)
-              .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+              .margin({ bottom: Space.lg })
           }
         }
         .width('100%')
-        .padding({ top: Space.sm, bottom: Space.xxl })
+        .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: Space.xxl })
       }
       .layoutWeight(1)
       .width('100%')
@@ -219,7 +219,7 @@ struct NodeDetailPage {
       angle: 155,
       colors: [[AppColor.surface, 0.0], [AppColor.brandTint, 1.0]]
     })
-    .margin({ left: Space.lg, right: Space.lg, top: Space.md, bottom: Space.lg })
+    .margin({ top: Space.md, bottom: Space.lg })
   }
 
   // ===== 四宫格主操作 =====
@@ -232,7 +232,7 @@ struct NodeDetailPage {
       this.ActionTile('edit')
     }
     .width('100%')
-    .padding({ left: Space.lg, right: Space.lg, bottom: 18 })
+    .padding({ bottom: 18 })
   }
 
   @Builder
@@ -279,7 +279,7 @@ struct NodeDetailPage {
     .borderRadius(Radius.lg)
     .border({ width: 0.5, color: AppColor.border })
     .clip(true)
-    .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+    .margin({ bottom: Space.lg })
     .alignItems(HorizontalAlign.Center)
   }
 
@@ -299,7 +299,7 @@ struct NodeDetailPage {
     .backgroundColor(CONFIG_BG)
     .borderRadius(Radius.lg)
     .clip(true)
-    .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+    .margin({ bottom: Space.lg })
   }
 
   // ===== 字段行 =====
@@ -398,7 +398,7 @@ struct NodeDetailPage {
       .borderRadius(Radius.lg)
       .clip(true)
       .border({ width: 0.5, color: AppColor.border })
-      .margin({ left: Space.lg, right: Space.lg, bottom: Space.lg })
+      .margin({ bottom: Space.lg })
     }
     .width('100%')
   }
@@ -410,7 +410,7 @@ struct NodeDetailPage {
       .fontWeight(FontWeight.Bold)
       .fontColor(AppColor.textTertiary)
       .width('100%')
-      .padding({ left: 18, right: 18, top: 2, bottom: Space.sm })
+      .padding({ left: 2, right: 2, top: 2, bottom: Space.sm })
   }
 
   // ===== 数据/交互辅助 =====

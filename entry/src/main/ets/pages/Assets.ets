@@ -76,7 +76,7 @@ struct AssetsPage {
             Column({ space: Space.lg }) {
 
               // 快捷操作
-              SectionHeader({ title: this.t('assets.quickActions.title') })
+              SectionHeader({ title: this.t('assets.quickActions.title'), sidePadding: 0 })
               Column() {
                 this.EntryRow(
                   $r('app.media.ic_refresh'), AppColor.brand, AppColor.brandTint,
@@ -100,10 +100,9 @@ struct AssetsPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
 
               // 内置 Geo 资源
-              SectionHeader({ title: this.t('assets.builtin.title'), detail: this.t('assets.source.detail') })
+              SectionHeader({ title: this.t('assets.builtin.title'), detail: this.t('assets.source.detail'), sidePadding: 0 })
               BuiltinGeoCard({
                 language: this.language,
                 geositeStatus: this.geositeStatus,
@@ -118,7 +117,7 @@ struct AssetsPage {
               })
 
               // 自定义资源 URL
-              SectionHeader({ title: this.t('assets.userUrls.title') })
+              SectionHeader({ title: this.t('assets.userUrls.title'), sidePadding: 0 })
               Column() {
                 this.EntryRow(
                   $r('app.media.ic_link'), AppColor.success, AppColor.successTint,
@@ -132,11 +131,10 @@ struct AssetsPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
 
             }
             .width('100%')
-            .padding({ top: Space.sm, bottom: Space.xxl })
+            .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: Space.xxl })
           }
           .layoutWeight(1)
           .width('100%')

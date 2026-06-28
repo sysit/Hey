@@ -53,7 +53,7 @@ struct JsonImportPage {
         Scroll() {
           Column({ space: Space.lg }) {
             // 输入卡片
-            SectionHeader({ title: this.t('jsonImport.sectionTitle') })
+            SectionHeader({ title: this.t('jsonImport.sectionTitle'), sidePadding: 0 })
             Column() {
               if (this.editMode) {
                 Column({ space: Space.sm }) {
@@ -141,14 +141,13 @@ struct JsonImportPage {
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
             .clip(true)
-            .margin({ left: Space.lg, right: Space.lg })
 
             Text(this.t('jsonImport.note'))
               .fontSize(FontSz.footnote)
               .fontColor(AppColor.textTertiary)
               .width('100%')
               .lineHeight(16)
-              .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+              .padding({ left: Space.xs, right: Space.xs })
 
             // 校验结果指示板
             if (this.outboundJson.trim().length > 0) {
@@ -178,7 +177,6 @@ struct JsonImportPage {
               .padding(Space.lg)
               .backgroundColor(this.validationOk ? AppColor.successTint : AppColor.dangerTint)
               .borderRadius(Radius.md)
-              .margin({ left: Space.lg, right: Space.lg })
             }
 
             if (this.lastError.length > 0) {
@@ -189,11 +187,10 @@ struct JsonImportPage {
                 .padding(Space.md)
                 .backgroundColor(AppColor.dangerTint)
                 .borderRadius(Radius.md)
-                .margin({ left: Space.lg, right: Space.lg })
             }
           }
           .width('100%')
-          .padding({ top: Space.sm, bottom: 100 })
+          .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: 100 })
         }
         .width('100%')
         .height('100%')

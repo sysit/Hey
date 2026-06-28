@@ -79,7 +79,6 @@ export struct LogConsole {
     .borderRadius({ topLeft: Radius.md, topRight: Radius.md })
     .clip(true)
     .padding({ top: Space.xs, bottom: Space.xs })
-    .margin({ left: Space.lg, right: Space.lg })
   }
 
   // 等级主色：左边框 + 等级徽标着色。

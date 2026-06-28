@@ -79,7 +79,6 @@ export struct BuiltinGeoCard {
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
     .clip(true)
-    .margin({ left: Space.lg, right: Space.lg })
   }
 
   @Builder

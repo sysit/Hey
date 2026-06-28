@@ -457,7 +457,7 @@ struct NodeEditPage {
         Scroll() {
           Column({ space: Space.lg }) {
             // Card 1：基础配置信息
-            SectionHeader({ title: this.t('nodeEdit.section.basic') })
+            SectionHeader({ title: this.t('nodeEdit.section.basic'), sidePadding: 0 })
             Column({ space: Space.md }) {
               this.EditorRow('nodeEdit.nodeName', this.nodeName, 'nodeEdit.nodeName.placeholder', (value: string) => {
                 this.nodeName = value;
@@ -473,10 +473,8 @@ struct NodeEditPage {
             .padding(Space.lg)
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
-            .margin({ left: Space.lg, right: Space.lg })
-
             // Card 2：认证与加密参数
-            SectionHeader({ title: this.t('nodeEdit.section.auth') })
+            SectionHeader({ title: this.t('nodeEdit.section.auth'), sidePadding: 0 })
             Column({ space: Space.md }) {
 
               // VLESS 与 VMess UUID
@@ -550,11 +548,9 @@ struct NodeEditPage {
             .padding(Space.lg)
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
-            .margin({ left: Space.lg, right: Space.lg })
-
             // Card 3：WireGuard 专有配置
             if (this.protocol === 'wireguard') {
-              SectionHeader({ title: this.t('nodeEdit.section.wireguard') })
+              SectionHeader({ title: this.t('nodeEdit.section.wireguard'), sidePadding: 0 })
               Column({ space: Space.md }) {
                 this.EditorRow('nodeEdit.wgPublicKey', this.wgPublicKey, 'nodeEdit.wgPublicKey.placeholder', (value: string) => {
                   this.wgPublicKey = value;
@@ -575,13 +571,11 @@ struct NodeEditPage {
               .width('100%')
               .padding(Space.lg)
               .backgroundColor(AppColor.surface)
-              .borderRadius(Radius.lg)
-              .margin({ left: Space.lg, right: Space.lg })
-            }
+              .borderRadius(Radius.lg)            }
 
             // Card 4：Hysteria2 专有配置
             if (this.protocol === 'hysteria2') {
-              SectionHeader({ title: this.t('nodeEdit.section.hysteria2') })
+              SectionHeader({ title: this.t('nodeEdit.section.hysteria2'), sidePadding: 0 })
               Column({ space: Space.md }) {
                 this.EditorRow('nodeEdit.hy2ObfsPassword', this.hy2ObfsPassword, 'nodeEdit.hy2ObfsPassword.placeholder', (value: string) => {
                   this.hy2ObfsPassword = value;
@@ -622,13 +616,11 @@ struct NodeEditPage {
               .width('100%')
               .padding(Space.lg)
               .backgroundColor(AppColor.surface)
-              .borderRadius(Radius.lg)
-              .margin({ left: Space.lg, right: Space.lg })
-            }
+              .borderRadius(Radius.lg)            }
 
             // Card 5：流媒体与传输混淆设置 (适用于 VLESS, VMess, Trojan, SS)
             if (this.protocol === 'vless' || this.protocol === 'vmess' || this.protocol === 'trojan' || this.protocol === 'ss') {
-              SectionHeader({ title: this.t('nodeEdit.section.transport') })
+              SectionHeader({ title: this.t('nodeEdit.section.transport'), sidePadding: 0 })
               Column({ space: Space.md }) {
                 PickerRow({
                   label: this.t('nodeEdit.transportNetwork'),
@@ -764,9 +756,7 @@ struct NodeEditPage {
               .width('100%')
               .padding(Space.lg)
               .backgroundColor(AppColor.surface)
-              .borderRadius(Radius.lg)
-              .margin({ left: Space.lg, right: Space.lg })
-            }
+              .borderRadius(Radius.lg)            }
 
             if (this.lastError.length > 0) {
               Text(this.lastError)
@@ -775,12 +765,10 @@ struct NodeEditPage {
                 .width('100%')
                 .padding(Space.md)
                 .backgroundColor(AppColor.dangerTint)
-                .borderRadius(Radius.md)
-                .margin({ left: Space.lg, right: Space.lg })
-            }
+                .borderRadius(Radius.md)            }
           }
           .width('100%')
-          .padding({ top: Space.sm, bottom: 100 })
+          .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: 100 })
         }
         .width('100%')
         .height('100%')

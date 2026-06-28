@@ -4,6 +4,9 @@ import { AppColor, FontSz, Space } from '../theme/Theme';
 export struct SectionHeader {
   @Prop title: string = '';
   @Prop detail: string = '';
+  // 左右内边距基准。默认 Space.lg（容器无左右 padding 时自带缩进）；
+  // 若父容器已设左右 padding，传 0 避免双倍缩进（实际缩进 = 容器 padding + 4/0）。
+  @Prop sidePadding: number = Space.lg;
 
   build() {
     Column({ space: 2 }) {
@@ -23,6 +26,6 @@ export struct SectionHeader {
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
-    .padding({ left: Space.lg + Space.xs, right: Space.lg, top: Space.lg, bottom: Space.sm })
+    .padding({ left: this.sidePadding + Space.xs, right: this.sidePadding, top: Space.lg, bottom: Space.sm })
   }
 }

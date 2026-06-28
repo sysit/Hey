@@ -122,6 +122,5 @@ export struct RuntimeStatusBar {
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
     .border({ width: 0.5, color: AppColor.border })
-    .margin({ left: Space.lg, right: Space.lg })
   }
 }

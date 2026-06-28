@@ -92,7 +92,7 @@ struct LogsPage {
         })
       }
       .width('100%')
-      .padding({ top: Space.md })
+      .padding({ left: Space.lg, right: Space.lg, top: Space.md })
 
       // 等级过滤胶囊
       Scroll() {
@@ -134,28 +134,36 @@ struct LogsPage {
       .padding({ top: Space.md, bottom: Space.sm })
 
       // 搜索
-      Search({ value: this.searchQuery, placeholder: this.t('logs.searchPlaceholder') })
-        .height(40)
-        .margin({ left: Space.lg, right: Space.lg, bottom: Space.sm })
-        .backgroundColor(AppColor.surface)
-        .borderRadius(Radius.md)
-        .border({ width: 0.5, color: AppColor.border })
-        .placeholderColor(AppColor.textTertiary)
-        .placeholderFont({ size: FontSz.body })
-        .onChange((value: string) => {
-          this.searchQuery = value;
-        })
+      Column() {
+        Search({ value: this.searchQuery, placeholder: this.t('logs.searchPlaceholder') })
+          .height(40)
+          .backgroundColor(AppColor.surface)
+          .borderRadius(Radius.md)
+          .border({ width: 0.5, color: AppColor.border })
+          .placeholderColor(AppColor.textTertiary)
+          .placeholderFont({ size: FontSz.body })
+          .onChange((value: string) => {
+            this.searchQuery = value;
+          })
+      }
+      .width('100%')
+      .padding({ left: Space.lg, right: Space.lg })
+      .margin({ bottom: Space.sm })
 
       // 日志控制台
-      LogConsole({
-        entries: this.visibleEntries(),
-        emptyTitle: this.emptyTitle(),
-        emptyHint: this.emptyHint(),
-        onCopyItem: (raw: string) => {
-          this.copyLogText(raw);
-        }
-      })
-        .layoutWeight(1)
+      Column() {
+        LogConsole({
+          entries: this.visibleEntries(),
+          emptyTitle: this.emptyTitle(),
+          emptyHint: this.emptyHint(),
+          onCopyItem: (raw: string) => {
+            this.copyLogText(raw);
+          }
+        })
+      }
+      .layoutWeight(1)
+      .width('100%')
+      .padding({ left: Space.lg, right: Space.lg })
 
       // 工具栏
       Row({ space: Space.sm }) {

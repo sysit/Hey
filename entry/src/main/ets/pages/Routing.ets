@@ -74,7 +74,7 @@ struct RoutingPage {
             Column({ space: Space.lg }) {
 
               // 流量模式
-              SectionHeader({ title: this.t('routing.trafficMode') })
+              SectionHeader({ title: this.t('routing.trafficMode'), sidePadding: 0 })
               Column() {
                 this.TrafficModeRow('global', this.t('routing.mode.global'), this.t('routing.mode.global.subtitle'), $r('app.media.ic_route'))
                 this.RowDivider()
@@ -91,12 +91,11 @@ struct RoutingPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
 
               this.GroupFooter(this.getTrafficModeDescription())
 
               // 域名策略
-              SectionHeader({ title: this.t('routing.domainStrategy') })
+              SectionHeader({ title: this.t('routing.domainStrategy'), sidePadding: 0 })
               Column() {
                 this.StrategyRow('AsIs', this.t('routing.strategy.asIs.title'), this.t('routing.strategy.asIs.detail'))
                 this.RowDivider()
@@ -108,10 +107,9 @@ struct RoutingPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
 
               // 预置规则集
-              SectionHeader({ title: this.t('routing.preset.section') })
+              SectionHeader({ title: this.t('routing.preset.section'), sidePadding: 0 })
               Column() {
                 this.PresetRow(
                   this.t('routing.global.title'),
@@ -133,9 +131,8 @@ struct RoutingPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
 
-              SectionHeader({ title: this.t('routing.customRulesets.title') })
+              SectionHeader({ title: this.t('routing.customRulesets.title'), sidePadding: 0 })
               Column() {
                 this.CustomRulesHeader()
                 if (this.routingRules.length === 0) {
@@ -152,11 +149,10 @@ struct RoutingPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
 
             }
             .width('100%')
-            .padding({ top: Space.sm, bottom: Space.xxl })
+            .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: Space.xxl })
           }
           .layoutWeight(1)
           .width('100%')
@@ -211,7 +207,7 @@ struct RoutingPage {
       .fontColor(AppColor.textTertiary)
       .lineHeight(16)
       .width('100%')
-      .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs, top: Space.xs })
+      .padding({ left: Space.xs, right: Space.xs, top: Space.xs })
   }
 
   @Builder

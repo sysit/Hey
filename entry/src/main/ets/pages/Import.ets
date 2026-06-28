@@ -54,11 +54,10 @@ struct ImportPage {
               .padding(Space.md)
               .backgroundColor(AppColor.dangerTint)
               .borderRadius(Radius.md)
-              .margin({ left: Space.lg, right: Space.lg })
           }
         }
         .width('100%')
-        .padding({ top: Space.sm, bottom: Space.xxl })
+        .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: Space.xxl })
       }
       .layoutWeight(1)
       .width('100%')
@@ -79,7 +78,7 @@ struct ImportPage {
   // 1. 扫码与链接导入区
   @Builder
   private LinkImportSection() {
-    SectionHeader({ title: this.t('import.linkSection') })
+    SectionHeader({ title: this.t('import.linkSection'), sidePadding: 0 })
     Column() {
       Row() {
         Image($r('app.media.ic_link'))
@@ -126,14 +125,12 @@ struct ImportPage {
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
     .clip(true)
-    .margin({ left: Space.lg, right: Space.lg })
-
     Text(this.t('import.linkDetail'))
       .fontSize(FontSz.footnote)
       .fontColor(AppColor.textTertiary)
       .width('100%')
       .lineHeight(16)
-      .padding({ left: Space.lg + Space.xs, right: Space.lg + Space.xs })
+      .padding({ left: Space.xs, right: Space.xs })
 
     Row({ space: Space.md }) {
       Button() {
@@ -180,14 +177,12 @@ struct ImportPage {
         this.getUIContext().getRouter().pushUrl({ url: AppRoute.SCANNER });
       })
     }
-    .width('100%')
-    .margin({ left: Space.lg, right: Space.lg })
-  }
+    .width('100%')  }
 
   // 2. 手动协议配置列表
   @Builder
   private ManualGridSection() {
-    SectionHeader({ title: this.t('import.manualSection') })
+    SectionHeader({ title: this.t('import.manualSection'), sidePadding: 0 })
     Column() {
       this.ProtocolRow('vless')
       this.RowDivider()
@@ -208,9 +203,7 @@ struct ImportPage {
     .width('100%')
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
-    .clip(true)
-    .margin({ left: Space.lg, right: Space.lg })
-  }
+    .clip(true)  }
 
   @Builder
   private ProtocolRow(protocol: string) {
@@ -245,7 +238,7 @@ struct ImportPage {
   // 3. 代理链 / 策略组配置入口
   @Builder
   private AdvancedConfigSection() {
-    SectionHeader({ title: this.t('import.advancedSection') })
+    SectionHeader({ title: this.t('import.advancedSection'), sidePadding: 0 })
     Column() {
       this.AdvancedOutboundRow(
         'advancedOutbound.proxyChain',
@@ -262,9 +255,7 @@ struct ImportPage {
     .width('100%')
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
-    .clip(true)
-    .margin({ left: Space.lg, right: Space.lg })
-  }
+    .clip(true)  }
 
   @Builder
   private AdvancedOutboundRow(titleKey: string, detailKey: string, mode: string) {
@@ -306,7 +297,7 @@ struct ImportPage {
   // 4. 自定义 JSON 导入入口
   @Builder
   private JsonImportSection() {
-    SectionHeader({ title: this.t('import.jsonSection') })
+    SectionHeader({ title: this.t('import.jsonSection'), sidePadding: 0 })
     Column() {
       Row({ space: Space.md }) {
         Column({ space: 3 }) {
@@ -337,9 +328,7 @@ struct ImportPage {
     .width('100%')
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
-    .clip(true)
-    .margin({ left: Space.lg, right: Space.lg })
-  }
+    .clip(true)  }
 
   private async loadState(): Promise<void> {
     try {

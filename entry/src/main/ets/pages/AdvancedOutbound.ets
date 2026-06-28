@@ -69,7 +69,7 @@ struct AdvancedOutboundPage {
       Stack({ alignContent: Alignment.Bottom }) {
         Scroll() {
           Column({ space: Space.lg }) {
-            SectionHeader({ title: this.t('advancedOutbound.basic') })
+            SectionHeader({ title: this.t('advancedOutbound.basic'), sidePadding: 0 })
             Column({ space: Space.lg }) {
               this.NameInput()
 
@@ -82,11 +82,10 @@ struct AdvancedOutboundPage {
             .padding(Space.lg)
             .backgroundColor(AppColor.surface)
             .borderRadius(Radius.lg)
-            .margin({ left: Space.lg, right: Space.lg })
 
             this.SelectedMembersSection()
 
-            SectionHeader({ title: this.t('advancedOutbound.availableMembers') })
+            SectionHeader({ title: this.t('advancedOutbound.availableMembers'), sidePadding: 0 })
             if (this.visibleCandidates().length === 0) {
               this.EmptyState()
             } else {
@@ -102,7 +101,6 @@ struct AdvancedOutboundPage {
               .backgroundColor(AppColor.surface)
               .borderRadius(Radius.lg)
               .clip(true)
-              .margin({ left: Space.lg, right: Space.lg })
             }
 
             if (this.lastError.length > 0) {
@@ -114,11 +112,10 @@ struct AdvancedOutboundPage {
                 .padding(Space.md)
                 .backgroundColor(AppColor.dangerTint)
                 .borderRadius(Radius.md)
-                .margin({ left: Space.lg, right: Space.lg })
             }
           }
           .width('100%')
-          .padding({ top: Space.sm, bottom: 100 })
+          .padding({ left: Space.lg, right: Space.lg, top: Space.sm, bottom: 100 })
         }
         .width('100%')
         .height('100%')
@@ -319,7 +316,7 @@ struct AdvancedOutboundPage {
   @Builder
   private SelectedMembersSection() {
     if (this.selectedMemberCount() > 0) {
-      SectionHeader({ title: this.t('advancedOutbound.selectedMembers') })
+      SectionHeader({ title: this.t('advancedOutbound.selectedMembers'), sidePadding: 0 })
       Column() {
         ForEach(this.selectedCandidates(), (candidate: AdvancedOutboundCandidate, index: number) => {
           this.SelectedMemberRow(candidate, index)
@@ -332,7 +329,6 @@ struct AdvancedOutboundPage {
       .backgroundColor(AppColor.surface)
       .borderRadius(Radius.lg)
       .clip(true)
-      .margin({ left: Space.lg, right: Space.lg })
     }
   }
 
@@ -482,7 +478,6 @@ struct AdvancedOutboundPage {
     .padding({ left: Space.xxl, right: Space.xxl, top: Space.xxxl, bottom: Space.xxxl })
     .backgroundColor(AppColor.surface)
     .borderRadius(Radius.lg)
-    .margin({ left: Space.lg, right: Space.lg })
   }
 
   private async loadState(): Promise<void> {
