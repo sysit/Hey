@@ -5,6 +5,7 @@ import { shouldExposeLocalHttpProxy } from './LocalProxy';
 import { AppSettings, DEFAULT_VPN_MTU, GeneratedXrayConfig, isProxyOnlyRuntimeMode, isVpnRuntimeMode, normalizeRoutingDomainStrategy, normalizeVpnMtuValue, OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS, OUTBOUND_DOMAIN_RESOLVE_NONE, OUTBOUND_DOMAIN_RESOLVE_REPLACE, resolveDelayTestUrl, RoutingRule, ValidationResult, XrayConfigType } from './Profile';
 import { isSupportedShareLink, isWireguardConfigFile, parseShareLinkToOutboundJson, parseWireguardConfigToOutboundJson } from './ShareLinkParser';
 import { CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL, normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatHysteria2Security, normalizeClientCompatMuxXudpQuic, normalizeClientCompatStreamAlpnWithFallback, normalizeClientCompatXhttpMode } from './ClientCompatOptions';
+import { isSingboxOnlyProtocol } from './CoreSelection';
 
 interface XrayOutbound {
   protocol?: string;
@@ -350,7 +351,9 @@ class DokodemoInboundSettings {
 class EmptySettings {
 }
 
-const SUPPORTED_PROTOCOLS: Array<string> = ['vless', 'vmess', 'trojan', 'shadowsocks', 'socks', 'http', 'wireguard', 'hysteria2', 'anytls'];
+// Xray 核心原生支持的 outbound 协议。anytls / tuic 不在其列——它们由 sing-box 处理，
+// 校验放行后在 ConnectionController 里被强制切到 sing-box 内核。
+const SUPPORTED_PROTOCOLS: Array<string> = ['vless', 'vmess', 'trojan', 'shadowsocks', 'socks', 'http', 'wireguard', 'hysteria2'];
 
 export const DEFAULT_SOCKS_HOST: string = '127.0.0.1';
 export const LOCAL_HTTP_PROXY_HOST: string = '127.0.0.1';
@@ -402,8 +405,11 @@ const DEFAULT_DNS_HOSTS: Record<string, string | Array<string>> = {
 };
 const PROCESS_UID_CACHE: Record<string, string> = {};
 
+// 协议是否被本 App 支持：Xray 核心原生支持，或须交给 sing-box 的协议（anytls/tuic）。
+// 校验闸门用它放行节点；真正用哪个内核由 ConnectionController 按协议决定。
 function isSupportedProtocol(protocol: string): boolean {
-  return SUPPORTED_PROTOCOLS.indexOf(protocol.toLowerCase()) >= 0;
+  const lower = protocol.toLowerCase();
+  return SUPPORTED_PROTOCOLS.indexOf(lower) >= 0 || isSingboxOnlyProtocol(lower);
 }
 
 function parseOutbound(outboundJson: string): XrayOutbound {
@@ -859,7 +865,7 @@ function validateOutboundObject(outbound: XrayOutbound): ValidationResult {
   if (!isSupportedProtocol(outbound.protocol)) {
     return {
       valid: false,
-      message: `暂不支持 ${outbound.protocol}，当前支持 VLESS、VMess、Trojan、Shadowsocks、SOCKS、HTTP、WireGuard、Hysteria2 和 AnyTLS。`,
+      message: `暂不支持 ${outbound.protocol}，当前支持 VLESS、VMess、Trojan、Shadowsocks、SOCKS、HTTP、WireGuard、Hysteria2、AnyTLS 和 TUIC。`,
       protocol: outbound.protocol,
       normalizedJson: '',
       configType: 'outbound'

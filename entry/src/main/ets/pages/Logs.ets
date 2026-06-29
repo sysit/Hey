@@ -9,7 +9,6 @@ import { countLogLevels, filterLogEntries, formatLogEntriesText } from '../featu
 import { RuntimeStatusBar } from '../features/runtime/RuntimePanel';
 import { RuntimeViewState, SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
-import { CoreSelectionStore, isSingboxCore } from '../core/CoreSelection';
 import { shareText, TextShareResult } from '../services/SystemShare';
 import { PageHeader } from '../shell/PageHeader';
 import { IconButton } from '../components/IconButton';
@@ -236,7 +235,6 @@ struct LogsPage {
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
     this.speedEnabled = settings.speedEnabled;
-    this.coreLabel = isSingboxCore(await CoreSelectionStore.load(context)) ? 'sing-box' : 'Xray';
     await this.refreshRuntime();
   }
 
@@ -244,6 +242,8 @@ struct LogsPage {
     try {
       const context = this.getUIContext().getHostContext() as common.Context;
       this.applyRuntimeState(await SHARED_RUNTIME_CONTROLLER.refresh(context, this.language));
+      // 内核标签由运行时控制器统一给出（反映实际内核，anytls/tuic 会强制 sing-box）。
+      this.coreLabel = SHARED_RUNTIME_CONTROLLER.coreLabelText();
     } catch (error) {
       // 刷新失败不阻断页面，保留上次状态，避免日志面板被异常清空。
       console.error(`Logs refresh failed: ${JSON.stringify(error)}`);

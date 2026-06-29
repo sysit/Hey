@@ -90,7 +90,11 @@ export class RuntimeController {
 
   async refresh(context: common.Context, language: AppLanguage): Promise<RuntimeViewState> {
     this.stats = this.controller.getStats();
-    this.coreLabel = isSingboxCore(await CoreSelectionStore.load(context)) ? 'sing-box' : 'Xray';
+    // 运行中显示实际使用的内核（anytls/tuic 会强制切到 sing-box）；空闲时显示全局设置。
+    const snap = this.controller.getSnapshot();
+    const running = snap.status === ConnectionStatus.RUNNING || snap.status === ConnectionStatus.STARTING;
+    const effectiveCore = running ? snap.coreType : await CoreSelectionStore.load(context);
+    this.coreLabel = isSingboxCore(effectiveCore) ? 'sing-box' : 'Xray';
     await this.refreshDiagnostics(context, language);
     this.coreEntries = readCoreLogEntries(context.filesDir);
     this.stats = this.localizeStats(this.stats, language);
@@ -112,6 +116,11 @@ export class RuntimeController {
       entries: this.allEntries(),
       stats: this.stats
     };
+  }
+
+  // 当前内核标签（运行中反映实际内核），供日志页等复用，避免各自从全局设置重算。
+  coreLabelText(): string {
+    return this.coreLabel;
   }
 
   appendLog(message: string): void {

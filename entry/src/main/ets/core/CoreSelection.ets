@@ -24,6 +24,18 @@ export function isSingboxCore(value: CoreType | string | undefined): boolean {
   return normalizeCoreType(value as string | undefined) === CORE_TYPE_SINGBOX;
 }
 
+// 仅 sing-box 内核支持的协议：Xray-core 没有对应 outbound（如 anytls / tuic）。
+// 命中这些协议的节点必须用 sing-box 跑，无论全局内核开关选的是什么——否则丢给
+// Xray 会因找不到 outbound handler 而启动失败。
+const SINGBOX_ONLY_PROTOCOLS: Array<string> = ['anytls', 'tuic'];
+
+export function isSingboxOnlyProtocol(protocol: string | undefined): boolean {
+  if (protocol === undefined) {
+    return false;
+  }
+  return SINGBOX_ONLY_PROTOCOLS.indexOf(protocol.trim().toLowerCase()) >= 0;
+}
+
 export class CoreSelectionStore {
   static async load(context: common.Context): Promise<CoreType> {
     try {

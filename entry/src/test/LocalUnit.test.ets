@@ -29,6 +29,7 @@ import { CustomAssetUrl } from '../main/ets/storage/AssetStore';
 import { ProxyProfile, SubscriptionProfile } from '../main/ets/core/Profile';
 import { decideRuntimeSettingsRestart } from '../main/ets/core/SettingsChange';
 import { decideActiveNodeRemovalAction, decideConfigChangeAction, decideNodeSwitchAction } from '../main/ets/core/RuntimeReconnect';
+import { isSingboxOnlyProtocol } from '../main/ets/core/CoreSelection';
 import {
   DEFAULT_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
   MIN_SUBSCRIPTION_UPDATE_INTERVAL_MINUTES,
@@ -3214,6 +3215,21 @@ export default function localUnitTest() {
       expect(generated.configJson).assertContain('"insecure":true');
     });
 
+    it('flags anytls/tuic as sing-box-only so the Xray core path forces a switch', 0, () => {
+      // 这两个协议 Xray-core 没有对应 outbound，无论全局内核开关如何都得强制走 sing-box。
+      expect(isSingboxOnlyProtocol('anytls')).assertTrue();
+      expect(isSingboxOnlyProtocol('tuic')).assertTrue();
+      expect(isSingboxOnlyProtocol('ANYTLS')).assertTrue();
+      expect(isSingboxOnlyProtocol('vless')).assertFalse();
+      expect(isSingboxOnlyProtocol('trojan')).assertFalse();
+      expect(isSingboxOnlyProtocol(undefined)).assertFalse();
+
+      // anytls 已移出 Xray 协议白名单，但校验闸门仍须放行（App 整体支持，交给 sing-box 跑）。
+      const validation = normalizeOutboundInput('anytls://pwd@example.com:443?sni=a.example#A');
+      expect(validation.valid).assertTrue();
+      expect(validation.protocol).assertEqual('anytls');
+    });
+
     it('matches reference client ShadowsocksFmt parsing parity', 0, () => {
       // SIP002 with plain-text userinfo (no base64) — reference client parseSip002 validUrlWithPlainTextUserinfo
       const plainUserInfo = parseShareLinkToOutboundJson('ss://aes-256-gcm:mypassword@example.com:8388#Plain%20Server');
@@ -3475,15 +3491,29 @@ export default function localUnitTest() {
         '      short-id: abcd\n' +
         '      spider-x: /bot\n' +
         '      mldsa65-verify: test-mldsa65-verify\n' +
-        '  - {name: clash-ss, type: ss, server: ss.example.com, port: 8388, cipher: aes-128-gcm, password: secret}\n';
+        '  - {name: clash-ss, type: ss, server: ss.example.com, port: 8388, cipher: aes-128-gcm, password: secret}\n' +
+        '  - {name: clash-anytls, type: anytls, server: any.example.com, port: 8443, password: anytls-pass, sni: any.example.com, skip-cert-verify: true}\n' +
+        '  - {name: clash-tuic, type: tuic, server: tuic.example.com, port: 8444, uuid: 00000000-0000-0000-0000-000000000002, password: tuic-pass, sni: tuic.example.com, congestion-controller: bbr, udp-relay-mode: native, skip-cert-verify: true}\n';
       const nodes = SubscriptionManager.parseSubscriptionContent(content, 'https://sub.example/clash');
-      expect(nodes.length).assertEqual(3);
+      expect(nodes.length).assertEqual(5);
       expect(nodes[0].name).assertEqual('clash-vmess');
       expect(nodes[0].outboundJson).assertContain('"wsSettings"');
       expect(nodes[0].outboundJson).assertContain('"serverName": "cdn.example"');
       expect(nodes[1].outboundJson).assertContain('"realitySettings"');
       expect(nodes[1].outboundJson).assertContain('"mldsa65Verify": "test-mldsa65-verify"');
       expect(nodes[2].outboundJson).assertContain('"protocol": "shadowsocks"');
+      // anytls：此前 Clash 解析无此分支 → 节点被静默丢弃、列表里看不到。
+      expect(nodes[3].name).assertEqual('clash-anytls');
+      expect(nodes[3].protocol).assertEqual('anytls');
+      expect(nodes[3].outboundJson).assertContain('"protocol": "anytls"');
+      expect(nodes[3].outboundJson).assertContain('"password": "anytls-pass"');
+      expect(nodes[3].outboundJson).assertContain('"insecure": true');
+      // tuic：同样此前无 Clash 分支 → 被丢弃。
+      expect(nodes[4].name).assertEqual('clash-tuic');
+      expect(nodes[4].protocol).assertEqual('tuic');
+      expect(nodes[4].outboundJson).assertContain('"protocol": "tuic"');
+      expect(nodes[4].outboundJson).assertContain('"uuid": "00000000-0000-0000-0000-000000000002"');
+      expect(nodes[4].outboundJson).assertContain('"congestionControl": "bbr"');
     });
 
     it('parses sip008 shadowsocks json subscription content into selectable nodes', 0, () => {

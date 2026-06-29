@@ -7,7 +7,7 @@ import { resolveDynamicPolicyGroupConfigJson } from '../core/AdvancedOutboundBui
 import { selectRuntimeLocalSocksPort, shouldExposeLocalHttpProxy, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../core/LocalProxy';
 import { buildRuntimeXrayConfig, injectXrayLogFile, LOCAL_HTTP_PROXY_PORT, METRICS_PORT, normalizeConfigInput, XRAY_CORE_LOG_FILE } from '../core/XrayConfig';
 import { normalizeClientCompatCoreLogLevel } from '../core/ClientCompatOptions';
-import { CORE_TYPE_SINGBOX, CoreSelectionStore, isSingboxCore } from '../core/CoreSelection';
+import { CORE_TYPE_SINGBOX, CORE_TYPE_XRAY, CoreSelectionStore, CoreType, isSingboxCore, isSingboxOnlyProtocol } from '../core/CoreSelection';
 import { buildSingboxConfig } from '../core/SingboxConfig';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
 import { createStopCommandVpnWant, createStopVpnWant, createVpnWant } from '../vpn/VpnConstants';
@@ -31,6 +31,8 @@ export interface ConnectionSnapshot {
   startedAt: number;
   lastError: string;
   generatedConfig: GeneratedXrayConfig | null;
+  // 本次连接实际使用的内核（可能因 anytls/tuic 被强制切到 sing-box）。
+  coreType: CoreType;
 }
 
 export class ConnectionController {
@@ -39,13 +41,16 @@ export class ConnectionController {
   private lastError: string = '';
   private generatedConfig: GeneratedXrayConfig | null = null;
   private runtimeMode: AppRuntimeMode = APP_MODE_VPN;
+  // 本次连接实际使用的内核（anytls/tuic 会强制走 sing-box，与全局开关可能不一致）。
+  private effectiveCoreType: CoreType = CORE_TYPE_XRAY;
 
   getSnapshot(): ConnectionSnapshot {
     return {
       status: this.status,
       startedAt: this.startedAt,
       lastError: this.lastError,
-      generatedConfig: this.generatedConfig
+      generatedConfig: this.generatedConfig,
+      coreType: this.effectiveCoreType
     };
   }
 
@@ -88,8 +93,12 @@ export class ConnectionController {
     this.lastError = '';
 
     // 内核分流：sing-box（预览）走独立的配置生成 + native 生命周期。
+    // anytls / tuic 等 sing-box 独有协议 Xray 没有对应 outbound，无论全局开关如何都强制走 sing-box。
     const coreType = await CoreSelectionStore.load(context);
-    if (isSingboxCore(coreType)) {
+    const forceSingbox = validation.configType === 'outbound' && isSingboxOnlyProtocol(validation.protocol);
+    const useSingbox = isSingboxCore(coreType) || forceSingbox;
+    this.effectiveCoreType = useSingbox ? CORE_TYPE_SINGBOX : CORE_TYPE_XRAY;
+    if (useSingbox) {
       return this.startSingbox(context, validation.normalizedJson, validation.configType, settings);
     }
 

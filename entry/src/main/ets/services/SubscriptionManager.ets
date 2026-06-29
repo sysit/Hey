@@ -122,7 +122,7 @@ interface ClashOutbound {
   streamSettings?: ClashStreamSettings;
 }
 
-type ClashOutboundSettings = ClashVlessSettings | ClashVmessSettings | ClashTrojanSettings | ClashShadowsocksSettings | ClashGenericSettings | ClashHysteria2Settings;
+type ClashOutboundSettings = ClashVlessSettings | ClashVmessSettings | ClashTrojanSettings | ClashShadowsocksSettings | ClashGenericSettings | ClashHysteria2Settings | ClashAnytlsSettings | ClashTuicSettings;
 
 interface JsonSubscriptionOutbound {
   protocol?: string;
@@ -210,6 +210,39 @@ interface ClashHysteria2Server {
 
 interface ClashHysteria2Settings {
   servers: Array<ClashHysteria2Server>;
+}
+
+// anytls 的 TLS 字段内联在 server 对象里（与分享链接 parseAnytlsLink 的产物同构），
+// 交给 sing-box 内核跑。Xray-core 不支持 anytls，但导入阶段照常收下节点。
+interface ClashAnytlsServer {
+  address: string;
+  port: number;
+  password: string;
+  sni?: string;
+  alpn?: string;
+  fingerprint?: string;
+  insecure?: boolean;
+}
+
+interface ClashAnytlsSettings {
+  servers: Array<ClashAnytlsServer>;
+}
+
+// tuic 同样把认证/TLS 内联在 server 里（与分享链接 parseTuicLink 同构），交给 sing-box 跑。
+interface ClashTuicServer {
+  address: string;
+  port: number;
+  uuid: string;
+  password: string;
+  sni?: string;
+  alpn?: string;
+  insecure?: boolean;
+  congestionControl?: string;
+  udpRelayMode?: string;
+}
+
+interface ClashTuicSettings {
+  servers: Array<ClashTuicServer>;
 }
 
 export class SubscriptionManager {
@@ -891,6 +924,84 @@ export class SubscriptionManager {
       };
       const outbound: ClashOutbound = {
         protocol: 'hysteria2',
+        tag: 'proxy',
+        settings
+      };
+      return outbound;
+    }
+
+    if (type === 'anytls') {
+      const password = SubscriptionManager.mapValue(entry, 'password', '');
+      if (password.length === 0) {
+        return null;
+      }
+      const server: ClashAnytlsServer = {
+        address: host,
+        port,
+        password
+      };
+      const sni = SubscriptionManager.mapFirstValue(entry, ['sni', 'servername'], '');
+      if (sni.length > 0) {
+        server.sni = sni;
+      }
+      const alpn = SubscriptionManager.mapFirstValue(entry, ['alpn', 'alpn.0'], '');
+      if (alpn.length > 0) {
+        server.alpn = alpn;
+      }
+      const fingerprint = SubscriptionManager.mapFirstValue(entry, ['client-fingerprint', 'fingerprint'], '');
+      if (fingerprint.length > 0) {
+        server.fingerprint = fingerprint;
+      }
+      if (SubscriptionManager.mapValue(entry, 'skip-cert-verify', '').length > 0) {
+        server.insecure = SubscriptionManager.mapBoolean(entry, 'skip-cert-verify', false);
+      }
+      const settings: ClashAnytlsSettings = {
+        servers: [server]
+      };
+      const outbound: ClashOutbound = {
+        protocol: 'anytls',
+        tag: 'proxy',
+        settings
+      };
+      return outbound;
+    }
+
+    if (type === 'tuic') {
+      const uuid = SubscriptionManager.mapFirstValue(entry, ['uuid', 'id'], '');
+      const password = SubscriptionManager.mapFirstValue(entry, ['password', 'token'], '');
+      if (uuid.length === 0 || password.length === 0) {
+        return null;
+      }
+      const server: ClashTuicServer = {
+        address: host,
+        port,
+        uuid,
+        password
+      };
+      const sni = SubscriptionManager.mapFirstValue(entry, ['sni', 'servername'], '');
+      if (sni.length > 0) {
+        server.sni = sni;
+      }
+      const alpn = SubscriptionManager.mapFirstValue(entry, ['alpn', 'alpn.0'], '');
+      if (alpn.length > 0) {
+        server.alpn = alpn;
+      }
+      const congestionControl = SubscriptionManager.mapFirstValue(entry, ['congestion-controller', 'congestion-control'], '');
+      if (congestionControl.length > 0) {
+        server.congestionControl = congestionControl;
+      }
+      const udpRelayMode = SubscriptionManager.mapFirstValue(entry, ['udp-relay-mode'], '');
+      if (udpRelayMode.length > 0) {
+        server.udpRelayMode = udpRelayMode;
+      }
+      if (SubscriptionManager.mapValue(entry, 'skip-cert-verify', '').length > 0) {
+        server.insecure = SubscriptionManager.mapBoolean(entry, 'skip-cert-verify', false);
+      }
+      const settings: ClashTuicSettings = {
+        servers: [server]
+      };
+      const outbound: ClashOutbound = {
+        protocol: 'tuic',
         tag: 'proxy',
         settings
       };
