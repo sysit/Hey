@@ -5,7 +5,7 @@ import Want from '@ohos.app.ability.Want';
 import { NetworkProbe } from '../services/NetworkProbe';
 import { NetAutomationConfig, NET_ACTION_DISCONNECT, decideNetAutomationAction } from '../core/NetworkAutomation';
 import { NetSceneStopFlag } from '../services/NetSceneStopFlag';
-import { resolveVpnInterfaceAddressConfig, RuntimeStats, NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY } from '../core/Profile';
+import { resolveVpnInterfaceAddressConfig, RuntimeStats } from '../core/Profile';
 import {
   createDefaultVpnConfig,
   normalizeVpnDnsAddresses,
@@ -181,7 +181,6 @@ export default class HeyVpnAbility extends VpnExtensionAbility {
       const cfg: NetAutomationConfig = {
         enabled: settings.netAutomationEnabled,
         // 固定为「仅可信网络自动断开」——不做自动连接（已移除方向选项）。
-        direction: NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY,
         trustedSsids: settings.netAutomationTrustedSsids,
         cellularTrusted: settings.netAutomationCellularTrusted
       };

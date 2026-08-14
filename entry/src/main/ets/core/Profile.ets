@@ -150,15 +150,6 @@ export type HevTunLogLevel = 'error' | 'warn' | 'info' | 'debug';
 export const APP_MODE_VPN: AppRuntimeMode = 'VPN';
 export const APP_MODE_PROXY_ONLY: AppRuntimeMode = 'Proxy only';
 
-// 网络场景自动化：自动化方向
-// both        —— 可信网络自动断开 + 不可信网络自动连接
-// disconnectOnly —— 只在可信网络自动断开（不可信网络不自动连接）
-// connectOnly    —— 只在不可信网络自动连接（可信网络不自动断开）
-export type NetAutomationDirection = 'both' | 'disconnectOnly' | 'connectOnly';
-export const NET_AUTOMATION_DIRECTION_BOTH: NetAutomationDirection = 'both';
-export const NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY: NetAutomationDirection = 'disconnectOnly';
-export const NET_AUTOMATION_DIRECTION_CONNECT_ONLY: NetAutomationDirection = 'connectOnly';
-export const DEFAULT_NET_AUTOMATION_DIRECTION: NetAutomationDirection = NET_AUTOMATION_DIRECTION_BOTH;
 export const HEV_TUN_LOG_LEVEL_ERROR: HevTunLogLevel = 'error';
 export const HEV_TUN_LOG_LEVEL_WARN: HevTunLogLevel = 'warn';
 export const HEV_TUN_LOG_LEVEL_INFO: HevTunLogLevel = 'info';
@@ -202,17 +193,6 @@ export function normalizeVpnBypassLanMode(value: string | undefined, fallback: s
   return fallback === VPN_BYPASS_LAN_FOLLOW_CONFIG || fallback === VPN_BYPASS_LAN_PROXY ? fallback : DEFAULT_VPN_BYPASS_LAN;
 }
 
-export function normalizeNetAutomationDirection(
-  value: string | undefined,
-  fallback: NetAutomationDirection = DEFAULT_NET_AUTOMATION_DIRECTION
-): NetAutomationDirection {
-  if (value === NET_AUTOMATION_DIRECTION_BOTH
-    || value === NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY
-    || value === NET_AUTOMATION_DIRECTION_CONNECT_ONLY) {
-    return value;
-  }
-  return fallback;
-}
 
 export function normalizeVpnMtuValue(value: number | undefined, fallback: number = DEFAULT_VPN_MTU): number {
   if (value === undefined || Number.isNaN(value)) {

@@ -10,7 +10,6 @@ import { toIdnDomain, toIdnUrl } from '../main/ets/core/IdnUrl';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLanguage, resolveSystemLanguage, translate } from '../main/ets/core/I18n';
 import { resolveImportedNodeName } from '../main/ets/core/ImportedNodeNames';
 import { AutoAction, NetAutomationConfig, NetContext, decideNetAutomationAction, isTrustedNetwork } from '../main/ets/core/NetworkAutomation';
-import { NetAutomationDirection, normalizeNetAutomationDirection } from '../main/ets/core/Profile';
 import { defaultJsonConfigNodeName, resolveJsonConfigNodeName } from '../main/ets/core/JsonConfigNames';
 import { selectRuntimeLocalSocksPort, shouldExposeLocalHttpProxy, shouldUseDynamicLocalSocksPort, withRuntimeLocalSocksPort } from '../main/ets/core/LocalProxy';
 import { parseManualOutboundEditState } from '../main/ets/core/ManualOutboundEditState';
@@ -4016,8 +4015,8 @@ export default function localUnitTest() {
   });
 
   describe('networkAutomation', () => {
-    const cfg = (direction: NetAutomationDirection, trustedSsids: string[], cellularTrusted: boolean): NetAutomationConfig => {
-      return { enabled: true, direction: direction, trustedSsids: trustedSsids, cellularTrusted: cellularTrusted };
+    const cfg = (trustedSsids: string[], cellularTrusted: boolean): NetAutomationConfig => {
+      return { enabled: true, trustedSsids: trustedSsids, cellularTrusted: cellularTrusted };
     };
     const wifi = (ssid?: string): NetContext => {
       return { kind: 'wifi', ssid: ssid };
@@ -4027,67 +4026,37 @@ export default function localUnitTest() {
     };
 
     it('disabled config never acts', 0, () => {
-      const disabled: NetAutomationConfig = { enabled: false, direction: 'both', trustedSsids: ['home'], cellularTrusted: false };
+      const disabled: NetAutomationConfig = { enabled: false, trustedSsids: ['home'], cellularTrusted: false };
       expect(decide(wifi('home'), disabled, true)).assertEqual('noop');
       expect(decide(wifi('other'), disabled, false)).assertEqual('noop');
     });
 
-    it('both: trusted disconnects, untrusted connects (idempotent)', 0, () => {
-      const c = cfg('both', ['home'], false);
-      // 可信 WiFi + 运行中 → 断开；已断开 → noop
+    it('disconnects on a listed network and never auto-connects', 0, () => {
+      const c = cfg(['home'], false);
+      // 指定网络 + 运行中 → 断开；已断开 → noop（幂等）
       expect(decide(wifi('home'), c, true)).assertEqual('disconnect');
       expect(decide(wifi('home'), c, false)).assertEqual('noop');
-      // 不可信 WiFi + 已断开 → 连接；运行中 → noop
-      expect(decide(wifi('cafe'), c, false)).assertEqual('connect');
-      expect(decide(wifi('cafe'), c, true)).assertEqual('noop');
-    });
-
-    it('disconnectOnly: never auto-connects on untrusted', 0, () => {
-      const c = cfg('disconnectOnly', ['home'], false);
-      expect(decide(wifi('home'), c, true)).assertEqual('disconnect');
-      // 不可信网络：即使已断开也不自动连接
+      // 未列出的网络：无论是否运行都不动作——不存在自动建立连接的路径
       expect(decide(wifi('cafe'), c, false)).assertEqual('noop');
       expect(decide(wifi('cafe'), c, true)).assertEqual('noop');
     });
 
-    it('connectOnly: never auto-disconnects on trusted', 0, () => {
-      const c = cfg('connectOnly', ['home'], false);
-      expect(decide(wifi('cafe'), c, false)).assertEqual('connect');
-      // 可信网络：即使运行中也不自动断开
-      expect(decide(wifi('home'), c, true)).assertEqual('noop');
-      expect(decide(wifi('home'), c, false)).assertEqual('noop');
-    });
-
-    it('missing ssid is treated as untrusted (fail-secure)', 0, () => {
-      const c = cfg('both', ['home'], false);
-      expect(decide(wifi(undefined), c, false)).assertEqual('connect');
-      expect(decide(wifi(''), c, false)).assertEqual('connect');
+    it('missing ssid is treated as unlisted (fail-safe)', 0, () => {
+      const c = cfg(['home'], false);
+      expect(decide(wifi(undefined), c, true)).assertEqual('noop');
+      expect(decide(wifi(''), c, true)).assertEqual('noop');
       expect(isTrustedNetwork(wifi(undefined), c)).assertFalse();
     });
 
     it('cellular follows cellularTrusted flag', 0, () => {
-      const trustedCell = cfg('both', [], true);
-      const untrustedCell = cfg('both', [], false);
-      // 蜂窝可信 + 运行中 → 断开
-      expect(decide({ kind: 'cellular' }, trustedCell, true)).assertEqual('disconnect');
-      // 蜂窝不可信 + 已断开 → 连接
-      expect(decide({ kind: 'cellular' }, untrustedCell, false)).assertEqual('connect');
+      expect(decide({ kind: 'cellular' }, cfg([], true), true)).assertEqual('disconnect');
+      expect(decide({ kind: 'cellular' }, cfg([], false), true)).assertEqual('noop');
     });
 
     it('none/other never act', 0, () => {
-      const c = cfg('both', ['home'], false);
+      const c = cfg(['home'], false);
       expect(decide({ kind: 'none' }, c, true)).assertEqual('noop');
-      expect(decide({ kind: 'none' }, c, false)).assertEqual('noop');
       expect(decide({ kind: 'other' }, c, true)).assertEqual('noop');
-      expect(decide({ kind: 'other' }, c, false)).assertEqual('noop');
-    });
-
-    it('normalizeNetAutomationDirection rejects invalid values', 0, () => {
-      expect(normalizeNetAutomationDirection('both')).assertEqual('both');
-      expect(normalizeNetAutomationDirection('disconnectOnly')).assertEqual('disconnectOnly');
-      expect(normalizeNetAutomationDirection('connectOnly')).assertEqual('connectOnly');
-      expect(normalizeNetAutomationDirection('garbage')).assertEqual('both');
-      expect(normalizeNetAutomationDirection(undefined)).assertEqual('both');
     });
   });
 }

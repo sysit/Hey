@@ -7,10 +7,9 @@ import { common } from '@kit.AbilityKit';
 import { connection } from '@kit.NetworkKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { APP_LANGUAGE_STORAGE_KEY, normalizeLanguage, translate } from '../core/I18n';
-import { AppLanguage, AppSettings, NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY } from '../core/Profile';
+import { AppLanguage, AppSettings } from '../core/Profile';
 import {
   NetAutomationConfig,
-  NET_ACTION_CONNECT,
   NET_ACTION_DISCONNECT,
   decideNetAutomationAction
 } from '../core/NetworkAutomation';
@@ -134,7 +133,6 @@ export class NetworkSceneManager {
       const cfg: NetAutomationConfig = {
         enabled: settings.netAutomationEnabled,
         // 固定为「仅可信网络自动断开」——不做自动连接（后台不可靠，已移除方向选项）。
-        direction: NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY,
         trustedSsids: settings.netAutomationTrustedSsids,
         cellularTrusted: settings.netAutomationCellularTrusted
       };
@@ -150,9 +148,7 @@ export class NetworkSceneManager {
       // 诊断：写进运行日志，便于确认后台是否收到回调、SSID 是否可读。
       SHARED_RUNTIME_CONTROLLER.appendLog(
         `[netscene] kind=${ctx.kind}; ssid=${ctx.ssid ?? '<none>'}; running=${running}; action=${action}`);
-      if (action === NET_ACTION_CONNECT) {
-        await this.applyConnect(context, settings);
-      } else if (action === NET_ACTION_DISCONNECT) {
+      if (action === NET_ACTION_DISCONNECT) {
         await this.applyDisconnect(context);
       }
     } catch (error) {
@@ -162,16 +158,6 @@ export class NetworkSceneManager {
     }
   }
 
-  private async applyConnect(context: common.Context, settings: AppSettings): Promise<void> {
-    const language = this.currentLanguage();
-    const profile = await ProfileStore.load(context);
-    if (profile.outboundJson.length === 0) {
-      SHARED_RUNTIME_CONTROLLER.appendLog(translate(language, 'log.netAutomationNoNode'));
-      return;
-    }
-    SHARED_RUNTIME_CONTROLLER.appendLog(translate(language, 'log.netAutomationConnect'));
-    await SHARED_RUNTIME_CONTROLLER.start(context, profile, settings, language);
-  }
 
   private async applyDisconnect(context: common.Context): Promise<void> {
     const language = this.currentLanguage();

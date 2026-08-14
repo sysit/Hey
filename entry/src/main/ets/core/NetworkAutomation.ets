@@ -1,16 +1,10 @@
 // 网络场景自动化 —— 纯决策器
 //
-// 根据当前网络（WiFi SSID / 蜂窝 / 其他）+ 用户配置的「可信网络」，
-// 决定是否自动连接或断开 VPN。全程幂等：期望态==当前态时返回 noop，绝不与用户较劲。
+// 根据当前网络（WiFi SSID / 蜂窝 / 其他）+ 用户指定的网络清单，
+// 决定是否自动断开隧道。只做断开，不自动建立连接。
+// 全程幂等：期望态==当前态时返回 noop，绝不与用户较劲。
 //
 // 本文件为纯函数、无任何系统 API 依赖，可被 LocalUnit 单测直接覆盖。
-
-import {
-  NetAutomationDirection,
-  NET_AUTOMATION_DIRECTION_BOTH,
-  NET_AUTOMATION_DIRECTION_CONNECT_ONLY,
-  NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY
-} from './Profile';
 
 // 当前网络承载类型
 export type NetKind = 'wifi' | 'cellular' | 'other' | 'none';
@@ -19,9 +13,8 @@ export const NET_KIND_CELLULAR: NetKind = 'cellular';
 export const NET_KIND_OTHER: NetKind = 'other';
 export const NET_KIND_NONE: NetKind = 'none';
 
-// 决策动作
-export type AutoAction = 'connect' | 'disconnect' | 'noop';
-export const NET_ACTION_CONNECT: AutoAction = 'connect';
+// 决策动作。只做「断开」——自动建立连接不在本应用的能力范围内。
+export type AutoAction = 'disconnect' | 'noop';
 export const NET_ACTION_DISCONNECT: AutoAction = 'disconnect';
 export const NET_ACTION_NOOP: AutoAction = 'noop';
 
@@ -34,7 +27,6 @@ export interface NetContext {
 // 自动化配置（来自 AppSettings 的相关子集）
 export interface NetAutomationConfig {
   enabled: boolean;
-  direction: NetAutomationDirection;
   trustedSsids: string[];
   cellularTrusted: boolean;
 }
@@ -76,22 +68,9 @@ export function decideNetAutomationAction(
     return NET_ACTION_NOOP;
   }
 
-  const trusted = isTrustedNetwork(ctx, cfg);
-  const allowDisconnect =
-    cfg.direction === NET_AUTOMATION_DIRECTION_BOTH || cfg.direction === NET_AUTOMATION_DIRECTION_DISCONNECT_ONLY;
-  const allowConnect =
-    cfg.direction === NET_AUTOMATION_DIRECTION_BOTH || cfg.direction === NET_AUTOMATION_DIRECTION_CONNECT_ONLY;
-
-  if (trusted) {
-    // 可信网络：候选动作 = 断开（仅运行中且方向允许）
-    if (currentlyRunning && allowDisconnect) {
-      return NET_ACTION_DISCONNECT;
-    }
-    return NET_ACTION_NOOP;
-  }
-  // 不可信网络：候选动作 = 连接（仅已断开且方向允许）
-  if (!currentlyRunning && allowConnect) {
-    return NET_ACTION_CONNECT;
+  // 指定网络下且正在运行时断开；其余一律不动作。
+  if (isTrustedNetwork(ctx, cfg) && currentlyRunning) {
+    return NET_ACTION_DISCONNECT;
   }
   return NET_ACTION_NOOP;
 }
