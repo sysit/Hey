@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Hey 应用图标 · 前景层
+    图形语义：三层同心圆角方框由外向内「近粗远细、近实远虚」，中心一点亮光，
+    读作沿轴线看进一条隧道。对应产品定位「网络隧道与协议调试客户端」。
+    纯几何构图、透明背景，供 layered_image 与背景层叠加。
+    内容限制在中心 640×640 安全区内，避免被系统图标蒙版裁切。
+  -->
+  <g fill="none" stroke="#FFFFFF" stroke-linejoin="round">
+    <rect x="192" y="192" width="640" height="640" rx="178" stroke-width="56" opacity="1"/>
+    <rect x="300" y="300" width="424" height="424" rx="118" stroke-width="42" opacity="0.62"/>
+    <rect x="384" y="384" width="256" height="256" rx="72" stroke-width="30" opacity="0.36"/>
+  </g>
+  <circle cx="512" cy="512" r="40" fill="#FFFFFF" opacity="0.92"/>
+</svg>

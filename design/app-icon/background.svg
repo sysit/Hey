@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Hey 应用图标 · 背景层
+    延续应用内的暖橙品牌色（color.json 的 brand #F97910 / brand_strong #FF9A3D），
+    对角线性渐变，无图形元素——图形全部由前景层承担。
+  -->
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#FF6A18"/>
+      <stop offset="0.52" stop-color="#F97910"/>
+      <stop offset="1" stop-color="#FF9A3D"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#brand)"/>
+</svg>
