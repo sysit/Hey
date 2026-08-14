@@ -1,0 +1,88 @@
+{
+  "string": [
+    {
+      "name": "reason_location",
+      "value": "Used to identify the current Wi-Fi network and scan nearby networks for the network automation feature. Used locally only, never uploaded."
+    },
+    {
+      "name": "module_desc",
+      "value": "Network tunnel and protocol debugging client. Servers are provided by the user."
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Network tunnel and protocol debugging client."
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Hey"
+    },
+    {
+      "name": "ControlCardAbility_label",
+      "value": "Hey Control"
+    },
+    {
+      "name": "ControlCardAbility_desc",
+      "value": "Hey quick control card"
+    },
+    {
+      "name": "control_card_display_name",
+      "value": "Hey Control"
+    },
+    {
+      "name": "control_card_desc",
+      "value": "Toggle the tunnel connection and open the scanner"
+    },
+    {
+      "name": "control_card_badge",
+      "value": "Control"
+    },
+    {
+      "name": "control_card_title",
+      "value": "Desktop quick switch"
+    },
+    {
+      "name": "control_card_hint",
+      "value": "Toggle the current node, start/stop directly, or scan a new QR code."
+    },
+    {
+      "name": "control_card_toggle",
+      "value": "Toggle"
+    },
+    {
+      "name": "control_card_start",
+      "value": "Start"
+    },
+    {
+      "name": "control_card_stop",
+      "value": "Stop"
+    },
+    {
+      "name": "control_card_scan",
+      "value": "Scan"
+    },
+    {
+      "name": "shortcut_toggle_label",
+      "value": "Switch"
+    },
+    {
+      "name": "shortcut_start_label",
+      "value": "Start"
+    },
+    {
+      "name": "shortcut_stop_label",
+      "value": "Stop"
+    },
+    {
+      "name": "shortcut_scan_label",
+      "value": "Scan"
+    },
+    {
+      "name": "HeyVpnAbility_label",
+      "value": "Hey"
+    },
+    {
+      "name": "HeyVpnAbility_desc",
+      "value": "Routes device traffic through the tunnel configured by the user."
+    }
+  ]
+}

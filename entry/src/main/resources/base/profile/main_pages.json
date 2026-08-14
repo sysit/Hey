@@ -1,0 +1,24 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/NodeDetail",
+    "pages/Import",
+    "pages/Subscriptions",
+    "pages/SubscriptionDetail",
+    "pages/SubscriptionEdit",
+    "pages/Routing",
+    "pages/Settings",
+    "pages/Language",
+    "pages/PerApp",
+    "pages/Assets",
+    "pages/Logs",
+    "pages/Scanner",
+    "pages/About",
+    "pages/Export",
+    "pages/NodeEdit",
+    "pages/JsonImport",
+    "pages/AdvancedOutbound",
+    "pages/Backup",
+    "pages/NetworkScenario"
+  ]
+}

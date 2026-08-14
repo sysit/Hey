@@ -1,0 +1,88 @@
+{
+  "string": [
+    {
+      "name": "reason_location",
+      "value": "用于识别当前 Wi-Fi 网络并扫描附近网络，以实现网络场景自动化功能；仅在本地使用，不会上传。"
+    },
+    {
+      "name": "module_desc",
+      "value": "网络隧道与协议调试客户端，服务器由用户自行提供。"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "网络隧道与协议调试客户端。"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Hey"
+    },
+    {
+      "name": "ControlCardAbility_label",
+      "value": "Hey 控制"
+    },
+    {
+      "name": "ControlCardAbility_desc",
+      "value": "Hey 桌面快捷控制卡片"
+    },
+    {
+      "name": "control_card_display_name",
+      "value": "Hey 控制"
+    },
+    {
+      "name": "control_card_desc",
+      "value": "快速开关隧道连接并打开扫码"
+    },
+    {
+      "name": "control_card_badge",
+      "value": "控制"
+    },
+    {
+      "name": "control_card_title",
+      "value": "桌面快捷开关"
+    },
+    {
+      "name": "control_card_hint",
+      "value": "切换当前节点，直接启动/停止，或扫码导入新配置。"
+    },
+    {
+      "name": "control_card_toggle",
+      "value": "切换"
+    },
+    {
+      "name": "control_card_start",
+      "value": "启动"
+    },
+    {
+      "name": "control_card_stop",
+      "value": "停止"
+    },
+    {
+      "name": "control_card_scan",
+      "value": "扫码"
+    },
+    {
+      "name": "shortcut_toggle_label",
+      "value": "开关"
+    },
+    {
+      "name": "shortcut_start_label",
+      "value": "启动"
+    },
+    {
+      "name": "shortcut_stop_label",
+      "value": "停止"
+    },
+    {
+      "name": "shortcut_scan_label",
+      "value": "扫码"
+    },
+    {
+      "name": "HeyVpnAbility_label",
+      "value": "Hey"
+    },
+    {
+      "name": "HeyVpnAbility_desc",
+      "value": "按用户配置的隧道转发设备流量。"
+    }
+  ]
+}

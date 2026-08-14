@@ -1,0 +1,321 @@
+import { common } from '@kit.AbilityKit';
+import { AppLanguage, AppRuntimeMode, AppSettings, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeHomeDelayTestInterval, normalizeOutboundDomainResolveMethod, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, OutboundDomainResolveMethod, RoutingRule } from '../../core/Profile';
+import { normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatMuxXudpQuic } from '../../core/ClientCompatOptions';
+import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore';
+
+export interface SettingsDraft {
+  language: AppLanguage;
+  uiModeNight: string;
+  speedEnabled: boolean;
+  confirmRemove: boolean;
+  startScanImmediate: boolean;
+  startOnBoot: boolean;
+  checkUpdatePreRelease: boolean;
+  groupAllDisplay: boolean;
+  doubleColumnDisplay: boolean;
+  sniffingEnabled: boolean;
+  routeOnlyEnabled: boolean;
+  perAppProxyEnabled: boolean;
+  perAppProxyList: string[];
+  perAppProxyBypass: boolean;
+  localDnsEnabled: boolean;
+  fakeDnsEnabled: boolean;
+  appendHttpProxy: boolean;
+  localSocksEnabled: boolean;
+  localSocksPort: string;
+  localSocksDynamicPort: boolean;
+  localSocksUdpEnabled: boolean;
+  localSocksUsername: string;
+  localSocksPassword: string;
+  useHevTun: boolean;
+  hevTunLogLevel: string;
+  hevTunRwTimeout: string;
+  muxEnabled: boolean;
+  muxConcurrency: string;
+  muxXudpConcurrency: string;
+  muxXudpQuic: string;
+  fragmentEnabled: boolean;
+  fragmentPackets: string;
+  fragmentLength: string;
+  fragmentInterval: string;
+  ipv6Enabled: boolean;
+  preferIpv6: boolean;
+  proxySharingEnabled: boolean;
+  allowInsecure: boolean;
+  remoteDns: string;
+  domesticDns: string;
+  dnsHosts: string;
+  localDnsPort: string;
+  vpnInterfaceAddressIndex: number;
+  vpnBypassLan: string;
+  vpnMtu: string;
+  vpnDns: string;
+  logLevel: string;
+  delayTestUrl: string;
+  ipApiUrl: string;
+  realPingConcurrency: string;
+  homeDelayTestInterval: string;
+  mode: AppRuntimeMode;
+  outboundDomainResolveMethod: OutboundDomainResolveMethod;
+  trafficMode: string;
+  routingDomainStrategy: string;
+  routingRules: Array<RoutingRule>;
+  autoSortAfterTest: boolean;
+  autoRemoveInvalidAfterTest: boolean;
+  netAutomationEnabled: boolean;
+  netAutomationTrustedSsids: string[];
+  netAutomationCellularTrusted: boolean;
+}
+
+export class SettingsController {
+  async load(context: common.Context): Promise<AppSettings> {
+    return SettingsStore.load(context);
+  }
+
+  async save(context: common.Context, draft: SettingsDraft): Promise<AppSettings> {
+    return SettingsStore.save(context, this.buildSettings(draft));
+  }
+
+  toDraft(settings: AppSettings): SettingsDraft {
+    return {
+      language: settings.language,
+      uiModeNight: settings.uiModeNight,
+      speedEnabled: settings.speedEnabled,
+      confirmRemove: settings.confirmRemove,
+      startScanImmediate: settings.startScanImmediate,
+      startOnBoot: settings.startOnBoot,
+      checkUpdatePreRelease: settings.checkUpdatePreRelease,
+      groupAllDisplay: settings.groupAllDisplay,
+      doubleColumnDisplay: settings.doubleColumnDisplay,
+      sniffingEnabled: settings.sniffingEnabled,
+      routeOnlyEnabled: settings.routeOnlyEnabled,
+      perAppProxyEnabled: settings.perAppProxyEnabled,
+      perAppProxyList: settings.perAppProxyList ?? [],
+      perAppProxyBypass: settings.perAppProxyBypass ?? false,
+      localDnsEnabled: settings.localDnsEnabled,
+      fakeDnsEnabled: settings.fakeDnsEnabled,
+      appendHttpProxy: settings.appendHttpProxy,
+      localSocksEnabled: settings.localSocksEnabled,
+      localSocksPort: settings.localSocksPort.toString(),
+      localSocksDynamicPort: settings.localSocksDynamicPort,
+      localSocksUdpEnabled: settings.localSocksUdpEnabled,
+      localSocksUsername: settings.localSocksUsername,
+      localSocksPassword: settings.localSocksPassword,
+      useHevTun: settings.useHevTun,
+      hevTunLogLevel: settings.hevTunLogLevel,
+      hevTunRwTimeout: settings.hevTunRwTimeout,
+      muxEnabled: settings.muxEnabled,
+      muxConcurrency: settings.muxConcurrency.toString(),
+      muxXudpConcurrency: settings.muxXudpConcurrency.toString(),
+      muxXudpQuic: settings.muxXudpQuic,
+      fragmentEnabled: settings.fragmentEnabled,
+      fragmentPackets: settings.fragmentPackets,
+      fragmentLength: settings.fragmentLength,
+      fragmentInterval: settings.fragmentInterval,
+      ipv6Enabled: settings.ipv6Enabled,
+      preferIpv6: settings.preferIpv6,
+      proxySharingEnabled: settings.proxySharingEnabled,
+      allowInsecure: settings.allowInsecure,
+      remoteDns: settings.remoteDns,
+      domesticDns: settings.domesticDns,
+      dnsHosts: settings.dnsHosts,
+      localDnsPort: settings.localDnsPort.toString(),
+      vpnInterfaceAddressIndex: settings.vpnInterfaceAddressIndex,
+      vpnBypassLan: settings.vpnBypassLan,
+      vpnMtu: settings.vpnMtu.toString(),
+      vpnDns: settings.vpnDns,
+      logLevel: settings.logLevel,
+      delayTestUrl: settings.delayTestUrl,
+      ipApiUrl: settings.ipApiUrl,
+      realPingConcurrency: settings.realPingConcurrency.toString(),
+      homeDelayTestInterval: settings.homeDelayTestInterval.toString(),
+      mode: settings.mode,
+      outboundDomainResolveMethod: settings.outboundDomainResolveMethod,
+      trafficMode: settings.trafficMode,
+      routingDomainStrategy: settings.routingDomainStrategy,
+      routingRules: this.copyRoutingRules(settings.routingRules),
+      autoSortAfterTest: settings.autoSortAfterTest,
+      autoRemoveInvalidAfterTest: settings.autoRemoveInvalidAfterTest,
+      netAutomationEnabled: settings.netAutomationEnabled,
+      netAutomationTrustedSsids: (settings.netAutomationTrustedSsids ?? []).slice(),
+      netAutomationCellularTrusted: settings.netAutomationCellularTrusted
+    };
+  }
+
+  buildSettings(draft: SettingsDraft): AppSettings {
+    const useHevTun = draft.useHevTun;
+    const localSocksEnabled = draft.localSocksEnabled || useHevTun;
+    const localDnsEnabled = draft.localDnsEnabled;
+    return {
+      language: draft.language,
+      uiModeNight: normalizeUiModeNight(draft.uiModeNight, DEFAULT_APP_SETTINGS.uiModeNight),
+      speedEnabled: draft.speedEnabled,
+      confirmRemove: draft.confirmRemove,
+      startScanImmediate: draft.startScanImmediate,
+      startOnBoot: draft.startOnBoot,
+      checkUpdatePreRelease: draft.checkUpdatePreRelease,
+      groupAllDisplay: draft.groupAllDisplay,
+      doubleColumnDisplay: draft.doubleColumnDisplay,
+      sniffingEnabled: draft.sniffingEnabled,
+      routeOnlyEnabled: draft.routeOnlyEnabled,
+      perAppProxyEnabled: draft.perAppProxyEnabled,
+      perAppProxyList: draft.perAppProxyList,
+      perAppProxyBypass: draft.perAppProxyBypass,
+      localDnsEnabled,
+      fakeDnsEnabled: draft.fakeDnsEnabled && localDnsEnabled,
+      appendHttpProxy: draft.appendHttpProxy && localSocksEnabled,
+      localSocksEnabled,
+      localSocksPort: this.portValue(draft.localSocksPort, DEFAULT_APP_SETTINGS.localSocksPort),
+      localSocksDynamicPort: draft.localSocksDynamicPort,
+      localSocksUdpEnabled: draft.localSocksUdpEnabled,
+      localSocksUsername: draft.localSocksUsername.trim(),
+      localSocksPassword: draft.localSocksPassword.trim(),
+      useHevTun,
+      hevTunLogLevel: normalizeHevTunLogLevel(draft.hevTunLogLevel, DEFAULT_APP_SETTINGS.hevTunLogLevel),
+      hevTunRwTimeout: normalizeHevTunRwTimeout(draft.hevTunRwTimeout, DEFAULT_APP_SETTINGS.hevTunRwTimeout),
+      muxEnabled: draft.muxEnabled,
+      muxConcurrency: this.muxConcurrencyValue(draft.muxConcurrency, DEFAULT_APP_SETTINGS.muxConcurrency),
+      muxXudpConcurrency: this.muxConcurrencyValue(draft.muxXudpConcurrency, DEFAULT_APP_SETTINGS.muxXudpConcurrency),
+      muxXudpQuic: normalizeClientCompatMuxXudpQuic(draft.muxXudpQuic, DEFAULT_APP_SETTINGS.muxXudpQuic),
+      fragmentEnabled: draft.fragmentEnabled,
+      fragmentPackets: normalizeClientCompatFragmentPackets(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
+      fragmentLength: this.nonEmptyString(draft.fragmentLength, DEFAULT_APP_SETTINGS.fragmentLength),
+      fragmentInterval: this.nonEmptyString(draft.fragmentInterval, DEFAULT_APP_SETTINGS.fragmentInterval),
+      ipv6Enabled: draft.ipv6Enabled,
+      preferIpv6: draft.preferIpv6,
+      proxySharingEnabled: draft.proxySharingEnabled && localSocksEnabled,
+      allowInsecure: draft.allowInsecure,
+      localDnsPort: this.portValue(draft.localDnsPort, DEFAULT_APP_SETTINGS.localDnsPort),
+      vpnInterfaceAddressIndex: normalizeVpnInterfaceAddressIndex(draft.vpnInterfaceAddressIndex, DEFAULT_APP_SETTINGS.vpnInterfaceAddressIndex),
+      vpnBypassLan: normalizeVpnBypassLanMode(draft.vpnBypassLan, DEFAULT_APP_SETTINGS.vpnBypassLan),
+      vpnMtu: this.vpnMtuValue(draft.vpnMtu, DEFAULT_APP_SETTINGS.vpnMtu),
+      vpnDns: draft.vpnDns.trim(),
+      remoteDns: draft.remoteDns.trim(),
+      domesticDns: draft.domesticDns.trim(),
+      dnsHosts: draft.dnsHosts.trim(),
+      delayTestUrl: draft.delayTestUrl.trim(),
+      ipApiUrl: draft.ipApiUrl.trim(),
+      realPingConcurrency: this.realPingConcurrencyValue(draft.realPingConcurrency, DEFAULT_APP_SETTINGS.realPingConcurrency),
+      homeDelayTestInterval: this.homeDelayTestIntervalValue(draft.homeDelayTestInterval, DEFAULT_APP_SETTINGS.homeDelayTestInterval),
+      logLevel: normalizeClientCompatCoreLogLevel(draft.logLevel, DEFAULT_APP_SETTINGS.logLevel),
+      outboundDomainResolveMethod: normalizeOutboundDomainResolveMethod(draft.outboundDomainResolveMethod, DEFAULT_APP_SETTINGS.outboundDomainResolveMethod),
+      mode: normalizeAppRuntimeMode(draft.mode, DEFAULT_APP_SETTINGS.mode),
+      trafficMode: draft.trafficMode,
+      routingDomainStrategy: normalizeRoutingDomainStrategy(draft.routingDomainStrategy, DEFAULT_APP_SETTINGS.routingDomainStrategy),
+      routingRules: this.copyRoutingRules(draft.routingRules),
+      autoSortAfterTest: draft.autoSortAfterTest,
+      autoRemoveInvalidAfterTest: draft.autoRemoveInvalidAfterTest,
+      netAutomationEnabled: draft.netAutomationEnabled,
+      netAutomationTrustedSsids: this.normalizeSsidList(draft.netAutomationTrustedSsids),
+      netAutomationCellularTrusted: draft.netAutomationCellularTrusted
+    };
+  }
+
+  private normalizeSsidList(list: string[]): string[] {
+    const result = new Array<string>();
+    for (let index = 0; index < list.length; index++) {
+      const ssid = list[index].trim();
+      if (ssid.length > 0 && !result.includes(ssid)) {
+        result.push(ssid);
+      }
+    }
+    return result;
+  }
+
+  private copyRoutingRules(rules: Array<RoutingRule>): Array<RoutingRule> {
+    const result = new Array<RoutingRule>();
+    for (let index = 0; index < rules.length; index++) {
+      const item = rules[index];
+      result.push({
+        id: item.id,
+        remarks: item.remarks,
+        domain: item.domain.slice(),
+        ip: item.ip.slice(),
+        process: item.process.slice(),
+        outboundTag: item.outboundTag,
+        port: item.port,
+        network: item.network,
+        protocol: item.protocol.slice(),
+        enabled: item.enabled,
+        locked: item.locked
+      });
+    }
+    return result;
+  }
+
+  private vpnMtuValue(value: string, fallback: number): number {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      return fallback;
+    }
+    const parsed = Number(normalized);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+    return normalizeVpnMtuValue(parsed, fallback);
+  }
+
+  private portValue(value: string, fallback: number): number {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      return fallback;
+    }
+    const parsed = Number(normalized);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+    const port = Math.floor(parsed);
+    if (port < 1 || port > 65535) {
+      return fallback;
+    }
+    return port;
+  }
+
+  private muxConcurrencyValue(value: string, fallback: number): number {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      return fallback;
+    }
+    const parsed = Number(normalized);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+    const result = Math.floor(parsed);
+    if (result < -1 || result > 1024) {
+      return fallback;
+    }
+    return result;
+  }
+
+  private realPingConcurrencyValue(value: string, fallback: number): number {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      return fallback;
+    }
+    const parsed = Number(normalized);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+    return normalizeRealPingConcurrency(parsed, fallback);
+  }
+
+  private homeDelayTestIntervalValue(value: string, fallback: number): number {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      return fallback;
+    }
+    const parsed = Number(normalized);
+    if (Number.isNaN(parsed)) {
+      return fallback;
+    }
+    return normalizeHomeDelayTestInterval(parsed, fallback);
+  }
+
+  private nonEmptyString(value: string, fallback: string): string {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : fallback;
+  }
+
+}
+
+export const SETTINGS_CONTROLLER: SettingsController = new SettingsController();
