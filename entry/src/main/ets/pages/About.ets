@@ -3,10 +3,8 @@ import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage } from '../core/Profile';
-import { HEY_RELEASES_PAGE_URL } from '../core/UpdateChecker';
 import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
-import { UPDATE_CHECKER_MANAGER } from '../services/UpdateCheckerManager';
 import { BUNDLED_XRAY_VERSION, BUNDLED_SINGBOX_VERSION } from '../core/CoreInfo';
 // [SING-BOX SPIKE — TEMP] Phase 0 验证入口，验证完连同探测行一起删。
 import { SectionHeader } from '../components/SectionHeader';
@@ -21,18 +19,11 @@ const REPO_LICENSE_URL: string = 'https://github.com/popsiclelmlm/Hey/blob/main/
 const AUTHOR_URL: string = 'https://github.com/popsiclelmlm';
 
 // 检查更新行的状态机：闲置 → 检查中 → 已是最新。
-enum UpdateState {
-  Idle = 0,
-  Checking = 1,
-  Latest = 2
-}
 
 @Entry
 @Component
 struct AboutPage {
   @StorageProp('appLanguage') private language: AppLanguage = DEFAULT_LANGUAGE;
-  @State private updateState: UpdateState = UpdateState.Idle;
-  @State private checkUpdatePreRelease: boolean = false;
   @State private isStateLoaded: boolean = false;
   @State private versionName: string = '1.2.0';
   @State private versionCode: string = '1020000';
@@ -53,7 +44,6 @@ struct AboutPage {
           Column({ space: Space.lg }) {
             this.BrandHeader()
             Column() {
-              this.UpdateCard()
             }
             .width('100%')
             .padding({ left: Space.lg, right: Space.lg })
@@ -150,54 +140,6 @@ struct AboutPage {
     .padding({ top: Space.xl, bottom: Space.sm })
   }
 
-  // 检查更新卡片：交互行（状态机）+ 预发布开关行。
-  @Builder
-  private UpdateCard() {
-    Column() {
-      UpdateRow({
-        state: this.updateState,
-        title: this.t('about.update.title'),
-        subtitle: this.updateSubtitle(),
-        badge: this.t('about.update.badge'),
-        onAction: () => {
-          this.checkUpdate();
-        }
-      })
-      Divider()
-        .strokeWidth(0.5)
-        .color(AppColor.divider)
-        .margin({ left: Space.lg })
-      Row({ space: Space.md }) {
-        Column({ space: 2 }) {
-          Text(this.t('about.update.preRelease'))
-            .fontSize(FontSz.callout)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(AppColor.textPrimary)
-          Text(this.t('about.update.preRelease.detail'))
-            .fontSize(FontSz.footnote)
-            .fontColor(AppColor.textTertiary)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Start)
-
-        Toggle({ type: ToggleType.Switch, isOn: this.checkUpdatePreRelease })
-          .selectedColor(AppColor.brand)
-          .switchPointColor(AppColor.onBrand)
-          .onChange((_isOn: boolean) => {
-            this.toggleCheckUpdatePreRelease();
-          })
-      }
-      .width('100%')
-      .padding(Space.lg)
-    }
-    .backgroundColor(AppColor.surface)
-    .borderRadius(Radius.lg)
-    .border({ width: 0.5, color: AppColor.border })
-    .clip(true)
-    .width('100%')
-  }
 
   // 内核引擎：键值对展示 + sing-box 诊断探测。
   @Builder
@@ -328,16 +270,6 @@ struct AboutPage {
     .margin({ top: Space.sm })
   }
 
-  private updateSubtitle(): string {
-    switch (this.updateState) {
-      case UpdateState.Checking:
-        return this.t('about.update.inProgress');
-      case UpdateState.Latest:
-        return this.t('about.update.upToDate');
-      default:
-        return this.f1('about.update.idle', 'version', this.versionName);
-    }
-  }
 
   private async openUrl(url: string, title: string): Promise<void> {
     SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.presetOpened', 'title', title));
@@ -362,40 +294,11 @@ struct AboutPage {
     }
   }
 
-  private async checkUpdate(): Promise<void> {
-    if (this.updateState === UpdateState.Checking) {
-      return;
-    }
-    this.updateState = UpdateState.Checking;
-    try {
-      const result = await UPDATE_CHECKER_MANAGER.checkForUpdate(this.versionName, this.checkUpdatePreRelease);
-      if (!result.ok) {
-        promptAction.showToast({ message: this.f1('about.update.failed', 'error', result.error) });
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('about.update.failed', 'error', result.error));
-        this.updateState = UpdateState.Idle;
-        return;
-      }
-      if (!result.hasUpdate) {
-        SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('about.update.latest', 'version', result.currentVersion));
-        this.updateState = UpdateState.Latest;
-        return;
-      }
-
-      promptAction.showToast({ message: this.f1('about.update.found', 'version', result.latestVersion) });
-      SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('about.update.found', 'version', result.latestVersion));
-      const url = result.downloadUrl.length > 0 ? result.downloadUrl : HEY_RELEASES_PAGE_URL;
-      this.updateState = UpdateState.Idle;
-      await this.openUrl(url, this.t('about.update.title'));
-    } catch (error) {
-      this.updateState = UpdateState.Idle;
-    }
-  }
 
   private async loadState(): Promise<void> {
     const context = getContext(this) as common.Context;
     const settings = await SETTINGS_CONTROLLER.load(context);
     this.language = settings.language;
-    this.checkUpdatePreRelease = settings.checkUpdatePreRelease;
     this.loadAppInfo();
     this.isStateLoaded = true;
   }
@@ -417,19 +320,6 @@ struct AboutPage {
     }
   }
 
-  private async toggleCheckUpdatePreRelease(): Promise<void> {
-    try {
-      const context = getContext(this) as common.Context;
-      const settings = await SETTINGS_CONTROLLER.load(context);
-      const draft = SETTINGS_CONTROLLER.toDraft(settings);
-      draft.checkUpdatePreRelease = !this.checkUpdatePreRelease;
-      const saved = await SETTINGS_CONTROLLER.save(context, draft);
-      this.checkUpdatePreRelease = saved.checkUpdatePreRelease;
-      SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.settingsChanged', 'action', this.t('about.update.preRelease')));
-    } catch (error) {
-      promptAction.showToast({ message: this.f1('error.saveSettings', 'error', JSON.stringify(error)) });
-    }
-  }
 
   private t(key: string): string {
     return translate(this.language, key);
@@ -440,84 +330,6 @@ struct AboutPage {
   }
 }
 
-// 检查更新交互行：左侧暖橙图标方块，右侧随状态切换箭头 / 「最新」徽标。
-@Component
-struct UpdateRow {
-  @Prop state: UpdateState = UpdateState.Idle;
-  @Prop title: string = '';
-  @Prop subtitle: string = '';
-  @Prop badge: string = '';
-  onAction: () => void = () => {};
-
-  @State private isPressed: boolean = false;
-
-  build() {
-    Row({ space: Space.md }) {
-      Stack() {
-        if (this.state === UpdateState.Checking) {
-          LoadingProgress()
-            .width(20)
-            .height(20)
-            .color(AppColor.brand)
-        } else {
-          Image($r('app.media.ic_refresh'))
-            .width(19)
-            .height(19)
-            .fillColor(AppColor.brand)
-        }
-      }
-      .width(34)
-      .height(34)
-      .borderRadius(10)
-      .backgroundColor(AppColor.brandTint)
-
-      Column({ space: 2 }) {
-        Text(this.title)
-          .fontSize(FontSz.callout)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(AppColor.textPrimary)
-        Text(this.subtitle)
-          .fontSize(FontSz.footnote)
-          .fontColor(this.state === UpdateState.Latest ? AppColor.success : AppColor.textTertiary)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      if (this.state === UpdateState.Latest) {
-        Row({ space: 3 }) {
-          Image($r('app.media.ic_check'))
-            .width(15)
-            .height(15)
-            .fillColor(AppColor.success)
-          Text(this.badge)
-            .fontSize(FontSz.footnote)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(AppColor.success)
-        }
-      } else {
-        Image($r('app.media.ic_chevron_right'))
-          .width(20)
-          .height(20)
-          .fillColor(AppColor.textTertiary)
-      }
-    }
-    .width('100%')
-    .padding(Space.lg)
-    .backgroundColor(this.isPressed ? AppColor.surfaceAlt : AppColor.surface)
-    .onTouch((event: TouchEvent) => {
-      if (event.type === TouchType.Down) {
-        this.isPressed = true;
-      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-        this.isPressed = false;
-      }
-    })
-    .onClick(() => {
-      this.onAction();
-    })
-  }
-}
 
 // 内核引擎键值行（仅展示）。
 @Component

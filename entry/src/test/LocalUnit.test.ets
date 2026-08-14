@@ -42,7 +42,6 @@ import {
 import { buildSubscriptionAutoUpdateGroupSchedulePlans, buildSubscriptionAutoUpdateSchedulePlan, subscriptionAutoUpdateWorkIdForGroup } from '../main/ets/core/SubscriptionSchedulerPlan';
 import { findMatchedSubscriptionNode, resolveGlobalSelectedNodeId, resolveRetainedSelectedNodeId } from '../main/ets/core/SubscriptionSelection';
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
-import { CURRENT_APP_VERSION, buildUpdateCheckResult, compareVersions, normalizeVersionTag } from '../main/ets/core/UpdateChecker';
 import { CLIENT_COMPAT_BROWSER_DIALER_MODE_OPTIONS, CLIENT_COMPAT_CORE_LOG_LEVEL_OPTIONS, CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE, CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL, CLIENT_COMPAT_DEFAULT_FRAGMENT_PACKETS, CLIENT_COMPAT_DEFAULT_HYSTERIA2_SECURITY, CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC, CLIENT_COMPAT_DEFAULT_STREAM_ALPN, CLIENT_COMPAT_DEFAULT_VMESS_SECURITY, CLIENT_COMPAT_FLOW_OPTIONS, CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS, CLIENT_COMPAT_GRPC_MODE_OPTIONS, CLIENT_COMPAT_HYSTERIA2_SECURITY_OPTIONS, CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS, CLIENT_COMPAT_MUX_XUDP_QUIC_OPTIONS, CLIENT_COMPAT_SS_SECURITY_OPTIONS, CLIENT_COMPAT_STREAM_ALPN_OPTIONS, CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS, CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS, CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS, CLIENT_COMPAT_VMESS_SECURITY_OPTIONS, CLIENT_COMPAT_XHTTP_MODE_OPTIONS, normalizeClientCompatBrowserDialerMode, normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatHysteria2Security, normalizeClientCompatMuxXudpQuic, normalizeClientCompatStreamAlpn, normalizeClientCompatStreamAlpnWithFallback, normalizeClientCompatXhttpMode } from '../main/ets/core/ClientCompatOptions';
 import { countLogLevels, filterLogEntries, filterLogItems, formatLogcatText, formatLogEntriesText } from '../main/ets/features/logs/LogOperations';
 import { LogEntry, logLevelLabel, normalizeLogLevel } from '../main/ets/features/logs/LogModel';
@@ -758,7 +757,6 @@ export default function localUnitTest() {
         confirmRemove: false,
         startScanImmediate: false,
         startOnBoot: false,
-        checkUpdatePreRelease: false,
         groupAllDisplay: false,
         doubleColumnDisplay: false,
         sniffingEnabled: true,
@@ -1823,7 +1821,6 @@ export default function localUnitTest() {
       expect(translate('zh-rTW', 'settings.language.zhTw')).assertEqual('中文繁體');
       expect(translate('vi', 'screen.settings.title')).assertEqual('Settings');
       expect(translate('en', 'screen.settings.title')).assertEqual('Settings');
-      expect(translate('en', 'settings.checkUpdatePreRelease')).assertEqual('Receive beta versions');
       expect(translate('en', 'prompt.clipboardReadFailed')).assertEqual('Could not read clipboard');
       expect(translate('zh-rCN', 'prompt.pastedJsonConfig')).assertEqual('已粘贴 JSON 配置');
       expect(translate('zh-rCN', 'missing.translation.key')).assertEqual('missing.translation.key');
@@ -1969,7 +1966,6 @@ export default function localUnitTest() {
       settings.confirmRemove = true;
       settings.startScanImmediate = true;
       settings.startOnBoot = true;
-      settings.checkUpdatePreRelease = true;
       settings.groupAllDisplay = true;
       settings.doubleColumnDisplay = true;
       const draft = SETTINGS_CONTROLLER.toDraft(settings);
@@ -1978,7 +1974,6 @@ export default function localUnitTest() {
       expect(draft.confirmRemove).assertTrue();
       expect(draft.startScanImmediate).assertTrue();
       expect(draft.startOnBoot).assertTrue();
-      expect(draft.checkUpdatePreRelease).assertTrue();
       expect(draft.groupAllDisplay).assertTrue();
       expect(draft.doubleColumnDisplay).assertTrue();
       expect(draft.ipv6Enabled).assertTrue();
@@ -2018,7 +2013,6 @@ export default function localUnitTest() {
       expect(rebuilt.confirmRemove).assertTrue();
       expect(rebuilt.startScanImmediate).assertTrue();
       expect(rebuilt.startOnBoot).assertTrue();
-      expect(rebuilt.checkUpdatePreRelease).assertTrue();
       expect(rebuilt.groupAllDisplay).assertTrue();
       expect(rebuilt.doubleColumnDisplay).assertTrue();
       expect(rebuilt.ipv6Enabled).assertTrue();
@@ -3732,16 +3726,16 @@ export default function localUnitTest() {
 
     it('parses install deep links with reference client outer fragment fallback', 0, () => {
       const unnamedConfig = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none';
-      const config = parseDeepLink(`hey://install-config?url=${encodeURIComponent(unnamedConfig)}#outer-name`);
+      const config = parseDeepLink(`hey://add-endpoint?url=${encodeURIComponent(unnamedConfig)}#outer-name`);
       expect(config.kind).assertEqual('config');
       expect(config.payload).assertEqual(`${unnamedConfig}#outer-name`);
 
       const namedConfig = `${unnamedConfig}#inner-name`;
-      const named = parseDeepLink(`hey://install-config?url=${encodeURIComponent(namedConfig)}#outer-name`);
+      const named = parseDeepLink(`hey://add-endpoint?url=${encodeURIComponent(namedConfig)}#outer-name`);
       expect(named.kind).assertEqual('config');
       expect(named.payload).assertEqual(namedConfig);
 
-      const sub = parseDeepLink(`hey://install-sub?url=${encodeURIComponent('https://example.com/sub')}#Sub%20Name`);
+      const sub = parseDeepLink(`hey://add-source?url=${encodeURIComponent('https://example.com/sub')}#Sub%20Name`);
       expect(sub.kind).assertEqual('sub');
       expect(sub.payload).assertEqual('https://example.com/sub#Sub Name');
     });
@@ -3891,42 +3885,6 @@ export default function localUnitTest() {
       const errored = buildControlCardFormData('en', ConnectionStatus.ERROR, '', 'bad config');
       expect(errored.statusLabel).assertEqual('Error');
       expect(errored.statusDetail).assertEqual('bad config');
-    });
-
-    it('parses GitHub release update check results', 0, () => {
-      expect(CURRENT_APP_VERSION).assertEqual('1.2.0');
-      expect(normalizeVersionTag('v1.2.3-beta.1')).assertEqual('1.2.3');
-      expect(compareVersions('1.10.0', '1.2.9') > 0).assertTrue();
-      expect(compareVersions('1.1', '1.1.0')).assertEqual(0);
-      expect(compareVersions('1.0.9', '1.1.0') < 0).assertTrue();
-
-      const content = '{"tag_name":"v1.2.0","body":"notes","html_url":"https://example.com/release","prerelease":false,"assets":[{"name":"Hey-source.zip","browser_download_url":"https://example.com/source.zip"},{"name":"Hey-ohos-arm64.hap","browser_download_url":"https://example.com/hey.hap"}]}';
-      const result = buildUpdateCheckResult(content, '1.1.0');
-      expect(result.ok).assertTrue();
-      expect(result.hasUpdate).assertTrue();
-      expect(result.latestVersion).assertEqual('1.2.0');
-      expect(result.releaseNotes).assertEqual('notes');
-      expect(result.downloadUrl).assertEqual('https://example.com/hey.hap');
-
-      const latest = buildUpdateCheckResult('{"tag_name":"v1.1.0","assets":[]}', '1.1.0');
-      expect(latest.ok).assertTrue();
-      expect(latest.hasUpdate).assertFalse();
-
-      const invalid = buildUpdateCheckResult('{"body":"missing tag"}', '1.1.0');
-      expect(invalid.ok).assertFalse();
-
-      const releases = '[{"tag_name":"v1.3.0-beta.1","body":"beta","html_url":"https://example.com/beta","prerelease":true,"assets":[{"name":"Hey-beta.hap","browser_download_url":"https://example.com/beta.hap"}]},{"tag_name":"v1.2.0","body":"stable","html_url":"https://example.com/stable","prerelease":false,"assets":[{"name":"Hey-stable.hap","browser_download_url":"https://example.com/stable.hap"}]}]';
-      const stableOnly = buildUpdateCheckResult(releases, '1.1.0');
-      expect(stableOnly.ok).assertTrue();
-      expect(stableOnly.latestVersion).assertEqual('1.2.0');
-      expect(stableOnly.isPreRelease).assertFalse();
-      expect(stableOnly.downloadUrl).assertEqual('https://example.com/stable.hap');
-
-      const withPreRelease = buildUpdateCheckResult(releases, '1.1.0', true);
-      expect(withPreRelease.ok).assertTrue();
-      expect(withPreRelease.latestVersion).assertEqual('1.3.0');
-      expect(withPreRelease.isPreRelease).assertTrue();
-      expect(withPreRelease.downloadUrl).assertEqual('https://example.com/beta.hap');
     });
 
     it('builds compatible-client style per-subscription background auto update schedule plans', 0, () => {
@@ -4142,7 +4100,6 @@ function buildSettingsFixture(): AppSettings {
     confirmRemove: false,
     startScanImmediate: false,
     startOnBoot: false,
-    checkUpdatePreRelease: false,
     groupAllDisplay: false,
     doubleColumnDisplay: false,
     sniffingEnabled: true,

@@ -42,7 +42,6 @@ export const SETTINGS_CATALOG: SettingGroup[] = [
       { key: 'confirmRemove', titleKey: 'settings.confirmRemove', type: 'toggle' },
       { key: 'startScanImmediate', titleKey: 'settings.startScanImmediate', type: 'toggle' },
       { key: 'startOnBoot', titleKey: 'settings.startOnBoot', type: 'toggle', descKey: 'settings.startOnBoot.detail' },
-      { key: 'checkUpdatePreRelease', titleKey: 'settings.checkUpdatePreRelease', type: 'toggle' },
       { key: 'groupAllDisplay', titleKey: 'settings.groupAllDisplay', type: 'toggle' },
       { key: 'doubleColumnDisplay', titleKey: 'settings.doubleColumnDisplay', type: 'toggle' }
     ]

@@ -54,7 +54,6 @@ struct SettingsPage {
   @State private settingConfirmRemove: boolean = false;
   @State private settingStartScanImmediate: boolean = false;
   @State private settingStartOnBoot: boolean = false;
-  @State private settingCheckUpdatePreRelease: boolean = false;
   @State private settingGroupAllDisplay: boolean = false;
   @State private settingDoubleColumnDisplay: boolean = false;
   @State private settingSniffing: boolean = true;
@@ -76,18 +75,18 @@ struct SettingsPage {
   @State private settingMuxXudpConcurrency: string = '8';
   @State private settingMuxXudpQuic: string = 'reject';
   @State private settingFragment: boolean = false;
-  @State private settingFragmentPackets: string = 'tlshello';
-  @State private settingFragmentLength: string = '50-100';
-  @State private settingFragmentInterval: string = '10-20';
+  @State private settingFragmentPackets: string = '';
+  @State private settingFragmentLength: string = '';
+  @State private settingFragmentInterval: string = '';
   @State private settingIpv6Enabled: boolean = false;
   @State private settingPreferIpv6: boolean = false;
   @State private settingProxySharing: boolean = false;
   @State private settingAllowInsecure: boolean = false;
   @State private settingPerAppProxy: boolean = false;
-  @State private settingRemoteDns: string = '1.1.1.1';
-  @State private settingDomesticDns: string = '223.5.5.5';
+  @State private settingRemoteDns: string = '';
+  @State private settingDomesticDns: string = '';
   @State private settingDnsHosts: string = '';
-  @State private settingVpnDns: string = '1.1.1.1';
+  @State private settingVpnDns: string = '';
   @State private settingLocalDnsPort: string = '10853';
   @State private settingVpnInterfaceAddressIndex: number = 0;
   @State private settingVpnBypassLan: string = VPN_BYPASS_LAN_BYPASS;
@@ -424,7 +423,6 @@ struct SettingsPage {
       case 'confirmRemove': return this.settingConfirmRemove;
       case 'startScanImmediate': return this.settingStartScanImmediate;
       case 'startOnBoot': return this.settingStartOnBoot;
-      case 'checkUpdatePreRelease': return this.settingCheckUpdatePreRelease;
       case 'groupAllDisplay': return this.settingGroupAllDisplay;
       case 'doubleColumnDisplay': return this.settingDoubleColumnDisplay;
       case 'sniffing': return this.settingSniffing;
@@ -522,9 +520,6 @@ struct SettingsPage {
         break;
       case 'startOnBoot':
         this.settingStartOnBoot = !this.settingStartOnBoot;
-        break;
-      case 'checkUpdatePreRelease':
-        this.settingCheckUpdatePreRelease = !this.settingCheckUpdatePreRelease;
         break;
       case 'groupAllDisplay':
         this.settingGroupAllDisplay = !this.settingGroupAllDisplay;
@@ -733,7 +728,6 @@ struct SettingsPage {
       confirmRemove: this.settingConfirmRemove,
       startScanImmediate: this.settingStartScanImmediate,
       startOnBoot: this.settingStartOnBoot,
-      checkUpdatePreRelease: this.settingCheckUpdatePreRelease,
       groupAllDisplay: this.settingGroupAllDisplay,
       doubleColumnDisplay: this.settingDoubleColumnDisplay,
       sniffingEnabled: this.settingSniffing,
@@ -798,7 +792,6 @@ struct SettingsPage {
     this.settingConfirmRemove = draft.confirmRemove;
     this.settingStartScanImmediate = draft.startScanImmediate;
     this.settingStartOnBoot = draft.startOnBoot;
-    this.settingCheckUpdatePreRelease = draft.checkUpdatePreRelease;
     this.settingGroupAllDisplay = draft.groupAllDisplay;
     this.settingDoubleColumnDisplay = draft.doubleColumnDisplay;
     this.settingSniffing = draft.sniffingEnabled;
