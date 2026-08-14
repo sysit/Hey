@@ -1,42 +1,71 @@
 import { RoutingRule } from './Profile';
 
+// 导入失败原因。出厂不带任何规则，导入是用户建立规则表的主路径，
+// 因此失败必须能说清是哪一步出的问题，而不是只报一个"失败"。
+export type RoutingImportFailure = 'none' | 'empty' | 'invalidJson' | 'notArray' | 'noValidRule';
+
+// 被跳过的单条规则：index 为 1 起的原始下标，便于直接告诉用户第几条有问题。
+export interface RoutingRuleSkip {
+  index: number;
+  reason: string;
+}
+
 export interface RoutingRuleImportResult {
   success: boolean;
   rules: Array<RoutingRule>;
   count: number;
+  failure: RoutingImportFailure;
+  skipped: Array<RoutingRuleSkip>;
+}
+
+function failedImport(failure: RoutingImportFailure, skipped: Array<RoutingRuleSkip> = []): RoutingRuleImportResult {
+  return { success: false, rules: [], count: 0, failure, skipped };
 }
 
 export function importRoutingRulesJson(existing: Array<RoutingRule>, content: string): RoutingRuleImportResult {
   const trimmed = content.trim();
   if (trimmed.length === 0) {
-    return { success: false, rules: [], count: 0 };
+    return failedImport('empty');
   }
 
+  let rawRules: Array<RoutingRule>;
   try {
-    const rawRules = JSON.parse(trimmed) as Array<RoutingRule>;
-    if (!Array.isArray(rawRules)) {
-      return { success: false, rules: [], count: 0 };
-    }
-
-    const imported = new Array<RoutingRule>();
-    for (let index = 0; index < rawRules.length; index++) {
-      const rule = normalizeRoutingRule(rawRules[index], `imported-routing-rule-${index + 1}`);
-      if (hasRoutingMatcher(rule)) {
-        imported.push(rule);
-      }
-    }
-    if (imported.length === 0) {
-      return { success: false, rules: [], count: 0 };
-    }
-
-    return {
-      success: true,
-      rules: preserveLockedRules(existing).concat(imported),
-      count: imported.length
-    };
+    rawRules = JSON.parse(trimmed) as Array<RoutingRule>;
   } catch (error) {
-    return { success: false, rules: [], count: 0 };
+    return failedImport('invalidJson');
   }
+  if (!Array.isArray(rawRules)) {
+    return failedImport('notArray');
+  }
+
+  const imported = new Array<RoutingRule>();
+  const skipped = new Array<RoutingRuleSkip>();
+  for (let index = 0; index < rawRules.length; index++) {
+    const raw = rawRules[index];
+    if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) {
+      skipped.push({ index: index + 1, reason: 'notObject' });
+      continue;
+    }
+    const rule = normalizeRoutingRule(raw, `imported-routing-rule-${index + 1}`);
+    if (!hasRoutingMatcher(rule)) {
+      // 一条规则至少要有一个匹配条件（域名/IP/进程/端口/协议/网络），否则永不命中。
+      skipped.push({ index: index + 1, reason: 'noMatcher' });
+      continue;
+    }
+    imported.push(rule);
+  }
+
+  if (imported.length === 0) {
+    return failedImport('noValidRule', skipped);
+  }
+
+  return {
+    success: true,
+    rules: preserveLockedRules(existing).concat(imported),
+    count: imported.length,
+    failure: 'none',
+    skipped
+  };
 }
 
 export function exportRoutingRulesJson(rules: Array<RoutingRule>): string {

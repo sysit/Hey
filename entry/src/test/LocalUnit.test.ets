@@ -1728,7 +1728,30 @@ export default function localUnitTest() {
       expect(result.rules[0].id).assertEqual('locked-rule');
       expect(result.rules[1].remarks).assertEqual('Imported proxy');
       expect(result.rules[1].domain[0]).assertEqual('domain:import.example');
+      // 第二条没有任何匹配条件，应被跳过并逐条说明原因。
+      expect(result.failure).assertEqual('none');
+      expect(result.skipped.length).assertEqual(1);
+      expect(result.skipped[0].index).assertEqual(2);
+      expect(result.skipped[0].reason).assertEqual('noMatcher');
       expect(importRoutingRulesJson([], '{"bad":true}').success).assertFalse();
+    });
+
+    it('reports why a routing rule import failed', 0, () => {
+      // 出厂零规则后导入是主路径，失败必须能定位到具体原因，而不是只报"失败"。
+      expect(importRoutingRulesJson([], '   ').failure).assertEqual('empty');
+      expect(importRoutingRulesJson([], '[{"domain":').failure).assertEqual('invalidJson');
+      expect(importRoutingRulesJson([], '{"bad":true}').failure).assertEqual('notArray');
+
+      const noMatcher = importRoutingRulesJson([], '[{"remarks":"A","outboundTag":"proxy"},{"remarks":"B","outboundTag":"block"}]');
+      expect(noMatcher.success).assertFalse();
+      expect(noMatcher.failure).assertEqual('noValidRule');
+      expect(noMatcher.skipped.length).assertEqual(2);
+      expect(noMatcher.skipped[1].index).assertEqual(2);
+
+      const notObject = importRoutingRulesJson([], '["just a string", 42]');
+      expect(notObject.failure).assertEqual('noValidRule');
+      expect(notObject.skipped.length).assertEqual(2);
+      expect(notObject.skipped[0].reason).assertEqual('notObject');
     });
 
     it('imports routing rules json from QR code payload format', 0, () => {

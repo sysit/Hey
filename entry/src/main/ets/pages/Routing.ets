@@ -1,11 +1,14 @@
 import { common } from '@kit.AbilityKit';
+import { picker } from '@kit.CoreFileKit';
+import { util } from '@kit.ArkTS';
+import fs from '@ohos.file.fs';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
 import { scanBarcode, scanCore } from '@kit.ScanKit';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { AppLanguage, ProxyNode, RoutingRule } from '../core/Profile';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { exportRoutingRulesJson, importRoutingRulesJson } from '../core/RoutingRules';
+import { exportRoutingRulesJson, importRoutingRulesJson, RoutingRuleSkip } from '../core/RoutingRules';
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { SubscriptionStore } from '../storage/SubscriptionStore';
@@ -310,6 +313,7 @@ struct RoutingPage {
       .layoutWeight(1)
 
       Row({ space: Space.xs }) {
+        this.RuleHeaderActionButton($r('app.media.ic_cloud_download'), 'fileImport')
         this.RuleHeaderActionButton($r('app.media.ic_article'), 'import')
         this.RuleHeaderActionButton($r('app.media.ic_qr_code'), 'qrImport')
         this.RuleHeaderActionButton($r('app.media.ic_share'), 'export')
@@ -512,7 +516,9 @@ struct RoutingPage {
   }
 
   private handleRuleHeaderAction(action: string): void {
-    if (action === 'import') {
+    if (action === 'fileImport') {
+      this.importRulesFromFile();
+    } else if (action === 'import') {
       this.confirmClipboardImport();
     } else if (action === 'qrImport') {
       this.scanRulesFromQr();
@@ -650,11 +656,27 @@ struct RoutingPage {
     }
   }
 
+  // 出厂零规则，导入是建立规则表的主路径：失败要说清哪一步出问题，
+  // 部分成功要说清跳过了第几条、为什么跳过。
   private async importRulesFromText(content: string, logKey: string): Promise<void> {
     const result = importRoutingRulesJson(this.routingRules, content);
     if (!result.success) {
+      const detail = this.describeImportFailure(result.failure, result.skipped);
+      SHARED_RUNTIME_CONTROLLER.appendLog(`${this.t('routing.rule.importFailed')}: ${detail}`);
       try {
-        this.getUIContext().getPromptAction().showToast({ message: this.t('routing.rule.importFailed') });
+        this.getUIContext().showAlertDialog({
+          title: this.t('routing.rule.importFailed'),
+          message: detail,
+          autoCancel: true,
+          alignment: DialogAlignment.Bottom,
+          offset: { dx: 0, dy: -20 },
+          confirm: {
+            value: this.t('action.close'),
+            fontColor: AppColor.textSecondary,
+            backgroundColor: AppColor.bg,
+            action: () => {}
+          }
+        });
       } catch (err) {
         // ignore
       }
@@ -662,12 +684,74 @@ struct RoutingPage {
     }
 
     this.routingRules = result.rules;
-    const message = this.f1(logKey, 'count', result.count.toString());
+    let message = this.f1(logKey, 'count', result.count.toString());
+    if (result.skipped.length > 0) {
+      message = `${message}  ${this.f1('routing.rule.import.skippedCount', 'count', result.skipped.length.toString())}`;
+    }
     await this.persistSettings(message);
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (err) {
       // ignore
+    }
+  }
+
+  private describeImportFailure(failure: string, skipped: Array<RoutingRuleSkip>): string {
+    if (failure === 'empty') {
+      return this.t('routing.rule.import.err.empty');
+    }
+    if (failure === 'invalidJson') {
+      return this.t('routing.rule.import.err.invalidJson');
+    }
+    if (failure === 'notArray') {
+      return this.t('routing.rule.import.err.notArray');
+    }
+    // noValidRule：逐条说明前几条为什么被跳过，比一句"格式错误"有用得多。
+    const lines = new Array<string>();
+    lines.push(this.t('routing.rule.import.err.noValidRule'));
+    const shown = skipped.length > 5 ? 5 : skipped.length;
+    for (let index = 0; index < shown; index++) {
+      const item = skipped[index];
+      const reason = item.reason === 'noMatcher'
+        ? this.t('routing.rule.import.err.noMatcher')
+        : this.t('routing.rule.import.err.notObject');
+      lines.push(`  #${item.index}  ${reason}`);
+    }
+    if (skipped.length > shown) {
+      lines.push(this.f1('routing.rule.import.err.more', 'count', (skipped.length - shown).toString()));
+    }
+    return lines.join('\n');
+  }
+
+  // 从文件导入规则：出厂无预设后，用户多数是把自己写好的 JSON 存成文件带过来。
+  private async importRulesFromFile(): Promise<void> {
+    try {
+      const options = new picker.DocumentSelectOptions();
+      options.fileSuffixFilters = ['.json', '.txt'];
+      options.maxSelectNumber = 1;
+      const documentPicker = new picker.DocumentViewPicker();
+      const uris = await documentPicker.select(options);
+      if (!uris || uris.length === 0) {
+        return;
+      }
+      const file = fs.openSync(uris[0], fs.OpenMode.READ_ONLY);
+      try {
+        const stat = fs.statSync(file.fd);
+        const buffer = new ArrayBuffer(stat.size);
+        fs.readSync(file.fd, buffer);
+        const content = util.TextDecoder.create('utf-8').decodeToString(new Uint8Array(buffer));
+        await this.importRulesFromText(content, 'log.routingRulesImported');
+      } finally {
+        fs.closeSync(file);
+      }
+    } catch (error) {
+      try {
+        this.getUIContext().getPromptAction().showToast({
+          message: this.f1('assets.openPickerFailed', 'error', JSON.stringify(error))
+        });
+      } catch (err) {
+        // ignore
+      }
     }
   }
 
