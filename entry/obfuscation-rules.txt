@@ -17,7 +17,13 @@
 # -keep-property-name: specifies property names that you want to keep
 # -keep-global-name: specifies names that you want to keep in the global scope
 
--enable-property-obfuscation
+# 只开顶层名与文件名混淆。
+#
+# 刻意不开 -enable-property-obfuscation：AppSettings / ProxyNode / SubscriptionGroup
+# 等对象是直接 JSON.stringify 后写进 preferences 的，属性名被混淆等于换了存储 key，
+# 老用户升级后设置、节点、订阅、流量统计会全部读不出来。
+#
+# 刻意不开 -enable-export-obfuscation：N-API 桥（libheyvpn.so）与 @Entry 页面路由
+# 依赖导出名与模块名保持稳定。
 -enable-toplevel-obfuscation
 -enable-filename-obfuscation
--enable-export-obfuscation
