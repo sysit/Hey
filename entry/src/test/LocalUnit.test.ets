@@ -787,7 +787,7 @@ export default function localUnitTest() {
         preferIpv6: false,
         proxySharingEnabled: false,
         allowInsecure: false,
-        localDnsPort: 10853,
+        localDnsPort: 18053,
         vpnInterfaceAddressIndex: 0,
         vpnBypassLan: '1',
         vpnMtu: DEFAULT_VPN_MTU,
@@ -1356,7 +1356,7 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"tag": "http-in"');
       expect(result.configJson).assertContain('"listen": "127.0.0.1"');
       expect(result.configJson).assertContain('"protocol": "http"');
-      expect(LOCAL_HTTP_PROXY_PORT).assertEqual(10809);
+      expect(LOCAL_HTTP_PROXY_PORT).assertEqual(18081);
       expect(result.configJson).assertContain(`"port": ${LOCAL_HTTP_PROXY_PORT}`);
       expect(result.configJson).assertContain('"inboundTag"');
       expect(result.configJson).assertContain('"outboundTag": "proxy"');
@@ -1401,7 +1401,7 @@ export default function localUnitTest() {
 
     it('enables local socks proxy by default', 0, () => {
       expect(DEFAULT_APP_SETTINGS.localSocksEnabled).assertTrue();
-      expect(DEFAULT_APP_SETTINGS.localSocksPort).assertEqual(10808);
+      expect(DEFAULT_APP_SETTINGS.localSocksPort).assertEqual(18080);
       // tun2socks 引擎默认 gvisor（useHevTun=false），hev 引擎需显式开启
       expect(DEFAULT_APP_SETTINGS.useHevTun).assertFalse();
       expect(DEFAULT_APP_SETTINGS.hevTunLogLevel).assertEqual(DEFAULT_HEV_TUN_LOG_LEVEL);
@@ -1410,11 +1410,11 @@ export default function localUnitTest() {
       expect(DEFAULT_APP_SETTINGS.localDnsEnabled).assertTrue();
       expect(DEFAULT_APP_SETTINGS.remoteDns).assertEqual('');
       expect(DEFAULT_APP_SETTINGS.domesticDns).assertEqual('');
-      expect(LOCAL_SOCKS_PROXY_PORT).assertEqual(10808);
+      expect(LOCAL_SOCKS_PROXY_PORT).assertEqual(18080);
       const result = buildXrayConfigWithSettings(VLESS_REALITY_OUTBOUND, DEFAULT_APP_SETTINGS);
       expect(result.configJson).assertContain('"tag": "socks-in"');
       expect(result.configJson).assertContain('"protocol": "socks"');
-      expect(result.configJson).assertContain('"port": 10808');
+      expect(result.configJson).assertContain('"port": 18080');
       expect(result.configJson).assertContain('"auth": "noauth"');
       expect(result.configJson).assertContain('"udp": true');
       expect(result.socksPort).assertEqual(LOCAL_SOCKS_PROXY_PORT);
@@ -2051,7 +2051,7 @@ export default function localUnitTest() {
       draft.vpnBypassLan = 'bad';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).vpnBypassLan).assertEqual('1');
       draft.localDnsPort = '70000';
-      expect(SETTINGS_CONTROLLER.buildSettings(draft).localDnsPort).assertEqual(10853);
+      expect(SETTINGS_CONTROLLER.buildSettings(draft).localDnsPort).assertEqual(18053);
       draft.localSocksPort = '70000';
       expect(SETTINGS_CONTROLLER.buildSettings(draft).localSocksPort).assertEqual(LOCAL_SOCKS_PROXY_PORT);
       draft.vpnMtu = '1279';
@@ -4100,7 +4100,7 @@ function buildSettingsFixture(): AppSettings {
     preferIpv6: false,
     proxySharingEnabled: false,
     allowInsecure: false,
-    localDnsPort: 10853,
+    localDnsPort: 18053,
     vpnInterfaceAddressIndex: 0,
     vpnBypassLan: '1',
     vpnMtu: DEFAULT_VPN_MTU,

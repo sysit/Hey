@@ -273,7 +273,7 @@ export function convertNativeXrayJsonToShareLinks(configJson: string): NativeTex
 }
 
 // Queries the running Xray metrics endpoint and sums real per-tag outbound
-// traffic. `server` is the expvar URL, e.g. http://127.0.0.1:10845/debug/vars.
+// traffic. `server` is the expvar URL, e.g. http://127.0.0.1:18086/debug/vars.
 export function queryNativeTraffic(server: string): NativeTrafficStats {
   const result = bridge.queryStats(server);
   if (!result.ok) {

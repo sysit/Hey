@@ -7,7 +7,7 @@
 
 - `libxray.so` —— Xray 代理内核（基于 XTLS/libXray 编译）。导出：
   - `CGoRunXrayFromJSON(const char* base64Request) -> char*` —— 用一份 JSON 配置
-    启动 Xray（VPN 配置会在 `127.0.0.1:10810` 开一个本地 SOCKS 入站）。
+    启动 Xray（VPN 配置会在 `127.0.0.1:18082` 开一个本地 SOCKS 入站）。
   - `CGoStopXray() -> char*`
   - `CGoQueryStats(const char* base64Request) -> char*` —— 读取 Xray 指标（expvar）。
   - `CGoPing(const char* base64Request) -> char*` —— 单节点出站延迟测速；桥这边用一份
@@ -23,7 +23,7 @@
 ## 数据面
 
 ```text
-TUN fd  ->  libheytun2socks.so  ->  127.0.0.1:10810（内核 SOCKS 入站）  ->  出站
+TUN fd  ->  libheytun2socks.so  ->  127.0.0.1:18082（内核 SOCKS 入站）  ->  出站
 ```
 
 内核自带的原生 TUN 入站（`CGoSetTunFd` / `protocol: "tun"`）**不**走 VPN 数据面。

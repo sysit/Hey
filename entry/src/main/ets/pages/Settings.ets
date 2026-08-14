@@ -62,7 +62,7 @@ struct SettingsPage {
   @State private settingFakeDns: boolean = false;
   @State private settingAppendHttpProxy: boolean = false;
   @State private settingLocalSocks: boolean = true;
-  @State private settingLocalSocksPort: string = '10808';
+  @State private settingLocalSocksPort: string = '18080';
   @State private settingLocalSocksDynamicPort: boolean = false;
   @State private settingLocalSocksUdp: boolean = true;
   @State private settingLocalSocksUsername: string = '';
@@ -87,7 +87,7 @@ struct SettingsPage {
   @State private settingDomesticDns: string = '';
   @State private settingDnsHosts: string = '';
   @State private settingVpnDns: string = '';
-  @State private settingLocalDnsPort: string = '10853';
+  @State private settingLocalDnsPort: string = '18053';
   @State private settingVpnInterfaceAddressIndex: number = 0;
   @State private settingVpnBypassLan: string = VPN_BYPASS_LAN_BYPASS;
   @State private settingVpnMtu: string = DEFAULT_VPN_MTU.toString();

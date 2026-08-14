@@ -40,7 +40,7 @@ The current VPN data path for both cores is:
 ```text
 HarmonyOS VPN TUN fd
   -> libheytun2socks.so
-  -> 127.0.0.1:10810 (local SOCKS/mixed inbound)
+  -> 127.0.0.1:18082 (local SOCKS/mixed inbound)
   -> Xray or sing-box outbound
 ```
 

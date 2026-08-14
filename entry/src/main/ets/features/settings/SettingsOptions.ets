@@ -134,8 +134,8 @@ export const SETTING_SELECTS: SettingSelectSpec[] = [
 ];
 
 export const SETTING_INPUTS: SettingInputSpec[] = [
-  { key: 'localSocksPort', hintKey: '', unit: '', range: '1–65535', defaultValue: '10808' },
-  { key: 'localDnsPort', hintKey: '', unit: '', range: '1–65535', defaultValue: '10853' },
+  { key: 'localSocksPort', hintKey: '', unit: '', range: '1–65535', defaultValue: '18080' },
+  { key: 'localDnsPort', hintKey: '', unit: '', range: '1–65535', defaultValue: '18053' },
   { key: 'vpnMtu', hintKey: '', unit: 'bytes', range: '576–9000', defaultValue: DEFAULT_VPN_MTU.toString() },
   { key: 'hevTunRwTimeout', hintKey: '', unit: '', range: 'tcp,udp', defaultValue: DEFAULT_HEV_TUN_RW_TIMEOUT },
   { key: 'muxConcurrency', hintKey: '', unit: '', range: '-1–1024', defaultValue: '8' },

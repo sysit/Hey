@@ -7,7 +7,7 @@ libraries beside it:
 
 - `libxray.so` — the Xray proxy core (built from XTLS/libXray). Exports:
   - `CGoRunXrayFromJSON(const char* base64Request) -> char*` — start Xray from a
-    JSON config (the VPN config opens a local SOCKS inbound on `127.0.0.1:10810`).
+    JSON config (the VPN config opens a local SOCKS inbound on `127.0.0.1:18082`).
   - `CGoStopXray() -> char*`
   - `CGoQueryStats(const char* base64Request) -> char*` — Xray metrics (expvar).
   - `CGoPing(const char* base64Request) -> char*` — per-node outbound delay
@@ -25,7 +25,7 @@ libraries beside it:
 ## Data path
 
 ```text
-TUN fd  ->  libheytun2socks.so  ->  127.0.0.1:10810 (core SOCKS inbound)  ->  outbound
+TUN fd  ->  libheytun2socks.so  ->  127.0.0.1:18082 (core SOCKS inbound)  ->  outbound
 ```
 
 The core's native TUN inbound (`CGoSetTunFd` / `protocol: "tun"`) is **not** used

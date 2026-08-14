@@ -615,7 +615,7 @@ napi_value PingOutbound(napi_env env, napi_callback_info info)
     std::string datDir = GetStringArg(env, args[1]);
     std::string url = GetStringArg(env, args[2]);
     int32_t timeoutSeconds = GetIntArg(env, args[3]);
-    std::string proxy = argc >= 5 ? GetStringArg(env, args[4]) : "socks5://127.0.0.1:10825";
+    std::string proxy = argc >= 5 ? GetStringArg(env, args[4]) : "socks5://127.0.0.1:18085";
 
     if (config.empty()) {
         return CreatePingResult(env, false, -1, "Ping config JSON is empty.");
@@ -682,7 +682,7 @@ napi_value PingOutbound(napi_env env, napi_callback_info info)
 }
 
 // Queries the running Xray metrics endpoint. `server` is the expvar URL, e.g.
-// "http://127.0.0.1:10845/debug/vars". libXray's CGoQueryStats simply HTTP GETs
+// "http://127.0.0.1:18086/debug/vars". libXray's CGoQueryStats simply HTTP GETs
 // it and wraps the body in a CallResponse; the body (Go expvar JSON containing
 // the per-tag stats) is returned to ArkTS as the result message for parsing.
 napi_value QueryStats(napi_env env, napi_callback_info info)

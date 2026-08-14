@@ -371,23 +371,23 @@ const SUPPORTED_PROTOCOLS: Array<string> = ['vless', 'vmess', 'trojan', 'shadows
 export const DEFAULT_SOCKS_HOST: string = '127.0.0.1';
 export const LOCAL_HTTP_PROXY_HOST: string = '127.0.0.1';
 export const LOCAL_HTTP_PROXY_LAN_HOST: string = '0.0.0.0';
-export const LOCAL_SOCKS_PROXY_PORT: number = 10808;
-export const LOCAL_HTTP_PROXY_PORT: number = 10809;
-export const DELAY_TEST_SOCKS_PORT: number = 10825;
+export const LOCAL_SOCKS_PROXY_PORT: number = 18080;
+export const LOCAL_HTTP_PROXY_PORT: number = 18081;
+export const DELAY_TEST_SOCKS_PORT: number = 18085;
 // 并发测速时每个"槽"占一个固定 socks 端口，基址从此开始（端口 = 基址 + 槽号）。
-// 槽内顺序处理节点，故并发的 ping 互不撞端口。避开 VPN 数据面(10810)/单测(10825)/
-// 本地代理(10808-10809)等已用端口。
-export const DELAY_TEST_BATCH_PORT_BASE: number = 11200;
+// 槽内顺序处理节点，故并发的 ping 互不撞端口。避开 VPN 数据面(18082)/单测(18085)/
+// 本地代理(18080-18081)等已用端口。
+export const DELAY_TEST_BATCH_PORT_BASE: number = 18100;
 // VPN 数据面（tun2socks -> Xray SOCKS 入站）的本地地址与端口。Harmony TUN fd 的
 // 流量由 libheytun2socks.so 转发到这里。与用户本地 SOCKS 代理端口分开，避免冲突。
 export const VPN_DATA_SOCKS_HOST: string = '127.0.0.1';
-export const VPN_DATA_SOCKS_PORT: number = 10810;
+export const VPN_DATA_SOCKS_PORT: number = 18082;
 // Local Xray metrics (expvar) endpoint. The generated VPN config exposes a
 // dokodemo inbound on this port routed to the metrics handler so that
 // CGoQueryStats can read real per-tag traffic counters from /debug/vars.
 export const METRICS_HOST: string = '127.0.0.1';
-export const METRICS_PORT: number = 10845;
-export const METRICS_SERVER_URL: string = 'http://127.0.0.1:10845/debug/vars';
+export const METRICS_PORT: number = 18086;
+export const METRICS_SERVER_URL: string = 'http://127.0.0.1:18086/debug/vars';
 const METRICS_OUT_TAG: string = 'metrics_out';
 const METRICS_IN_TAG: string = 'metrics_in';
 const DNS_OUT_TAG: string = 'dns-out';
