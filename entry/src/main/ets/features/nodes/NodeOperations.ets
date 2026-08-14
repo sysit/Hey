@@ -147,7 +147,7 @@ function nodeSearchFields(node: ProxyNode): Array<string> {
   const fields = new Array<string>();
   appendSearchField(fields, node.name);
   appendSearchField(fields, node.sourceUrl);
-  appendSearchField(fields, buildClientCompatNodeDescription(node));
+  appendSearchField(fields, buildNodeDescription(node));
   appendSearchField(fields, extractOutboundServer(node.outboundJson));
   appendSearchField(fields, node.protocol);
   return fields;
@@ -188,18 +188,18 @@ export function extractNodeEndpoint(outboundJson: string): NodeEndpoint {
   }
 }
 
-export function buildClientCompatNodeDescription(node: ProxyNode): string {
+export function buildNodeDescription(node: ProxyNode): string {
   const endpoint = extractNodeEndpoint(node.outboundJson);
-  return formatClientCompatEndpointDescription(endpoint.address, endpoint.port);
+  return formatEndpointDescription(endpoint.address, endpoint.port);
 }
 
-export function formatClientCompatEndpointDescription(address: string, port: string): string {
+export function formatEndpointDescription(address: string, port: string): string {
   const server = address.trim();
   const serverPort = port.trim();
   if (server.length === 0 && serverPort.length === 0) {
     return '';
   }
-  return `${maskClientCompatEndpointAddress(server)} : ${serverPort}`;
+  return `${maskEndpointAddress(server)} : ${serverPort}`;
 }
 
 function extractOutboundServer(outboundJson: string): string {
@@ -262,7 +262,7 @@ function parseEndpointAddressAndPort(endpoint: string): NodeEndpoint {
   };
 }
 
-function maskClientCompatEndpointAddress(address: string): string {
+function maskEndpointAddress(address: string): string {
   if (address.length === 0) {
     return '';
   }

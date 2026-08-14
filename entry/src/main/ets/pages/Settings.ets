@@ -25,7 +25,7 @@ import {
 } from '../core/Profile';
 import { applyColorMode } from '../core/ColorMode';
 import { markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
-import { CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS, normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatMuxXudpQuic } from '../core/ClientCompatOptions';
+import { FRAGMENT_PACKET_OPTIONS, normalizeCoreLogLevel, normalizeFragmentPackets, normalizeMuxXudpQuic } from '../core/ProtocolOptions';
 import { SETTINGS_CONTROLLER, SettingsDraft } from '../features/settings/SettingsController';
 import { filterSettings, SETTINGS_CATALOG, SettingGroup, SettingInputKind, SettingItem } from '../features/settings/SettingsCatalog';
 import { findInputSpec, findSelectSpec, SettingInputSpec, SettingSelectSpec } from '../features/settings/SettingsOptions';
@@ -927,9 +927,9 @@ struct SettingsPage {
       return result;
     }
     if (key === 'fragmentPackets') {
-      const current = normalizeClientCompatFragmentPackets(this.settingFragmentPackets);
-      for (let index = 0; index < CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS.length; index++) {
-        const value = CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS[index];
+      const current = normalizeFragmentPackets(this.settingFragmentPackets);
+      for (let index = 0; index < FRAGMENT_PACKET_OPTIONS.length; index++) {
+        const value = FRAGMENT_PACKET_OPTIONS[index];
         result.push({ value: value, label: value, desc: '', selected: value === current });
       }
       return result;
@@ -957,10 +957,10 @@ struct SettingsPage {
       case 'coreType': return this.settingCoreType;
       case 'uiModeNight': return this.settingUiModeNight;
       case 'vpnBypassLan': return this.settingVpnBypassLan;
-      case 'logLevel': return normalizeClientCompatCoreLogLevel(this.settingLogLevel);
+      case 'logLevel': return normalizeCoreLogLevel(this.settingLogLevel);
       case 'hevTunLogLevel': return normalizeHevTunLogLevel(this.settingHevTunLogLevel);
       case 'outboundDomainResolveMethod': return this.settingOutboundDomainResolveMethod;
-      case 'muxXudpQuic': return normalizeClientCompatMuxXudpQuic(this.settingMuxXudpQuic);
+      case 'muxXudpQuic': return normalizeMuxXudpQuic(this.settingMuxXudpQuic);
       default: return '';
     }
   }
@@ -1267,7 +1267,7 @@ struct SettingsPage {
   }
 
   private fragmentPacketsLabel(): string {
-    return normalizeClientCompatFragmentPackets(this.settingFragmentPackets);
+    return normalizeFragmentPackets(this.settingFragmentPackets);
   }
 
   private isMuxXudpQuicAvailable(): boolean {

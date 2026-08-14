@@ -1,11 +1,11 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { buildPolicyGroupConfigFromNodes, buildPolicyGroupConfigFromSubscription, buildProxyChainConfigFromNodes, isAdvancedOutboundBuildableNode, normalizePolicyGroupBuilderStrategy, parseAdvancedOutboundEditState, resolveDynamicPolicyGroupConfigJson } from '../main/ets/core/AdvancedOutboundBuilder';
 import { CONTROL_CARD_FORM_NAME, CONTROL_CARD_SCAN_URI, CONTROL_CARD_START_URI, CONTROL_CARD_STOP_URI, CONTROL_CARD_TOGGLE_URI, buildControlCardFormData } from '../main/ets/core/ControlCard';
-import { CLIENT_COMPAT_DNS_DIRECT, CLIENT_COMPAT_DNS_PROXY, isClientCompatCoreDnsAddress, isClientCompatPureIpAddress, normalizeClientCompatDnsServers } from '../main/ets/core/DnsAddresses';
+import { DNS_DIRECT, DNS_PROXY, isCoreDnsAddress, isPureIpAddress, normalizeDnsServers } from '../main/ets/core/DnsAddresses';
 import { AssetNameEntry, hasDuplicateAssetName, isEditableCustomAssetUrl, normalizeScannedAssetUrl } from '../main/ets/core/AssetUrls';
 import { decodeBase64ToUtf8 } from '../main/ets/core/Encoding';
 import { isIpv4InCidr, isLoopbackOrPrivateHttpUrl, isLoopbackOrPrivateIpv4Host, PRIVATE_IP_LIST } from '../main/ets/core/PrivateNetwork';
-import { buildClientCompatH2HttpSettings, splitClientCompatH2Hosts } from '../main/ets/core/H2Transport';
+import { buildH2HttpSettings, splitH2Hosts } from '../main/ets/core/H2Transport';
 import { toIdnDomain, toIdnUrl } from '../main/ets/core/IdnUrl';
 import { formatTranslation, missingTranslationKeys, normalizeLanguage, resolveLanguage, resolveSystemLanguage, translate } from '../main/ets/core/I18n';
 import { resolveImportedNodeName } from '../main/ets/core/ImportedNodeNames';
@@ -41,7 +41,7 @@ import {
 import { buildSubscriptionAutoUpdateGroupSchedulePlans, buildSubscriptionAutoUpdateSchedulePlan, subscriptionAutoUpdateWorkIdForGroup } from '../main/ets/core/SubscriptionSchedulerPlan';
 import { findMatchedSubscriptionNode, resolveGlobalSelectedNodeId, resolveRetainedSelectedNodeId } from '../main/ets/core/SubscriptionSelection';
 import { buildSpeedNotificationAdditionalText, buildSpeedNotificationText, calculateSpeedNotificationRates, sampleSpeedNotificationStats, shouldPublishSpeedNotification } from '../main/ets/core/SpeedNotification';
-import { CLIENT_COMPAT_BROWSER_DIALER_MODE_OPTIONS, CLIENT_COMPAT_CORE_LOG_LEVEL_OPTIONS, CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE, CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL, CLIENT_COMPAT_DEFAULT_FRAGMENT_PACKETS, CLIENT_COMPAT_DEFAULT_HYSTERIA2_SECURITY, CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC, CLIENT_COMPAT_DEFAULT_STREAM_ALPN, CLIENT_COMPAT_DEFAULT_VMESS_SECURITY, CLIENT_COMPAT_FLOW_OPTIONS, CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS, CLIENT_COMPAT_GRPC_MODE_OPTIONS, CLIENT_COMPAT_HYSTERIA2_SECURITY_OPTIONS, CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS, CLIENT_COMPAT_MUX_XUDP_QUIC_OPTIONS, CLIENT_COMPAT_SS_SECURITY_OPTIONS, CLIENT_COMPAT_STREAM_ALPN_OPTIONS, CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS, CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS, CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS, CLIENT_COMPAT_VMESS_SECURITY_OPTIONS, CLIENT_COMPAT_XHTTP_MODE_OPTIONS, normalizeClientCompatBrowserDialerMode, normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatHysteria2Security, normalizeClientCompatMuxXudpQuic, normalizeClientCompatStreamAlpn, normalizeClientCompatStreamAlpnWithFallback, normalizeClientCompatXhttpMode } from '../main/ets/core/ClientCompatOptions';
+import { BROWSER_DIALER_MODE_OPTIONS, CORE_LOG_LEVEL_OPTIONS, DEFAULT_BROWSER_DIALER_MODE, DEFAULT_CORE_LOG_LEVEL, DEFAULT_FRAGMENT_PACKETS, DEFAULT_HYSTERIA2_SECURITY, DEFAULT_MUX_XUDP_QUIC, DEFAULT_STREAM_ALPN, DEFAULT_VMESS_SECURITY, FLOW_OPTIONS, FRAGMENT_PACKET_OPTIONS, GRPC_MODE_OPTIONS, HYSTERIA2_SECURITY_OPTIONS, KCP_HEADER_TYPE_OPTIONS, MUX_XUDP_QUIC_OPTIONS, SS_SECURITY_OPTIONS, STREAM_ALPN_OPTIONS, SUPPORTED_TRANSPORT_OPTIONS, TCP_HEADER_TYPE_OPTIONS, UTLS_FINGERPRINT_OPTIONS, VMESS_SECURITY_OPTIONS, XHTTP_MODE_OPTIONS, normalizeBrowserDialerMode, normalizeCoreLogLevel, normalizeFragmentPackets, normalizeHysteria2Security, normalizeMuxXudpQuic, normalizeStreamAlpn, normalizeStreamAlpnWithFallback, normalizeXhttpMode } from '../main/ets/core/ProtocolOptions';
 import { countLogLevels, filterLogEntries, filterLogItems, formatLogcatText, formatLogEntriesText } from '../main/ets/features/logs/LogOperations';
 import { LogEntry, logLevelLabel, normalizeLogLevel } from '../main/ets/features/logs/LogModel';
 import { parseCoreLog } from '../main/ets/services/CoreLogReader';
@@ -50,7 +50,7 @@ import {
   applyDelayTestPostActionsToGroups,
   buildNodeExportModel,
   buildNodeFullConfigModel,
-  buildClientCompatNodeDescription,
+  buildNodeDescription,
   dedupeNodes,
   dedupeVisibleNodesInGroups,
   exportNodesText,
@@ -58,7 +58,7 @@ import {
   filterNodes,
   findSelectedNodeLocation,
   findInvalidNodes,
-  formatClientCompatEndpointDescription,
+  formatEndpointDescription,
   moveNodeWithinGroup,
   removeVisibleNodesFromGroups,
   removeVisibleTestFailedNodesFromGroups,
@@ -413,7 +413,7 @@ export default function localUnitTest() {
       expect(validatePolicyGroupConfigJson(filtered.configJson).valid).assertTrue();
     });
 
-    it('parses existing advanced outbound configs for compatible-client style editing', 0, () => {
+    it('parses existing advanced outbound configs for editing', 0, () => {
       const nodes = buildAdvancedNodeFixture();
       const chain = buildProxyChainConfigFromNodes('Editable Chain', nodes);
       expect(chain.success).assertTrue();
@@ -833,7 +833,7 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"domainStrategy": "bad"')).assertEqual(-1);
     });
 
-    it('disables allowInsecure when a pinned certificate is configured like reference client', 0, () => {
+    it('disables allowInsecure when a pinned certificate is configured', 0, () => {
       const settings = buildSettingsFixture();
       const pinnedTlsOutbound =
         '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"pinned.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tlsSettings":{"serverName":"pinned.example.com","allowInsecure":true,"pinnedPeerCertSha256":"test-pinned-ca256"}}}';
@@ -847,7 +847,7 @@ export default function localUnitTest() {
       expect(unpinned.configJson).assertContain('"allowInsecure": true');
     });
 
-    it('fills missing TLS serverName from transport or server domain like reference client', 0, () => {
+    it('fills missing TLS serverName from transport or server domain', 0, () => {
       const settings = buildSettingsFixture();
       const wsHostOutbound =
         '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"origin.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]},"streamSettings":{"network":"ws","security":"tls","wsSettings":{"host":"cdn.example.com","path":"/ws"},"tlsSettings":{"allowInsecure":false}}}';
@@ -881,7 +881,7 @@ export default function localUnitTest() {
       expect(fullRuntime.configJson.indexOf('"browserDialerMode"')).assertEqual(-1);
     });
 
-    it('applies mux only to reference client supported outbound protocols', 0, () => {
+    it('applies mux only to the protocol spec supported outbound protocols', 0, () => {
       const settings = buildSettingsFixture();
       settings.muxEnabled = true;
       settings.muxConcurrency = 6;
@@ -1030,7 +1030,7 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"address": "fakedns"')).assertEqual(-1);
     });
 
-    it('adds compatible-client style dns domain servers and dns routing rules', 0, () => {
+    it('adds dns domain servers and dns routing rules', 0, () => {
       const settings = buildSettingsFixture();
       settings.remoteDns = 'bad.example,9.9.9.9,https://dns.google/dns-query,9.9.9.9';
       settings.domesticDns = 'invalid.local,223.5.5.5,tcp://223.5.5.5';
@@ -1096,31 +1096,31 @@ export default function localUnitTest() {
       expect(hasInboundOutboundRule(result.configJson, 'domestic-dns-0', 'direct')).assertTrue();
     });
 
-    it('filters dns server settings like reference client', 0, () => {
-      expect(isClientCompatPureIpAddress('1.1.1.1')).assertTrue();
-      expect(isClientCompatPureIpAddress('[2606:4700:4700::1111]')).assertTrue();
-      expect(isClientCompatPureIpAddress('dns.google')).assertFalse();
-      expect(isClientCompatCoreDnsAddress('https://dns.google/dns-query')).assertTrue();
-      expect(isClientCompatCoreDnsAddress('tcp://1.1.1.1')).assertTrue();
-      expect(isClientCompatCoreDnsAddress('quic://dns.adguard.com')).assertTrue();
-      expect(isClientCompatCoreDnsAddress('localhost')).assertTrue();
-      expect(isClientCompatCoreDnsAddress('dns.google')).assertFalse();
+    it('filters dns server settings', 0, () => {
+      expect(isPureIpAddress('1.1.1.1')).assertTrue();
+      expect(isPureIpAddress('[2606:4700:4700::1111]')).assertTrue();
+      expect(isPureIpAddress('dns.google')).assertFalse();
+      expect(isCoreDnsAddress('https://dns.google/dns-query')).assertTrue();
+      expect(isCoreDnsAddress('tcp://1.1.1.1')).assertTrue();
+      expect(isCoreDnsAddress('quic://dns.adguard.com')).assertTrue();
+      expect(isCoreDnsAddress('localhost')).assertTrue();
+      expect(isCoreDnsAddress('dns.google')).assertFalse();
 
-      const remote = normalizeClientCompatDnsServers('bad.example, 9.9.9.9, https://dns.google/dns-query,9.9.9.9', CLIENT_COMPAT_DNS_PROXY);
+      const remote = normalizeDnsServers('bad.example, 9.9.9.9, https://dns.google/dns-query,9.9.9.9', DNS_PROXY);
       expect(remote.length).assertEqual(2);
       expect(remote[0]).assertEqual('9.9.9.9');
       expect(remote[1]).assertEqual('https://dns.google/dns-query');
 
       // 全部条目无效时返回空列表，不回落到任何内置 DNS 服务商。
-      const domestic = normalizeClientCompatDnsServers('bad.example', CLIENT_COMPAT_DNS_DIRECT);
+      const domestic = normalizeDnsServers('bad.example', DNS_DIRECT);
       expect(domestic.length).assertEqual(0);
 
-      const vpn = normalizeClientCompatDnsServers('https://dns.google/dns-query, 1.1.1.1', CLIENT_COMPAT_DNS_PROXY, false);
+      const vpn = normalizeDnsServers('https://dns.google/dns-query, 1.1.1.1', DNS_PROXY, false);
       expect(vpn.length).assertEqual(1);
       expect(vpn[0]).assertEqual('1.1.1.1');
     });
 
-    it('adds reference client default dns hosts before user hosts', 0, () => {
+    it('adds the protocol spec default dns hosts before user hosts', 0, () => {
       const settings = buildSettingsFixture();
       settings.dnsHosts = 'dns.google:8.8.4.4';
 
@@ -1399,7 +1399,7 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain(`"listen": "${LOCAL_HTTP_PROXY_LAN_HOST}"`);
     });
 
-    it('enables local socks proxy by default like reference client', 0, () => {
+    it('enables local socks proxy by default', 0, () => {
       expect(DEFAULT_APP_SETTINGS.localSocksEnabled).assertTrue();
       expect(DEFAULT_APP_SETTINGS.localSocksPort).assertEqual(10808);
       // tun2socks 引擎默认 gvisor（useHevTun=false），hev 引擎需显式开启
@@ -1505,7 +1505,7 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf(`"port":${DELAY_TEST_SOCKS_PORT}`)).assertEqual(-1);
     });
 
-    it('removes outbound mux from delay test config like reference client speedtest', 0, () => {
+    it('removes outbound mux from delay test config speedtest', 0, () => {
       const vmessWithMux =
         '{"protocol":"vmess","tag":"proxy","settings":{"vnext":[{"address":"vmess.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","alterId":0,"security":"auto"}]}]},"streamSettings":{"network":"tcp","security":"tls","tlsSettings":{"serverName":"vmess.example.com"}},"mux":{"enabled":true,"concurrency":32,"xudpConcurrency":16,"xudpProxyUDP443":"allow"}}';
       const result = buildDelayTestConfig(vmessWithMux, 19082);
@@ -1514,7 +1514,7 @@ export default function localUnitTest() {
       expect(result.configJson).assertContain('"tag":"proxy"');
     });
 
-    it('builds compatible-client style delay test configs for advanced outbounds', 0, () => {
+    it('builds delay test configs for advanced outbounds', 0, () => {
       const chain = buildDelayTestConfig(PROXY_CHAIN_CONFIG, 19084, 'proxy-chain');
       expect(chain.configJson).assertContain('"tag":"socks-in"');
       expect(chain.configJson).assertContain('"tag":"proxy-chain-1"');
@@ -1533,7 +1533,7 @@ export default function localUnitTest() {
       expect(policy.configJson.indexOf('"mux"')).assertEqual(-1);
     });
 
-    it('builds a compatible-client style delay test config for full custom configs', 0, () => {
+    it('builds a delay test config for full custom configs', 0, () => {
       const full = buildDelayTestConfig(FULL_XRAY_SPEEDTEST_CONFIG, 19086, 'full');
       expect(full.configJson).assertContain('"tag":"socks-in"');
       expect(full.configJson).assertContain('"port":19086');
@@ -1660,7 +1660,7 @@ export default function localUnitTest() {
       expect(result.configJson.indexOf('"fragment": {')).assertEqual(-1);
     });
 
-    it('applies fragment finalmask like reference client', 0, () => {
+    it('applies fragment finalmask', 0, () => {
       const settings = buildSettingsFixture();
       settings.fragmentEnabled = true;
       settings.fragmentPackets = '1-2';
@@ -1813,7 +1813,7 @@ export default function localUnitTest() {
       expect(matchedRule.indexOf('"outboundTag"')).assertEqual(-1);
     });
 
-    it('normalizes reference client language values with fallback helpers', 0, () => {
+    it('normalizes the protocol spec language values with fallback helpers', 0, () => {
       expect(missingTranslationKeys('zh-rCN').length).assertEqual(0);
       expect(missingTranslationKeys('en').length).assertEqual(0);
       expect(translate('zh-rCN', 'screen.settings.title')).assertEqual('设置');
@@ -1879,7 +1879,7 @@ export default function localUnitTest() {
       expect(buildAssetDownloadUrl('https://example.com/release', 'geoip.dat')).assertEqual('https://example.com/release/geoip.dat');
     });
 
-    it('tries asset downloads through local HTTP proxy before direct fallback like reference client', 0, () => {
+    it('tries asset downloads through local HTTP proxy before direct fallback', 0, () => {
       const proxied = buildAssetDownloadProxyPorts(LOCAL_HTTP_PROXY_PORT);
       expect(proxied.length).assertEqual(2);
       expect(proxied[0]).assertEqual(LOCAL_HTTP_PROXY_PORT);
@@ -1907,7 +1907,7 @@ export default function localUnitTest() {
       expect(normalizeScannedAssetUrl('ftp://example.com/geosite.dat').valid).assertFalse();
     });
 
-    it('detects duplicate custom asset names like reference client asset remarks', 0, () => {
+    it('detects duplicate custom asset names asset remarks', 0, () => {
       const assets: Array<AssetNameEntry> = [
         { id: 'asset-a', name: 'geosite' },
         { id: 'asset-b', name: 'geoip' }
@@ -1919,7 +1919,7 @@ export default function localUnitTest() {
       expect(hasDuplicateAssetName(assets, '')).assertFalse();
     });
 
-    it('hides local file asset editing like reference client', 0, () => {
+    it('hides local file asset editing', 0, () => {
       expect(isEditableCustomAssetUrl('file')).assertFalse();
       expect(isEditableCustomAssetUrl(' file ')).assertFalse();
       expect(isEditableCustomAssetUrl('local://import')).assertFalse();
@@ -2137,7 +2137,7 @@ export default function localUnitTest() {
       expect(SETTINGS_CONTROLLER.buildSettings(draft).proxySharingEnabled).assertTrue();
     });
 
-    it('normalizes real ping concurrency like reference client', 0, () => {
+    it('normalizes real ping concurrency', 0, () => {
       expect(normalizeRealPingConcurrency(undefined)).assertEqual(16);
       expect(normalizeRealPingConcurrency(0)).assertEqual(1);
       expect(normalizeRealPingConcurrency(5.8)).assertEqual(5);
@@ -2185,7 +2185,7 @@ export default function localUnitTest() {
       })).assertTrue();
     });
 
-    it('warns on successful start when proxy sharing is enabled like reference client', 0, () => {
+    it('warns on successful start when proxy sharing is enabled', 0, () => {
       const settings = buildSettingsFixture();
       settings.proxySharingEnabled = false;
       expect(shouldShowProxySharingStartWarning(settings, ConnectionStatus.RUNNING)).assertFalse();
@@ -2196,7 +2196,7 @@ export default function localUnitTest() {
       expect(shouldShowProxySharingStartWarning(settings, ConnectionStatus.RUNNING)).assertTrue();
     });
 
-    it('handles compatible-client style per-app package list actions', 0, () => {
+    it('handles per-app package list actions', 0, () => {
       const selfPackage = 'com.lmlm.hey';
       const normalized = normalizePerAppPackageList([
         ' com.google.android.youtube ',
@@ -2248,7 +2248,7 @@ export default function localUnitTest() {
 
     });
 
-    it('maps per-app vpn package lists like reference client', 0, () => {
+    it('maps per-app vpn package lists', 0, () => {
       const disabled = createDefaultVpnConfig(false, false, []);
       const disabledBlocked = disabled.blockedApplications ?? [];
       expect(disabledBlocked[0]).assertEqual(BUNDLE_NAME);
@@ -2275,7 +2275,7 @@ export default function localUnitTest() {
       expect(blocked[1]).assertEqual('com.tencent.mm');
     });
 
-    it('uses reference client vpn dns default', 0, () => {
+    it('uses the protocol spec vpn dns default', 0, () => {
       expect(DEFAULT_VPN_DNS_ADDRESSES.length).assertEqual(1);
       expect(DEFAULT_VPN_DNS_ADDRESSES[0]).assertEqual('1.1.1.1');
 
@@ -2303,7 +2303,7 @@ export default function localUnitTest() {
       expect(dnsAddresses[0]).assertEqual('1.1.1.1');
     });
 
-    it('normalizes ui mode night like reference client', 0, () => {
+    it('normalizes ui mode night', 0, () => {
       expect(normalizeUiModeNight(undefined)).assertEqual('0');
       expect(normalizeUiModeNight('0')).assertEqual('0');
       expect(normalizeUiModeNight('1')).assertEqual('1');
@@ -2312,14 +2312,14 @@ export default function localUnitTest() {
       expect(normalizeUiModeNight('bad', '2')).assertEqual('2');
     });
 
-    it('normalizes runtime mode like reference client pref_mode', 0, () => {
+    it('normalizes runtime mode pref_mode', 0, () => {
       expect(normalizeAppRuntimeMode(undefined)).assertEqual(APP_MODE_VPN);
       expect(normalizeAppRuntimeMode(APP_MODE_VPN)).assertEqual(APP_MODE_VPN);
       expect(normalizeAppRuntimeMode(APP_MODE_PROXY_ONLY)).assertEqual(APP_MODE_PROXY_ONLY);
       expect(normalizeAppRuntimeMode('bad')).assertEqual(APP_MODE_VPN);
     });
 
-    it('parses current connection IP API responses like reference client', 0, () => {
+    it('parses current connection IP API responses', 0, () => {
       const ipSb = parseRemoteIpInfoContent('{"ip":"203.0.113.8","country_code":"US"}');
       expect(ipSb.ok).assertTrue();
       expect(ipSb.summary).assertEqual('203.0.113.8');
@@ -2384,7 +2384,7 @@ export default function localUnitTest() {
       expect(subscriptionWant.parameters?.['ohos.extra.param.key.shareUrl']?.toString()).assertEqual('https://sub.example/list');
     });
 
-    it('filters and formats logcat entries like reference client log actions', 0, () => {
+    it('filters and formats logcat entries log actions', 0, () => {
       const items = [
         '09-01 10:00:00.000 I/HeyVpn: started',
         '09-01 10:00:01.000 E/AndroidRuntime: crash',
@@ -2476,7 +2476,7 @@ export default function localUnitTest() {
       expect(en.indexOf('✗') >= 0).assertTrue();
     });
 
-    it('filters nodes by compatible-client style regex or literal fallback', 0, () => {
+    it('filters nodes by regex or literal fallback', 0, () => {
       const nodes = buildNodeFixture();
       expect(filterNodes(nodes, 'alpha').length).assertEqual(1);
       expect(filterNodes(nodes, 'trojan').length).assertEqual(1);
@@ -2493,15 +2493,15 @@ export default function localUnitTest() {
       expect(bracketResult[0].name).assertEqual('Regex [literal]');
     });
 
-    it('formats node endpoint descriptions like reference client', 0, () => {
+    it('formats node endpoint descriptions', 0, () => {
       const nodes = buildNodeFixture();
       const vlessEndpoint = extractNodeEndpoint(VLESS_REALITY_OUTBOUND);
       expect(vlessEndpoint.address).assertEqual('example.com');
       expect(vlessEndpoint.port).assertEqual('443');
-      expect(buildClientCompatNodeDescription(nodes[0])).assertEqual('relay.example.*** : 443');
-      expect(formatClientCompatEndpointDescription('1.2.3.4', '443')).assertEqual('1.2.3.*** : 443');
-      expect(formatClientCompatEndpointDescription('example.com', '443')).assertEqual('example.*** : 443');
-      expect(formatClientCompatEndpointDescription('2001:db8::1', '51820')).assertEqual('2001:db8:*** : 51820');
+      expect(buildNodeDescription(nodes[0])).assertEqual('relay.example.*** : 443');
+      expect(formatEndpointDescription('1.2.3.4', '443')).assertEqual('1.2.3.*** : 443');
+      expect(formatEndpointDescription('example.com', '443')).assertEqual('example.*** : 443');
+      expect(formatEndpointDescription('2001:db8::1', '51820')).assertEqual('2001:db8:*** : 51820');
 
       const wireGuardNode = copyNode(nodes[1], 'node-wireguard-ipv6');
       wireGuardNode.protocol = 'wireguard';
@@ -2509,10 +2509,10 @@ export default function localUnitTest() {
       const wireGuardEndpoint = extractNodeEndpoint(wireGuardNode.outboundJson);
       expect(wireGuardEndpoint.address).assertEqual('2001:db8::1');
       expect(wireGuardEndpoint.port).assertEqual('51820');
-      expect(buildClientCompatNodeDescription(wireGuardNode)).assertEqual('2001:db8:*** : 51820');
+      expect(buildNodeDescription(wireGuardNode)).assertEqual('2001:db8:*** : 51820');
     });
 
-    it('locates the selected node group and visible index like reference client locate action', 0, () => {
+    it('locates the selected node group and visible index locate action', 0, () => {
       const nodes = buildNodeFixture();
       const groups: Array<SubscriptionGroup> = [
         buildSubscriptionGroupFixture('group-a', 'Group A', [nodes[0]]),
@@ -2548,7 +2548,7 @@ export default function localUnitTest() {
       expect(sortNodes(nodes, 'protocol')[0].protocol).assertEqual('trojan');
     });
 
-    it('dedupes ordinary nodes like reference client profile comparison', 0, () => {
+    it('dedupes ordinary nodes profile comparison', 0, () => {
       const nodes = buildNodeFixture();
       const distinctManual: ProxyNode = copyNode(nodes[1], 'node-manual-distinct');
       distinctManual.outboundJson = VLESS_FINALMASK_OUTBOUND;
@@ -2582,7 +2582,7 @@ export default function localUnitTest() {
       expect(result[result.length - 1].id).assertEqual('complex-two');
     });
 
-    it('retains selected subscription nodes with reference client multi-level matching', 0, () => {
+    it('retains selected subscription nodes with the protocol spec multi-level matching', 0, () => {
       const nodes = buildNodeFixture();
       const selected = nodes[0];
       const unrelated = copyNode(nodes[2], 'new-unrelated');
@@ -2605,7 +2605,7 @@ export default function localUnitTest() {
       expect(matchedByRemarks?.id ?? '').assertEqual(sameRemarks.id);
     });
 
-    it('applies reference client visible batch operations across all groups', 0, () => {
+    it('applies the protocol spec visible batch operations across all groups', 0, () => {
       const nodes = buildNodeFixture();
       const duplicateAlpha = copyNode(nodes[2], 'node-alpha-duplicate');
       duplicateAlpha.rawLink = nodes[2].rawLink;
@@ -2633,7 +2633,7 @@ export default function localUnitTest() {
       expect(cleared.groups[1].nodes.length).assertEqual(2);
     });
 
-    it('moves nodes within a subscription group like reference client drag ordering', 0, () => {
+    it('moves nodes within a subscription group drag ordering', 0, () => {
       const nodes = buildNodeFixture();
       const groups = [
         buildGroupFixture('sub-a', 'A', [nodes[0], nodes[1], nodes[2]], nodes[1].id),
@@ -2665,7 +2665,7 @@ export default function localUnitTest() {
       expect(allGroupNoop.groups[0].nodes[1].id).assertEqual(nodes[1].id);
     });
 
-    it('applies reference client post delay-test remove and sort by subscription group', 0, () => {
+    it('applies the protocol spec post delay-test remove and sort by subscription group', 0, () => {
       const nodes = buildNodeFixture();
       const slow = copyNode(nodes[2], 'node-slow');
       slow.name = 'Slow';
@@ -2695,7 +2695,7 @@ export default function localUnitTest() {
       expect(result.groups[0].updatedAt).assertEqual(200);
     });
 
-    it('sorts by test results with reference client subscription group semantics', 0, () => {
+    it('sorts by test results with the protocol spec subscription group semantics', 0, () => {
       const nodes = buildNodeFixture();
       const untested = copyNode(nodes[1], 'node-untested-manual-sort');
       untested.name = 'Untested';
@@ -2737,7 +2737,7 @@ export default function localUnitTest() {
       expect(allGroupsResult.groups[1].nodes[1].id).assertEqual(otherSlow.id);
     });
 
-    it('finds invalid nodes and exports only reference client shareable nodes', 0, () => {
+    it('finds invalid nodes and exports only the protocol spec shareable nodes', 0, () => {
       const nodes = buildNodeFixture();
       const invalid = copyNode(nodes[0], 'invalid');
       invalid.rawLink = '';
@@ -2776,7 +2776,7 @@ export default function localUnitTest() {
       expect(model.count).assertEqual(nodes.length);
     });
 
-    it('builds compatible-client style full config content for node detail copy', 0, () => {
+    it('builds full config content for node detail copy', 0, () => {
       const nodes = buildNodeFixture();
       const ordinary = buildNodeFullConfigModel(nodes[2], buildSettingsFixture());
       expect(ordinary.success).assertTrue();
@@ -2842,40 +2842,40 @@ export default function localUnitTest() {
       expect(validation.normalizedJson).assertContain('"mldsa65Verify": "test-mldsa65-verify"');
     });
 
-    it('keeps reference client flow, mux, loglevel, security, fragment, and transport options complete', 0, () => {
-      expect(CLIENT_COMPAT_FLOW_OPTIONS.join('|')).assertEqual('none|xtls-rprx-vision|xtls-rprx-vision-udp443');
-      expect(CLIENT_COMPAT_UTLS_FINGERPRINT_OPTIONS.join('|')).assertEqual('none|chrome|firefox|safari|ios|android|edge|360|qq|random|randomized');
-      expect(CLIENT_COMPAT_DEFAULT_VMESS_SECURITY).assertEqual('chacha20-poly1305');
-      expect(CLIENT_COMPAT_VMESS_SECURITY_OPTIONS.join('|')).assertEqual('chacha20-poly1305|aes-128-gcm|auto|none|zero');
-      expect(CLIENT_COMPAT_SS_SECURITY_OPTIONS.join('|')).assertEqual('aes-256-gcm|aes-128-gcm|chacha20-poly1305|chacha20-ietf-poly1305|xchacha20-poly1305|xchacha20-ietf-poly1305|none|plain|2022-blake3-aes-128-gcm|2022-blake3-aes-256-gcm|2022-blake3-chacha20-poly1305');
-      expect(CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC).assertEqual('reject');
-      expect(CLIENT_COMPAT_MUX_XUDP_QUIC_OPTIONS.join('|')).assertEqual('reject|allow|skip');
-      expect(normalizeClientCompatMuxXudpQuic('bad')).assertEqual('reject');
-      expect(CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL).assertEqual('warning');
-      expect(CLIENT_COMPAT_CORE_LOG_LEVEL_OPTIONS.join('|')).assertEqual('debug|info|warning|error|none');
-      expect(normalizeClientCompatCoreLogLevel('verbose')).assertEqual('warning');
-      expect(CLIENT_COMPAT_DEFAULT_FRAGMENT_PACKETS).assertEqual('tlshello');
-      expect(CLIENT_COMPAT_FRAGMENT_PACKET_OPTIONS.join('|')).assertEqual('tlshello|1-2|1-3|1-5');
-      expect(normalizeClientCompatFragmentPackets('bad')).assertEqual('tlshello');
-      expect(CLIENT_COMPAT_SUPPORTED_TRANSPORT_OPTIONS.join('|')).assertEqual('tcp|kcp|ws|httpupgrade|xhttp|h2|grpc');
-      expect(CLIENT_COMPAT_TCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|http');
-      expect(CLIENT_COMPAT_KCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|srtp|utp|wechat-video|dtls|wireguard|dns');
-      expect(CLIENT_COMPAT_XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
-      expect(CLIENT_COMPAT_GRPC_MODE_OPTIONS.join('|')).assertEqual('gun|multi');
-      expect(CLIENT_COMPAT_DEFAULT_BROWSER_DIALER_MODE).assertEqual('Disable');
-      expect(CLIENT_COMPAT_BROWSER_DIALER_MODE_OPTIONS.join('|')).assertEqual('Disable|OkHttp|WebView');
-      expect(normalizeClientCompatBrowserDialerMode('webview')).assertEqual('WebView');
-      expect(normalizeClientCompatBrowserDialerMode('bad')).assertEqual('Disable');
-      expect(CLIENT_COMPAT_HYSTERIA2_SECURITY_OPTIONS.join('|')).assertEqual('none|tls');
-      expect(CLIENT_COMPAT_DEFAULT_HYSTERIA2_SECURITY).assertEqual('tls');
-      expect(normalizeClientCompatHysteria2Security('none')).assertEqual('none');
-      expect(normalizeClientCompatHysteria2Security('bad')).assertEqual('tls');
-      expect(CLIENT_COMPAT_DEFAULT_STREAM_ALPN).assertEqual('');
-      expect(CLIENT_COMPAT_STREAM_ALPN_OPTIONS.join('|')).assertEqual('|h3|h2|http/1.1|h3,h2,http/1.1|h3,h2|h2,http/1.1');
-      expect(normalizeClientCompatStreamAlpn('h3,h2')).assertEqual('h3,h2');
-      expect(normalizeClientCompatStreamAlpn('bad')).assertEqual('');
-      expect(normalizeClientCompatStreamAlpnWithFallback('', 'h3')).assertEqual('h3');
-      expect(normalizeClientCompatStreamAlpnWithFallback('bad', 'h3')).assertEqual('h3');
+    it('keeps the protocol spec flow, mux, loglevel, security, fragment, and transport options complete', 0, () => {
+      expect(FLOW_OPTIONS.join('|')).assertEqual('none|xtls-rprx-vision|xtls-rprx-vision-udp443');
+      expect(UTLS_FINGERPRINT_OPTIONS.join('|')).assertEqual('none|chrome|firefox|safari|ios|android|edge|360|qq|random|randomized');
+      expect(DEFAULT_VMESS_SECURITY).assertEqual('chacha20-poly1305');
+      expect(VMESS_SECURITY_OPTIONS.join('|')).assertEqual('chacha20-poly1305|aes-128-gcm|auto|none|zero');
+      expect(SS_SECURITY_OPTIONS.join('|')).assertEqual('aes-256-gcm|aes-128-gcm|chacha20-poly1305|chacha20-ietf-poly1305|xchacha20-poly1305|xchacha20-ietf-poly1305|none|plain|2022-blake3-aes-128-gcm|2022-blake3-aes-256-gcm|2022-blake3-chacha20-poly1305');
+      expect(DEFAULT_MUX_XUDP_QUIC).assertEqual('reject');
+      expect(MUX_XUDP_QUIC_OPTIONS.join('|')).assertEqual('reject|allow|skip');
+      expect(normalizeMuxXudpQuic('bad')).assertEqual('reject');
+      expect(DEFAULT_CORE_LOG_LEVEL).assertEqual('warning');
+      expect(CORE_LOG_LEVEL_OPTIONS.join('|')).assertEqual('debug|info|warning|error|none');
+      expect(normalizeCoreLogLevel('verbose')).assertEqual('warning');
+      expect(DEFAULT_FRAGMENT_PACKETS).assertEqual('tlshello');
+      expect(FRAGMENT_PACKET_OPTIONS.join('|')).assertEqual('tlshello|1-2|1-3|1-5');
+      expect(normalizeFragmentPackets('bad')).assertEqual('tlshello');
+      expect(SUPPORTED_TRANSPORT_OPTIONS.join('|')).assertEqual('tcp|kcp|ws|httpupgrade|xhttp|h2|grpc');
+      expect(TCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|http');
+      expect(KCP_HEADER_TYPE_OPTIONS.join('|')).assertEqual('none|srtp|utp|wechat-video|dtls|wireguard|dns');
+      expect(XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
+      expect(GRPC_MODE_OPTIONS.join('|')).assertEqual('gun|multi');
+      expect(DEFAULT_BROWSER_DIALER_MODE).assertEqual('Disable');
+      expect(BROWSER_DIALER_MODE_OPTIONS.join('|')).assertEqual('Disable|OkHttp|WebView');
+      expect(normalizeBrowserDialerMode('webview')).assertEqual('WebView');
+      expect(normalizeBrowserDialerMode('bad')).assertEqual('Disable');
+      expect(HYSTERIA2_SECURITY_OPTIONS.join('|')).assertEqual('none|tls');
+      expect(DEFAULT_HYSTERIA2_SECURITY).assertEqual('tls');
+      expect(normalizeHysteria2Security('none')).assertEqual('none');
+      expect(normalizeHysteria2Security('bad')).assertEqual('tls');
+      expect(DEFAULT_STREAM_ALPN).assertEqual('');
+      expect(STREAM_ALPN_OPTIONS.join('|')).assertEqual('|h3|h2|http/1.1|h3,h2,http/1.1|h3,h2|h2,http/1.1');
+      expect(normalizeStreamAlpn('h3,h2')).assertEqual('h3,h2');
+      expect(normalizeStreamAlpn('bad')).assertEqual('');
+      expect(normalizeStreamAlpnWithFallback('', 'h3')).assertEqual('h3');
+      expect(normalizeStreamAlpnWithFallback('bad', 'h3')).assertEqual('h3');
 
       const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&flow=xtls-rprx-vision-udp443&security=reality&sni=www.example.com&fp=randomized&pbk=test-public-key&sid=abcd&type=tcp#udp443';
       const imported = parseShareLinkToOutboundJson(link);
@@ -2887,20 +2887,20 @@ export default function localUnitTest() {
       expect(exported).assertContain('fp=randomized');
     });
 
-    it('splits h2 transport hosts like reference client manual editor', 0, () => {
-      const hosts = splitClientCompatH2Hosts(' h2-a.example, h2-b.example ,,h2-c.example ');
+    it('splits h2 transport hosts manual editor', 0, () => {
+      const hosts = splitH2Hosts(' h2-a.example, h2-b.example ,,h2-c.example ');
       expect(hosts.length).assertEqual(3);
       expect(hosts[0]).assertEqual('h2-a.example');
       expect(hosts[1]).assertEqual('h2-b.example');
       expect(hosts[2]).assertEqual('h2-c.example');
 
-      const settings = buildClientCompatH2HttpSettings(' cdn-a.example, cdn-b.example ', ' /h2 ');
+      const settings = buildH2HttpSettings(' cdn-a.example, cdn-b.example ', ' /h2 ');
       expect(settings.path).assertEqual('/h2');
       expect(settings.host.length).assertEqual(2);
       expect(settings.host[0]).assertEqual('cdn-a.example');
       expect(settings.host[1]).assertEqual('cdn-b.example');
 
-      const fallback = buildClientCompatH2HttpSettings('', '');
+      const fallback = buildH2HttpSettings('', '');
       expect(fallback.path).assertEqual('/');
       expect(fallback.host.length).assertEqual(0);
     });
@@ -2921,7 +2921,7 @@ export default function localUnitTest() {
       expect(exportedTcp).assertContain('path=%2Flogin%2C%2Fapi');
     });
 
-    it('exports bare url-style outbounds with reference client tcp defaults', 0, () => {
+    it('exports bare url-style outbounds with the protocol spec tcp defaults', 0, () => {
       const bareVlessJson = '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"plain.example.com","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]}}';
       const exportedVless = formatOutboundJsonToShareLink(bareVlessJson, 'plain-vless');
       expect(exportedVless).assertContain('security=none');
@@ -2964,10 +2964,10 @@ export default function localUnitTest() {
       expect(exportedXhttp).assertContain('extra=%7B%22headers%22%3A%7B%22X-Test%22%3A%22yes%22%7D%7D');
     });
 
-    it('normalizes xhttp mode to reference client options', 0, () => {
-      expect(CLIENT_COMPAT_XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
-      expect(normalizeClientCompatXhttpMode('stream-up')).assertEqual('stream-up');
-      expect(normalizeClientCompatXhttpMode('invalid')).assertEqual('auto');
+    it('normalizes xhttp mode to the protocol spec options', 0, () => {
+      expect(XHTTP_MODE_OPTIONS.join('|')).assertEqual('auto|packet-up|stream-up|stream-one');
+      expect(normalizeXhttpMode('stream-up')).assertEqual('stream-up');
+      expect(normalizeXhttpMode('invalid')).assertEqual('auto');
 
       const imported = parseShareLinkToOutboundJson('vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&security=tls&type=xhttp&host=x.example&path=%2Fx&mode=bad-mode#xhttp-bad');
       expect(imported.success).assertTrue();
@@ -3025,7 +3025,7 @@ export default function localUnitTest() {
       expect(importedVmess.outboundJson).assertContain('"password": "vmess-seed"');
     });
 
-    it('round-trips reference client finalMask fm share parameter', 0, () => {
+    it('round-trips the protocol spec finalMask fm share parameter', 0, () => {
       const link = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&security=tls&sni=www.example.com&type=ws&host=cdn.example&path=%2Fws&fm=%7B%22tcp%22%3A%5B%7B%22type%22%3A%22fragment%22%7D%5D%7D#finalmask';
       const imported = parseShareLinkToOutboundJson(link);
       expect(imported.success).assertTrue();
@@ -3197,8 +3197,8 @@ export default function localUnitTest() {
       expect(requiredCoreForProtocol(CORE_TYPE_XRAY, undefined) === null).assertTrue();
     });
 
-    it('matches reference client ShadowsocksFmt parsing parity', 0, () => {
-      // SIP002 with plain-text userinfo (no base64) — reference client parseSip002 validUrlWithPlainTextUserinfo
+    it('matches the protocol spec ShadowsocksFmt parsing parity', 0, () => {
+      // SIP002 with plain-text userinfo (no base64) — the protocol spec parseSip002 validUrlWithPlainTextUserinfo
       const plainUserInfo = parseShareLinkToOutboundJson('ss://aes-256-gcm:mypassword@example.com:8388#Plain%20Server');
       expect(plainUserInfo.success).assertTrue();
       expect(plainUserInfo.name).assertEqual('Plain Server');
@@ -3213,27 +3213,27 @@ export default function localUnitTest() {
       expect(chacha.success).assertTrue();
       expect(chacha.outboundJson).assertContain('"method": "chacha20-ietf-poly1305"');
 
-      // Empty host is rejected — reference client parseSip002 returnsNullForEmptyHost
+      // Empty host is rejected — the protocol spec parseSip002 returnsNullForEmptyHost
       const emptyHost = parseShareLinkToOutboundJson('ss://aes-256-gcm:password@:8388#No%20Host');
       expect(emptyHost.success).assertFalse();
 
-      // Invalid (negative) port is rejected — reference client parseSip002 returnsNullForInvalidPort
+      // Invalid (negative) port is rejected — the protocol spec parseSip002 returnsNullForInvalidPort
       const badPort = parseShareLinkToOutboundJson('ss://aes-256-gcm:password@example.com:-1#Invalid%20Port');
       expect(badPort.success).assertFalse();
 
-      // Empty remarks fall back to reference client "none" — parse handlesEmptyRemarksGracefully
+      // Empty remarks fall back to the protocol spec "none" — parse handlesEmptyRemarksGracefully
       const emptyRemarks = parseShareLinkToOutboundJson('ss://YWVzLTEyOC1nY206c2VjcmV0@example.com:8388#');
       expect(emptyRemarks.success).assertTrue();
       expect(emptyRemarks.name).assertEqual('none');
 
-      // toUri brackets IPv6 server addresses — reference client toUri handlesIpv6Address
+      // toUri brackets IPv6 server addresses — the protocol spec toUri handlesIpv6Address
       const ipv6Json = '{"protocol":"shadowsocks","tag":"proxy","settings":{"servers":[{"address":"2001:db8::1","port":8388,"method":"aes-256-gcm","password":"password"}]}}';
       const ipv6Uri = formatOutboundJsonToShareLink(ipv6Json, 'IPv6 Server');
       expect(ipv6Uri).assertContain('@[2001:db8::1]:8388');
     });
 
-    it('matches reference client isIpInCidr and private subscription host rules', 0, () => {
-      // reference client UtilsTest.test_IsIpInCidr
+    it('matches the protocol spec isIpInCidr and private subscription host rules', 0, () => {
+      // the protocol spec UtilsTest.test_IsIpInCidr
       expect(isIpv4InCidr('192.168.1.1', '192.168.1.0/24')).assertTrue();
       expect(isIpv4InCidr('192.168.1.254', '192.168.1.0/24')).assertTrue();
       expect(isIpv4InCidr('192.168.2.1', '192.168.1.0/24')).assertFalse();
@@ -3243,7 +3243,7 @@ export default function localUnitTest() {
       expect(isIpv4InCidr('invalid-ip', '192.168.1.0/24')).assertFalse();
       expect(isIpv4InCidr('192.168.1.1', 'invalid-cidr')).assertFalse();
 
-      // Loopback/private IPv4 hosts (reference client AppConfig.PRIVATE_IP_LIST)
+      // Loopback/private IPv4 hosts (the protocol spec AppConfig.PRIVATE_IP_LIST)
       expect(PRIVATE_IP_LIST.length).assertEqual(7);
       expect(isLoopbackOrPrivateIpv4Host('127.0.0.1')).assertTrue();
       expect(isLoopbackOrPrivateIpv4Host('10.1.2.3')).assertTrue();
@@ -3253,7 +3253,7 @@ export default function localUnitTest() {
       expect(isLoopbackOrPrivateIpv4Host('8.8.8.8')).assertFalse();
       expect(isLoopbackOrPrivateIpv4Host('example.com')).assertFalse();
 
-      // reference client Utils.isValidSubUrl host exemption: plaintext HTTP allowed for
+      // the protocol spec Utils.isValidSubUrl host exemption: plaintext HTTP allowed for
       // loopback/private hosts, rejected for public hosts.
       expect(isLoopbackOrPrivateHttpUrl('http://127.0.0.1:8080/sub')).assertTrue();
       expect(isLoopbackOrPrivateHttpUrl('http://192.168.1.5/subscribe?token=abc')).assertTrue();
@@ -3262,7 +3262,7 @@ export default function localUnitTest() {
       expect(isLoopbackOrPrivateHttpUrl('http://8.8.8.8/sub')).assertFalse();
     });
 
-    it('normalizes hysteria2 mportHopInt on export like reference client Hysteria2Fmt', 0, () => {
+    it('normalizes hysteria2 mportHopInt on export Hysteria2Fmt', 0, () => {
       const base = '{"protocol":"hysteria2","tag":"proxy","settings":{"servers":[{"address":"hy.example.com","port":443,"password":"secret","security":"tls","portHopping":"20000-50000","portHoppingInterval":"INTERVAL"}]}}';
       // Range midpoint: (max(5,10) + max(10,60)) / 2 = 35
       expect(formatOutboundJsonToShareLink(base.replace('INTERVAL', '10-60'), 'hy')).assertContain('mportHopInt=35');
@@ -3274,7 +3274,7 @@ export default function localUnitTest() {
       expect(formatOutboundJsonToShareLink(base.replace('INTERVAL', '3'), 'hy').indexOf('mportHopInt')).assertEqual(-1);
     });
 
-    it('defaults unnamed url-style share links to reference client none remarks', 0, () => {
+    it('defaults unnamed url-style share links to the protocol spec none remarks', 0, () => {
       const unnamedVlessLink = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none&type=tcp';
       const unnamedVless = parseShareLinkToOutboundJson(unnamedVlessLink);
       expect(unnamedVless.success).assertTrue();
@@ -3554,14 +3554,14 @@ export default function localUnitTest() {
       expect(nodes[0].outboundJson).assertContain('"address": "example.com"');
     });
 
-    it('validates insecure subscription urls like reference client subscription settings', 0, () => {
+    it('validates insecure subscription urls subscription settings', 0, () => {
       expect(SubscriptionManager.validateSubscriptionUrl('https://sub.example/list', false)).assertEqual('');
       expect(SubscriptionManager.validateSubscriptionUrl('http://sub.example/list', true)).assertEqual('');
       expect(SubscriptionManager.validateSubscriptionUrl('http://sub.example/list', false)).assertContain('不安全');
       expect(SubscriptionManager.validateSubscriptionUrl('ftp://sub.example/list', true)).assertContain('http:// 或 https://');
     });
 
-    it('converts IDN subscription hosts to punycode like reference client HttpUtil', 0, () => {
+    it('converts IDN subscription hosts to punycode HttpUtil', 0, () => {
       expect(toIdnUrl('https://example.com/path')).assertEqual('https://example.com/path');
       expect(toIdnUrl('https://例子.测试/path')).assertEqual('https://xn--fsqu00a.xn--0zwm56d/path');
       expect(toIdnUrl('https://例子.com/测试')).assertEqual('https://xn--fsqu00a.com/测试');
@@ -3572,7 +3572,7 @@ export default function localUnitTest() {
       expect(SubscriptionManager.toSubscriptionRequestUrl('  https://user:pass@例子.测试/list  ')).assertEqual('https://user:pass@xn--fsqu00a.xn--0zwm56d/list');
     });
 
-    it('exports IDN url-style share hosts as punycode like reference client FmtBase', 0, () => {
+    it('exports IDN url-style share hosts as punycode FmtBase', 0, () => {
       const idnVlessJson = '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"例子.测试","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]}}';
       const exportedVless = formatOutboundJsonToShareLink(idnVlessJson, 'idn-vless');
       expect(exportedVless).assertContain('@xn--fsqu00a.xn--0zwm56d:443');
@@ -3591,7 +3591,7 @@ export default function localUnitTest() {
       expect(exportedHy2).assertContain('hysteria2://secret@xn--fsqu00a.xn--0zwm56d:443');
     });
 
-    it('uses punycode IDN outbound hosts in runtime configs like reference client core builder', 0, () => {
+    it('uses punycode IDN outbound hosts in runtime configs core builder', 0, () => {
       const settings = buildSettingsFixture();
       settings.outboundDomainResolveMethod = OUTBOUND_DOMAIN_RESOLVE_NONE;
       const idnVlessJson = '{"protocol":"vless","tag":"proxy","settings":{"vnext":[{"address":"例子.测试","port":443,"users":[{"id":"00000000-0000-0000-0000-000000000000","encryption":"none"}]}]}}';
@@ -3635,7 +3635,7 @@ export default function localUnitTest() {
       expect(punycodeHostRuntime.configJson).assertContain('"address": "203.0.113.9"');
     });
 
-    it('adds embedded subscription basic auth like reference client', 0, () => {
+    it('adds embedded subscription basic auth', 0, () => {
       const header = SubscriptionManager.buildSubscriptionRequestHeader(
         'https://user%40name:p%40ss%2Fword@sub.example/list',
         ' Custom UA '
@@ -3723,7 +3723,7 @@ export default function localUnitTest() {
       expect(isSubscriptionAutoUpdateDue(group, 2000)).assertFalse();
     });
 
-    it('parses install deep links with reference client outer fragment fallback', 0, () => {
+    it('parses install deep links with the protocol spec outer fragment fallback', 0, () => {
       const unnamedConfig = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none';
       const config = parseDeepLink(`hey://add-endpoint?url=${encodeURIComponent(unnamedConfig)}#outer-name`);
       expect(config.kind).assertEqual('config');
@@ -3739,7 +3739,7 @@ export default function localUnitTest() {
       expect(sub.payload).assertEqual('https://example.com/sub#Sub Name');
     });
 
-    it('extracts Harmony sendData text imports like reference client ACTION_SEND', 0, () => {
+    it('extracts Harmony sendData text imports ACTION_SEND', 0, () => {
       const parameters: Record<string, Object> = {};
       parameters[HARMONY_SHARE_ABSTRACT_KEY] = 'vless://abstract@example.com:443?encryption=none#abstract' as Object;
       parameters[HARMONY_SHARE_URL_KEY] = '  vless://url@example.com:443?encryption=none#url  ' as Object;
@@ -3886,7 +3886,7 @@ export default function localUnitTest() {
       expect(errored.statusDetail).assertEqual('bad config');
     });
 
-    it('builds compatible-client style per-subscription background auto update schedule plans', 0, () => {
+    it('builds per-subscription background auto update schedule plans', 0, () => {
       const disabled = buildSubscriptionAutoUpdateSchedulePlan([]);
       expect(disabled.enabled).assertFalse();
       expect(disabled.enabledGroupCount).assertEqual(0);

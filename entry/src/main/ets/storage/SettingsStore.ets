@@ -26,7 +26,7 @@ import {
   normalizeVpnMtuValue,
   RoutingRule
 } from '../core/Profile';
-import { CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL, CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC, normalizeClientCompatCoreLogLevel, normalizeClientCompatMuxXudpQuic } from '../core/ClientCompatOptions';
+import { DEFAULT_CORE_LOG_LEVEL, DEFAULT_MUX_XUDP_QUIC, normalizeCoreLogLevel, normalizeMuxXudpQuic } from '../core/ProtocolOptions';
 
 const PREFERENCES_NAME: string = 'hey_vpn_settings';
 const SETTINGS_KEY: string = 'app_settings';
@@ -62,7 +62,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   muxEnabled: false,
   muxConcurrency: 8,
   muxXudpConcurrency: 8,
-  muxXudpQuic: CLIENT_COMPAT_DEFAULT_MUX_XUDP_QUIC,
+  muxXudpQuic: DEFAULT_MUX_XUDP_QUIC,
   fragmentEnabled: false,
   fragmentPackets: '',
   fragmentLength: '',
@@ -85,7 +85,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ipApiUrl: DEFAULT_IP_API_URL,
   realPingConcurrency: 16,
   homeDelayTestInterval: 0,
-  logLevel: CLIENT_COMPAT_DEFAULT_CORE_LOG_LEVEL,
+  logLevel: DEFAULT_CORE_LOG_LEVEL,
   outboundDomainResolveMethod: OUTBOUND_DOMAIN_RESOLVE_DNS_HOSTS,
   mode: APP_MODE_VPN,
   trafficMode: 'rules',
@@ -165,7 +165,7 @@ export class SettingsStore {
       muxEnabled: SettingsStore.boolValue(raw.muxEnabled, base.muxEnabled),
       muxConcurrency: SettingsStore.numberValue(raw.muxConcurrency, base.muxConcurrency),
       muxXudpConcurrency: SettingsStore.numberValue(raw.muxXudpConcurrency, base.muxXudpConcurrency),
-      muxXudpQuic: normalizeClientCompatMuxXudpQuic(SettingsStore.stringValue(raw.muxXudpQuic, base.muxXudpQuic), base.muxXudpQuic),
+      muxXudpQuic: normalizeMuxXudpQuic(SettingsStore.stringValue(raw.muxXudpQuic, base.muxXudpQuic), base.muxXudpQuic),
       fragmentEnabled: SettingsStore.boolValue(raw.fragmentEnabled, base.fragmentEnabled),
       fragmentPackets: SettingsStore.stringValue(raw.fragmentPackets, base.fragmentPackets),
       fragmentLength: SettingsStore.stringValue(raw.fragmentLength, base.fragmentLength),
@@ -186,7 +186,7 @@ export class SettingsStore {
       ipApiUrl: SettingsStore.stringValue(raw.ipApiUrl, base.ipApiUrl),
       realPingConcurrency: normalizeRealPingConcurrency(raw.realPingConcurrency, base.realPingConcurrency),
       homeDelayTestInterval: normalizeHomeDelayTestInterval(raw.homeDelayTestInterval, base.homeDelayTestInterval),
-      logLevel: normalizeClientCompatCoreLogLevel(SettingsStore.stringValue(raw.logLevel, base.logLevel), base.logLevel),
+      logLevel: normalizeCoreLogLevel(SettingsStore.stringValue(raw.logLevel, base.logLevel), base.logLevel),
       outboundDomainResolveMethod: normalizeOutboundDomainResolveMethod(raw.outboundDomainResolveMethod, base.outboundDomainResolveMethod),
       mode: normalizeAppRuntimeMode(raw.mode, base.mode),
       trafficMode: SettingsStore.trafficModeValue(raw.trafficMode, base.trafficMode),

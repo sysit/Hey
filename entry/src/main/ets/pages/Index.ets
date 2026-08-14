@@ -24,7 +24,7 @@ import { TrafficTotals, TrafficTotalsStore } from '../storage/TrafficTotalsStore
 import { DEFAULT_APP_SETTINGS } from '../storage/SettingsStore';
 import {
   applyDelayTestPostActionsToGroups,
-  buildClientCompatNodeDescription,
+  buildNodeDescription,
   dedupeVisibleNodesInGroups,
   exportNodesText,
   extractNodeEndpoint,
@@ -2405,7 +2405,7 @@ struct Index {
   }
 
   private nodeEndpointText(node: ProxyNode): string {
-    const description = buildClientCompatNodeDescription(node);
+    const description = buildNodeDescription(node);
     if (description.length > 0) {
       return description;
     }

@@ -1,4 +1,4 @@
-import { normalizeClientCompatStreamAlpnWithFallback } from './ClientCompatOptions';
+import { normalizeStreamAlpnWithFallback } from './ProtocolOptions';
 
 export interface ManualOutboundBuildResult {
   success: boolean;
@@ -139,7 +139,7 @@ export function buildManualHysteria2Outbound(input: ManualHysteria2Input): Manua
   };
   assignIfPresent(server, 'security', input.security);
   assignIfPresent(server, 'sni', input.sni);
-  assignIfPresent(server, 'alpn', normalizeClientCompatStreamAlpnWithFallback(input.alpn, 'h3'));
+  assignIfPresent(server, 'alpn', normalizeStreamAlpnWithFallback(input.alpn, 'h3'));
   assignIfPresent(server, 'obfsPassword', input.obfsPassword);
   assignIfPresent(server, 'portHopping', input.portHopping);
   assignIfPresent(server, 'portHoppingInterval', input.portHoppingInterval);

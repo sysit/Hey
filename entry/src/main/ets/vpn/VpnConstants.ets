@@ -1,6 +1,6 @@
 import { vpnExtension } from '@kit.NetworkKit';
 import Want from '@ohos.app.ability.Want';
-import { CLIENT_COMPAT_DNS_VPN, normalizeClientCompatVpnDnsServers } from '../core/DnsAddresses';
+import { DNS_VPN, normalizeVpnDnsServers } from '../core/DnsAddresses';
 import {
   DEFAULT_VPN_MTU,
   normalizeVpnBypassLanMode,
@@ -20,7 +20,7 @@ export const VPN_MTU: number = DEFAULT_VPN_MTU;
 export const TUN_IPV4: string = resolveVpnInterfaceAddressConfig().ipv4Client;
 export const TUN_IPV6: string = resolveVpnInterfaceAddressConfig().ipv6Client;
 export const VPN_INTERFACE_NAME: string = 'vpn-tun';
-export const DEFAULT_VPN_DNS_ADDRESSES: string[] = [CLIENT_COMPAT_DNS_VPN];
+export const DEFAULT_VPN_DNS_ADDRESSES: string[] = [DNS_VPN];
 export const VPN_BYPASS_LAN_IPV4_ROUTES: string[] = [
   '0.0.0.0/5',
   '8.0.0.0/7',
@@ -192,7 +192,7 @@ export function resolveVpnBypassLan(
 }
 
 export function normalizeVpnDnsAddresses(vpnDns?: string): string[] {
-  return normalizeClientCompatVpnDnsServers(vpnDns);
+  return normalizeVpnDnsServers(vpnDns);
 }
 
 function buildVpnRoutes(bypassLan: boolean, ipv6Enabled: boolean): Array<vpnExtension.RouteInfo> {

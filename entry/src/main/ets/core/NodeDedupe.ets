@@ -19,7 +19,7 @@ export function dedupeProxyNodes(nodes: Array<ProxyNode>): Array<ProxyNode> {
 }
 
 export function proxyNodeDedupeKey(node: ProxyNode): string {
-  if (isClientCompatDedupeExcludedConfigType(node.configType)) {
+  if (isDedupeExcludedConfigType(node.configType)) {
     return '';
   }
 
@@ -35,7 +35,7 @@ export function proxyNodeDedupeKey(node: ProxyNode): string {
   return `json:${node.outboundJson.trim()}`;
 }
 
-export function isClientCompatDedupeExcludedConfigType(configType: XrayConfigType | undefined): boolean {
+export function isDedupeExcludedConfigType(configType: XrayConfigType | undefined): boolean {
   return configType === 'full' || configType === 'proxy-chain' || configType === 'policy-group';
 }
 

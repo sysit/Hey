@@ -1,6 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { AppLanguage, AppRuntimeMode, AppSettings, normalizeAppRuntimeMode, normalizeHevTunLogLevel, normalizeHevTunRwTimeout, normalizeHomeDelayTestInterval, normalizeOutboundDomainResolveMethod, normalizeRealPingConcurrency, normalizeRoutingDomainStrategy, normalizeUiModeNight, normalizeVpnBypassLanMode, normalizeVpnInterfaceAddressIndex, normalizeVpnMtuValue, OutboundDomainResolveMethod, RoutingRule } from '../../core/Profile';
-import { normalizeClientCompatCoreLogLevel, normalizeClientCompatFragmentPackets, normalizeClientCompatMuxXudpQuic } from '../../core/ClientCompatOptions';
+import { normalizeCoreLogLevel, normalizeFragmentPackets, normalizeMuxXudpQuic } from '../../core/ProtocolOptions';
 import { DEFAULT_APP_SETTINGS, SettingsStore } from '../../storage/SettingsStore';
 
 export interface SettingsDraft {
@@ -173,9 +173,9 @@ export class SettingsController {
       muxEnabled: draft.muxEnabled,
       muxConcurrency: this.muxConcurrencyValue(draft.muxConcurrency, DEFAULT_APP_SETTINGS.muxConcurrency),
       muxXudpConcurrency: this.muxConcurrencyValue(draft.muxXudpConcurrency, DEFAULT_APP_SETTINGS.muxXudpConcurrency),
-      muxXudpQuic: normalizeClientCompatMuxXudpQuic(draft.muxXudpQuic, DEFAULT_APP_SETTINGS.muxXudpQuic),
+      muxXudpQuic: normalizeMuxXudpQuic(draft.muxXudpQuic, DEFAULT_APP_SETTINGS.muxXudpQuic),
       fragmentEnabled: draft.fragmentEnabled,
-      fragmentPackets: normalizeClientCompatFragmentPackets(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
+      fragmentPackets: normalizeFragmentPackets(draft.fragmentPackets, DEFAULT_APP_SETTINGS.fragmentPackets),
       fragmentLength: this.nonEmptyString(draft.fragmentLength, DEFAULT_APP_SETTINGS.fragmentLength),
       fragmentInterval: this.nonEmptyString(draft.fragmentInterval, DEFAULT_APP_SETTINGS.fragmentInterval),
       ipv6Enabled: draft.ipv6Enabled,
@@ -194,7 +194,7 @@ export class SettingsController {
       ipApiUrl: draft.ipApiUrl.trim(),
       realPingConcurrency: this.realPingConcurrencyValue(draft.realPingConcurrency, DEFAULT_APP_SETTINGS.realPingConcurrency),
       homeDelayTestInterval: this.homeDelayTestIntervalValue(draft.homeDelayTestInterval, DEFAULT_APP_SETTINGS.homeDelayTestInterval),
-      logLevel: normalizeClientCompatCoreLogLevel(draft.logLevel, DEFAULT_APP_SETTINGS.logLevel),
+      logLevel: normalizeCoreLogLevel(draft.logLevel, DEFAULT_APP_SETTINGS.logLevel),
       outboundDomainResolveMethod: normalizeOutboundDomainResolveMethod(draft.outboundDomainResolveMethod, DEFAULT_APP_SETTINGS.outboundDomainResolveMethod),
       mode: normalizeAppRuntimeMode(draft.mode, DEFAULT_APP_SETTINGS.mode),
       trafficMode: draft.trafficMode,
