@@ -9,6 +9,7 @@ export const DEFAULT_LANGUAGE: AppLanguage = APP_LANGUAGE_AUTO;
 // updates all mounted pages live instead of only on the next page lifecycle.
 export const APP_LANGUAGE_STORAGE_KEY: string = 'appLanguage';
 export const TRANSLATION_KEYS: Array<string> = [
+  'action.copy',
   'deepLink.confirm.title',
   'deepLink.confirm.sub',
   'deepLink.confirm.config',
@@ -789,8 +790,6 @@ export const TRANSLATION_KEYS: Array<string> = [
   'subscription.detail.updating',
   'subscription.detail.nodes',
   'subscription.detail.emptyNodes',
-  'subscription.detail.qr',
-  'subscription.detail.qr.hint',
   'subscription.detail.copyLink',
   'subscription.detail.copied',
   'subscription.edit.title.new',
@@ -1100,6 +1099,7 @@ export const TRANSLATION_KEYS: Array<string> = [
 ];
 
 const ZH_TRANSLATIONS: Record<string, string> = {
+  'action.copy': '复制',
   'deepLink.confirm.title': '确认添加？',
   'deepLink.confirm.sub': '有外部链接请求向 Hey 添加一个远程配置源。请确认下面的地址是你自己的：',
   'deepLink.confirm.config': '有外部链接请求向 Hey 添加一个服务器配置。请确认下面的内容是你自己的：',
@@ -1937,8 +1937,6 @@ const ZH_TRANSLATIONS: Record<string, string> = {
   'subscription.detail.updating': '正在获取并更新节点...',
   'subscription.detail.nodes': '节点列表',
   'subscription.detail.emptyNodes': '此分组下暂无节点',
-  'subscription.detail.qr': '订阅二维码',
-  'subscription.detail.qr.hint': '使用另一台设备扫描二维码即可导入此订阅链接。',
   'subscription.detail.copyLink': '复制订阅链接',
   'subscription.detail.copied': '订阅链接已复制到剪贴板。',
   'subscription.edit.title.new': '新建订阅分组',
@@ -2191,6 +2189,7 @@ const ZH_TRANSLATIONS: Record<string, string> = {
 };
 
 const EN_TRANSLATIONS: Record<string, string> = {
+  'action.copy': 'Copy',
   'deepLink.confirm.title': 'Add this?',
   'deepLink.confirm.sub': 'An external link is asking Hey to add a remote config source. Confirm the address below is yours:',
   'deepLink.confirm.config': 'An external link is asking Hey to add a server configuration. Confirm the content below is yours:',
@@ -3028,8 +3027,6 @@ const EN_TRANSLATIONS: Record<string, string> = {
   'subscription.detail.updating': 'Updating nodes...',
   'subscription.detail.nodes': 'Node list',
   'subscription.detail.emptyNodes': 'No nodes in this group',
-  'subscription.detail.qr': 'Subscription QR',
-  'subscription.detail.qr.hint': 'Scan this QR code from another device to import this subscription URL.',
   'subscription.detail.copyLink': 'Copy subscription URL',
   'subscription.detail.copied': 'Subscription URL copied to clipboard.',
   'subscription.edit.title.new': 'New subscription group',

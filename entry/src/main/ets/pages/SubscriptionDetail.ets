@@ -15,9 +15,7 @@ import { ensureReadPasteboardPermission } from '../utils/ClipboardPermission';
 import { isScanCancelled, scanQrCode } from '../utils/QrScan';
 import { router, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
-import { generateBarcode, scanCore } from '@kit.ScanKit';
-import { image } from '@kit.ImageKit';
-import { shareText, TextShareResult } from '../services/SystemShare';
+import { scanCore } from '@kit.ScanKit';
 
 interface SubscriptionNodeRowModel {
   node: ProxyNode;
@@ -37,15 +35,12 @@ struct SubscriptionDetailPage {
   @State private subscriptionMessage: string = '';
   @State private isUpdating: boolean = false;
   @State private isBusy: boolean = false;
-  @State private showSubscriptionQr: boolean = false;
-  @State private subscriptionQrImage: image.PixelMap | undefined = undefined;
 
   // 状态卡片展示控制
   @State private showCard: boolean = false;
   @State private cardType: 'success' | 'error' | 'info' = 'info';
   private timerId: number = -1;
   private subscriptionProxyPort: number = 0;
-  private subscriptionQrSource: string = '';
 
   aboutToAppear(): void {
     const params = this.getUIContext().getRouter().getParams() as Record<string, Object>;
@@ -130,8 +125,8 @@ struct SubscriptionDetailPage {
                 this.scanSubscriptionUrl();
               })
               if (this.subscriptionUrl.trim().length > 0) {
-                this.ToolbarIcon($r('app.media.ic_share'), () => {
-                  this.showSubscriptionQrPanel();
+                this.ToolbarIcon($r('app.media.ic_copy'), () => {
+                  this.copySubscriptionLink();
                 })
               }
             }
@@ -144,59 +139,6 @@ struct SubscriptionDetailPage {
           .borderRadius(Radius.lg)
           .border({ width: 0.5, color: AppColor.border })
           .margin({ bottom: Space.md })
-
-          if (this.showSubscriptionQr && this.subscriptionUrl.trim().length > 0) {
-            this.GroupLabel(this.t('subscription.detail.qr'))
-            Column({ space: Space.md }) {
-              if (this.subscriptionQrImage !== undefined) {
-                Image(this.subscriptionQrImage)
-                  .width(220)
-                  .height(220)
-                  .objectFit(ImageFit.Contain)
-                  .backgroundColor(Color.White)
-                  .borderRadius(Radius.md)
-              } else {
-                LoadingProgress()
-                  .width(48)
-                  .height(48)
-                  .color(AppColor.brand)
-              }
-              Text(this.t('subscription.detail.qr.hint'))
-                .fontSize(FontSz.footnote)
-                .fontColor(AppColor.textTertiary)
-                .textAlign(TextAlign.Center)
-              Row({ space: Space.md }) {
-                Button(this.t('subscription.detail.copyLink'))
-                  .height(40)
-                  .layoutWeight(1)
-                  .backgroundColor(AppColor.surfaceAlt)
-                  .fontColor(AppColor.textPrimary)
-                  .fontSize(FontSz.callout)
-                  .borderRadius(Radius.pill)
-                  .onClick(() => {
-                    this.copySubscriptionLink();
-                  })
-                Button(this.t('action.share'))
-                  .height(40)
-                  .layoutWeight(1)
-                  .backgroundColor(AppColor.brand)
-                  .fontColor(AppColor.onBrand)
-                  .fontSize(FontSz.callout)
-                  .borderRadius(Radius.pill)
-                  .onClick(() => {
-                    this.shareSubscriptionLink();
-                  })
-              }
-              .width('100%')
-            }
-            .width('100%')
-            .padding(Space.lg)
-            .backgroundColor(AppColor.surface)
-            .borderRadius(Radius.lg)
-            .clip(true)
-            .margin({ bottom: Space.md })
-            .alignItems(HorizontalAlign.Center)
-          }
 
           // 获取并更新按钮
           Button() {
@@ -301,47 +243,9 @@ struct SubscriptionDetailPage {
 
   private onSubscriptionUrlChanged(value: string): void {
     this.subscriptionUrl = value;
-    if (value.trim() !== this.subscriptionQrSource) {
-      this.showSubscriptionQr = false;
-      this.subscriptionQrImage = undefined;
-      this.subscriptionQrSource = '';
-    }
   }
 
-  private async showSubscriptionQrPanel(): Promise<void> {
-    const url = this.subscriptionUrl.trim();
-    if (url.length === 0) {
-      return;
-    }
-    this.showSubscriptionQr = true;
-    await this.generateSubscriptionQr(url);
-  }
 
-  private async generateSubscriptionQr(url: string): Promise<void> {
-    if (this.subscriptionQrSource === url && this.subscriptionQrImage !== undefined) {
-      return;
-    }
-    try {
-      const options: generateBarcode.CreateOptions = {
-        scanType: scanCore.ScanType.QR_CODE,
-        height: 600,
-        width: 600
-      };
-      this.subscriptionQrImage = await generateBarcode.createBarcode(url, options);
-      this.subscriptionQrSource = url;
-    } catch (error) {
-      this.subscriptionQrImage = undefined;
-      this.subscriptionQrSource = '';
-      this.showSubscriptionQr = false;
-      const message = this.f1('error.qrGenerate', 'error', JSON.stringify(error));
-      try {
-        this.getUIContext().getPromptAction().showToast({ message });
-      } catch (err) {
-        // ignore
-      }
-      SHARED_RUNTIME_CONTROLLER.appendLog(message);
-    }
-  }
 
   private async loadState(): Promise<void> {
     const context = this.getUIContext().getHostContext() as common.Context;
@@ -524,39 +428,7 @@ struct SubscriptionDetailPage {
     }
   }
 
-  private async shareSubscriptionLink(): Promise<void> {
-    const url = this.subscriptionUrl.trim();
-    if (url.length === 0) {
-      return;
-    }
-    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    const result = await shareText(context, this.groupName, url);
-    this.handleShareResult(result);
-  }
 
-  private handleShareResult(result: TextShareResult): void {
-    if (result.systemShareStarted) {
-      try {
-        this.getUIContext().getPromptAction().showToast({ message: this.t('share.started') });
-      } catch (err) {
-        // ignore
-      }
-      return;
-    }
-    if (result.copiedToClipboard) {
-      try {
-        this.getUIContext().getPromptAction().showToast({ message: this.t('share.fallbackCopied') });
-      } catch (err) {
-        // ignore
-      }
-      return;
-    }
-    try {
-      this.getUIContext().getPromptAction().showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
-    } catch (err) {
-      // ignore
-    }
-  }
 
   private subscriptionNodeRows(): Array<SubscriptionNodeRowModel> {
     const rows: Array<SubscriptionNodeRowModel> = [];

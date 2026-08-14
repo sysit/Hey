@@ -1,4 +1,5 @@
 import { common } from '@kit.AbilityKit';
+import { pasteboard } from '@kit.BasicServicesKit';
 import { IconButton } from '../components/IconButton';
 import { DEFAULT_LANGUAGE, translate } from '../core/I18n';
 import { shouldExposeLocalHttpProxy } from '../core/LocalProxy';
@@ -10,7 +11,6 @@ import { SETTINGS_CONTROLLER } from '../features/settings/SettingsController';
 import { SHARED_RUNTIME_CONTROLLER } from '../features/runtime/RuntimeController';
 import { AppRoute } from '../shell/AppRoute';
 import { PageHeader } from '../shell/PageHeader';
-import { shareText, TextShareResult } from '../services/SystemShare';
 import { formatOne } from '../utils/LocalizationPresenter';
 import { router, promptAction } from '@kit.ArkUI';
 import { AppColor, FontSz, Radius, Space } from '../theme/Theme';
@@ -213,8 +213,8 @@ struct SubscriptionsPage {
           this.moveSubscriptionGroup(group, 1);
         }, this.canMoveGroup(group.id, 1), false)
         if (group.url.trim().length > 0) {
-          this.SwipeButton($r('app.media.ic_share'), this.t('action.share'), AppColor.brand, () => {
-            this.shareSubscriptionGroup(group);
+          this.SwipeButton($r('app.media.ic_copy'), this.t('action.copy'), AppColor.brand, () => {
+            this.copySubscriptionGroupUrl(group);
           }, true, false)
         }
         this.SwipeButton($r('app.media.ic_edit'), this.t('action.edit'), AppColor.textSecondary, () => {
@@ -417,39 +417,20 @@ struct SubscriptionsPage {
     return index >= 0 && target >= 0 && target < this.subscriptionGroups.length;
   }
 
-  private async shareSubscriptionGroup(group: SubscriptionGroup): Promise<void> {
+  private async copySubscriptionGroupUrl(group: SubscriptionGroup): Promise<void> {
     const url = group.url.trim();
     if (url.length === 0) {
       return;
     }
-    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    const result = await shareText(context, group.name, url);
-    this.handleShareResult(result);
-  }
-
-  private handleShareResult(result: TextShareResult): void {
-    if (result.systemShareStarted) {
-      try {
-        this.getUIContext().getPromptAction().showToast({ message: this.t('share.started') });
-      } catch (err) {
-        // ignore
-      }
-      return;
-    }
-    if (result.copiedToClipboard) {
-      try {
-        this.getUIContext().getPromptAction().showToast({ message: this.t('share.fallbackCopied') });
-      } catch (err) {
-        // ignore
-      }
-      return;
-    }
     try {
-      this.getUIContext().getPromptAction().showToast({ message: this.f1('share.failed', 'error', result.errorMessage) });
+      const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, url);
+      await pasteboard.getSystemPasteboard().setData(data);
+      this.getUIContext().getPromptAction().showToast({ message: this.t('subscription.detail.copied') });
     } catch (err) {
       // ignore
     }
   }
+
 
   private t(key: string): string {
     return translate(this.language, key);
