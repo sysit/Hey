@@ -68,8 +68,8 @@ export struct RoutingRuleDialog {
         Scroll() {
           Column({ space: Space.md }) {
             this.InputField(this.t('routing.rule.remarks'), this.remarks, this.t('routing.rule.remarks.placeholder'), 'remarks')
-            this.InputField(this.t('routing.rule.domain'), this.domain, 'domain:example.com,full:api.example.com', 'domain')
-            this.InputField(this.t('routing.rule.ip'), this.ip, 'geoip:private,10.0.0.0/8,203.0.113.5', 'ip')
+            this.InputField(this.t('routing.rule.domain'), this.domain, 'domain:example.com,full:api.example.com', 'domain', this.t('routing.rule.domain.hint'))
+            this.InputField(this.t('routing.rule.ip'), this.ip, 'geoip:private,10.0.0.0/8,203.0.113.5', 'ip', this.t('routing.rule.ip.hint'))
             this.InputField(this.t('routing.rule.process'), this.process, 'com.example.app', 'process')
             this.InputField(this.t('routing.rule.port'), this.port, '53,443,1000-2000', 'port')
             this.InputField(this.t('routing.rule.protocol'), this.protocol, 'http,tls,bittorrent', 'protocol')
@@ -185,7 +185,7 @@ export struct RoutingRuleDialog {
   }
 
   @Builder
-  private InputField(label: string, value: string, placeholder: string, field: string) {
+  private InputField(label: string, value: string, placeholder: string, field: string, hint: string = '') {
     Column({ space: Space.sm }) {
       Text(label)
         .fontSize(FontSz.footnote)
@@ -202,6 +202,14 @@ export struct RoutingRuleDialog {
         .onChange((text: string) => {
           this.updateInput(field, text);
         })
+      // 出厂无预设规则，用户要自己写匹配串，这里给出可用语法。
+      if (hint.length > 0) {
+        Text(hint)
+          .fontSize(FontSz.caption)
+          .fontColor(AppColor.textTertiary)
+          .lineHeight(15)
+          .alignSelf(ItemAlign.Start)
+      }
     }
     .width('100%')
   }

@@ -9,6 +9,19 @@ export const DEFAULT_LANGUAGE: AppLanguage = APP_LANGUAGE_AUTO;
 // updates all mounted pages live instead of only on the next page lifecycle.
 export const APP_LANGUAGE_STORAGE_KEY: string = 'appLanguage';
 export const TRANSLATION_KEYS: Array<string> = [
+  'assets.geo.updateFromUrl',
+  'assets.geo.updateFromUrl.desc',
+  'routing.rule.import.fromFile',
+  'routing.rule.import.skippedCount',
+  'routing.rule.import.err.empty',
+  'routing.rule.import.err.invalidJson',
+  'routing.rule.import.err.notArray',
+  'routing.rule.import.err.noValidRule',
+  'routing.rule.import.err.noMatcher',
+  'routing.rule.import.err.notObject',
+  'routing.rule.import.err.more',
+  'routing.rule.domain.hint',
+  'routing.rule.ip.hint',
   'backup.title',
   'backup.intro',
   'backup.stat.subscriptions',
@@ -1096,6 +1109,19 @@ export const TRANSLATION_KEYS: Array<string> = [
 ];
 
 const ZH_TRANSLATIONS: Record<string, string> = {
+  'assets.geo.updateFromUrl': '从 URL 更新',
+  'assets.geo.updateFromUrl.desc': '填写你自己的数据文件地址。应用不内置任何下载源。',
+  'routing.rule.import.fromFile': '从文件导入',
+  'routing.rule.import.skippedCount': '（跳过 {count} 条）',
+  'routing.rule.import.err.empty': '内容为空。请提供一个 JSON 数组，例如：\n[{"remarks":"示例","domain":["domain:example.com"],"outboundTag":"proxy"}]',
+  'routing.rule.import.err.invalidJson': '不是合法的 JSON。请检查括号、引号和逗号是否配对。',
+  'routing.rule.import.err.notArray': 'JSON 顶层必须是数组（以 [ 开头、] 结尾），每个元素是一条规则。',
+  'routing.rule.import.err.noValidRule': '没有可用的规则。以下条目被跳过：',
+  'routing.rule.import.err.noMatcher': '缺少匹配条件（domain / ip / process / port / protocol / network 至少填一个）',
+  'routing.rule.import.err.notObject': '不是一个对象',
+  'routing.rule.import.err.more': '  …另有 {count} 条被跳过',
+  'routing.rule.domain.hint': '每行或逗号分隔。支持 domain:example.com（含子域）、full:api.example.com（精确）、regexp:.*\\.example\\.com',
+  'routing.rule.ip.hint': '每行或逗号分隔。支持 10.0.0.0/8（CIDR）、203.0.113.5（单个 IP）、geoip:private（私有网段）',
   'backup.title': '备份与恢复',
   'backup.intro': '把全部节点、订阅、路由规则和应用设置导出为一个本地文件，便于换机或重装后恢复。',
   'backup.stat.subscriptions': '订阅组',
@@ -2183,6 +2209,19 @@ const ZH_TRANSLATIONS: Record<string, string> = {
 };
 
 const EN_TRANSLATIONS: Record<string, string> = {
+  'assets.geo.updateFromUrl': 'Update from URL',
+  'assets.geo.updateFromUrl.desc': 'Enter your own data-file URL. The app bundles no download source.',
+  'routing.rule.import.fromFile': 'Import from file',
+  'routing.rule.import.skippedCount': '({count} skipped)',
+  'routing.rule.import.err.empty': 'The content is empty. Provide a JSON array, for example:\n[{"remarks":"Example","domain":["domain:example.com"],"outboundTag":"proxy"}]',
+  'routing.rule.import.err.invalidJson': 'Not valid JSON. Check that brackets, quotes and commas are balanced.',
+  'routing.rule.import.err.notArray': 'The top level must be an array (starting with [ and ending with ]), where each element is one rule.',
+  'routing.rule.import.err.noValidRule': 'No usable rule found. These entries were skipped:',
+  'routing.rule.import.err.noMatcher': 'No matcher (needs at least one of domain / ip / process / port / protocol / network)',
+  'routing.rule.import.err.notObject': 'Not an object',
+  'routing.rule.import.err.more': '  …and {count} more skipped',
+  'routing.rule.domain.hint': 'Comma- or line-separated. Supports domain:example.com (with subdomains), full:api.example.com (exact), regexp:.*\\.example\\.com',
+  'routing.rule.ip.hint': 'Comma- or line-separated. Supports 10.0.0.0/8 (CIDR), 203.0.113.5 (single IP), geoip:private (private ranges)',
   'backup.title': 'Backup & Restore',
   'backup.intro': 'Export all nodes, subscriptions, routing rules and app settings into a single local file for migration or reinstall.',
   'backup.stat.subscriptions': 'Subscriptions',

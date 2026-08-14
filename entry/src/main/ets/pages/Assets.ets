@@ -25,8 +25,8 @@ interface SheetOption {
   disabled: boolean;
 }
 
-// 抽屉模式：'' 关闭 / 'source' 下载源 / 'importType' 导入类型 / 'geoMore' 单资源更新删除 / 'edit' 添加编辑
-type SheetKind = '' | 'source' | 'importType' | 'geoMore' | 'edit';
+// 抽屉模式：'' 关闭 / 'importType' 导入类型 / 'geoMore' 单资源操作 / 'geoUrl' 自填下载地址 / 'edit' 添加编辑
+type SheetKind = '' | 'importType' | 'geoMore' | 'geoUrl' | 'edit';
 
 @Entry
 @Component
@@ -66,6 +66,7 @@ struct AssetsPage {
   @State private editName: string = '';
   @State private editUrl: string = '';
   @State private editIsLocal: boolean = false;
+  @State private geoUrlInput: string = '';
 
   aboutToAppear(): void {
     this.loadState();
@@ -543,6 +544,8 @@ struct AssetsPage {
 
           if (this.sheetKind === 'edit') {
             this.SheetEditBody()
+          } else if (this.sheetKind === 'geoUrl') {
+            this.SheetGeoUrlBody()
           } else {
             this.SheetSelectBody()
           }
@@ -615,6 +618,72 @@ struct AssetsPage {
     }
     .width('100%')
     .padding({ left: Space.md, right: Space.md })
+  }
+
+  // 为 geosite.dat / geoip.dat 自填下载地址。应用不内置任何源，地址完全由用户提供。
+  @Builder
+  private SheetGeoUrlBody() {
+    Column() {
+      Text(this.t('assets.urlAddress'))
+        .fontSize(FontSz.footnote)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppColor.textSecondary)
+        .width('100%')
+        .margin({ bottom: 6 })
+      TextInput({ text: this.geoUrlInput, placeholder: 'https://example.com/geosite.dat' })
+        .height(46)
+        .fontSize(FontSz.callout)
+        .fontColor(AppColor.textPrimary)
+        .placeholderColor(AppColor.textTertiary)
+        .backgroundColor(AppColor.surfaceAlt)
+        .borderRadius(Radius.md)
+        .onChange((value: string) => { this.geoUrlInput = value; })
+
+      Button(this.t('action.update'))
+        .width('100%')
+        .height(48)
+        .backgroundColor(AppColor.brand)
+        .fontColor(AppColor.onBrand)
+        .fontSize(FontSz.callout)
+        .fontWeight(FontWeight.Medium)
+        .borderRadius(Radius.pill)
+        .margin({ top: Space.xl })
+        .onClick(() => this.downloadGeoFromUrl())
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+    .padding({ left: Space.lg, right: Space.lg })
+  }
+
+  private async downloadGeoFromUrl(): Promise<void> {
+    const url = this.geoUrlInput.trim();
+    const fileName = this.geoMoreFile;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      this.toast(this.t('assets.scanInvalidUrl'));
+      return;
+    }
+    this.closeSheet();
+    if (this.downloadingFile.length > 0) {
+      this.toast(this.t('assets.downloadBusy'));
+      return;
+    }
+    const context = this.getUIContext().getHostContext() as common.Context;
+    await ASSETS_CONTROLLER.downloadAsset(
+      context,
+      fileName,
+      url,
+      this.language,
+      () => {
+        this.downloadingFile = fileName;
+        this.updateFileStatus();
+      },
+      () => {},
+      () => {},
+      () => {
+        this.downloadingFile = '';
+        this.updateFileStatus();
+      }
+    );
   }
 
   @Builder
@@ -707,6 +776,7 @@ struct AssetsPage {
     this.geoMoreFile = fileName;
     const exists = this.builtinFileExists(fileName);
     const options: Array<SheetOption> = [
+      { id: 'urlUpdate', title: this.t('assets.geo.updateFromUrl'), desc: this.t('assets.geo.updateFromUrl.desc'), selected: false, danger: false, disabled: false },
       { id: 'delete', title: this.t('action.delete'), desc: '', selected: false, danger: true, disabled: !exists }
     ];
     this.sheetTitle = fileName;
@@ -749,7 +819,13 @@ struct AssetsPage {
     } else if (kind === 'geoMore') {
       const file = this.geoMoreFile;
       this.closeSheet();
-      if (optionId === 'delete') {
+      if (optionId === 'urlUpdate') {
+        this.geoMoreFile = file;
+        this.geoUrlInput = '';
+        this.sheetTitle = file;
+        this.sheetHint = this.t('assets.geo.updateFromUrl.desc');
+        this.sheetKind = 'geoUrl';
+      } else if (optionId === 'delete') {
         this.deleteAsset(file);
       }
     }
