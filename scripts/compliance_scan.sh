@@ -35,6 +35,8 @@ P="$P"'|Loyalsoldier|runetfreedom|Chocolate4U|2dust/|androidpackagenamelist|v2ra
 P="$P"'|clash\.meta Hey|v2rayNG/[0-9]|User-Agent.{0,40}clash'
 # 出口地理归属解析
 P="$P"'|country_code|countryCode'
+# 侧载与分发：应用内更新检查 / Release 下载引导（仓库只提供源码）
+P="$P"'|browser_download_url|releases/latest|api\.github\.com/repos/[^/]+/[^/]+/releases'
 # 用途宣称（中英）
 P="$P"'|翻墙|科学上网|机场|梯子|被墙|访问外网|自由上网|突破封锁|大陆白名单|大陆黑名单'
 P="$P"'|bypass censorship|great firewall|unblock the internet|circumvent censorship'

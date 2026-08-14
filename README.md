@@ -118,6 +118,11 @@ docs/                             Native build and HarmonyOS notes
 
 ## Build And Install
 
+**This repository ships source code only.** No prebuilt package is provided or
+distributed, and the app has no in-app update or download path. Build it
+yourself with your own signing key using the instructions below.
+
+
 `build-profile.json5` is a local DevEco Studio file and is ignored by Git because
 it may contain personal signing material. Before opening a fresh checkout, copy
 `build-profile.example.json5` to `build-profile.json5`, then configure debug or

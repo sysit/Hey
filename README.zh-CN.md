@@ -100,6 +100,10 @@ docs/                             原生构建与 HarmonyOS 相关说明
 
 ## 构建与安装
 
+**本仓库只提供源代码。** 不提供也不分发任何预编译安装包，应用内也没有更新检查或下载入口。
+请按下面的说明自行构建，并用你自己的签名安装。
+
+
 `build-profile.json5` 是 DevEco Studio 的本地配置文件，方便个人调试，因此不会提交到仓库。
 首次打开新拉取的工程前，请先把 `build-profile.example.json5` 复制为 `build-profile.json5`，然后在
 DevEco Studio 里配置本机的调试或发布签名。证书路径、密钥密码等签名内容只保留在本地。
