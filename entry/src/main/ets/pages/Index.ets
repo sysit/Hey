@@ -236,7 +236,7 @@ struct Index {
     SHARED_RUNTIME_CONTROLLER.appendLog(this.t('log.autoStartupStartRequested'));
   }
 
-  // Imports a stashed deep link (hey://install-sub|install-config?url=...) once
+  // Imports a stashed deep link (hey://add-source|add-endpoint?url=...) once
   // when the page shows after EntryAbility received it. No-op on normal returns.
   private async handlePendingDeepLink(): Promise<void> {
     const link = AppStorage.get<string>('pendingDeepLink');
@@ -252,19 +252,60 @@ struct Index {
       await this.handleControlDeepLink(intent.action ?? '', intent.targetNodeId ?? '');
       return;
     }
+    // 深链来自应用外部（任意网页都能唤起），落地前必须让用户看到完整地址并显式确认，
+    // 否则等于任意页面都能诱导本机添加配置、甚至发起联网请求。
+    if (intent.kind === 'sub') {
+      const validationMessage = SubscriptionManager.validateSubscriptionUrl(intent.payload, false);
+      if (validationMessage.length > 0) {
+        this.lastError = localizeCoreMessage(this.language, validationMessage);
+        SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
+        return;
+      }
+    }
+    this.confirmDeepLinkIntent(intent);
+  }
+
+  private confirmDeepLinkIntent(intent: DeepLinkIntent): void {
+    const isSub = intent.kind === 'sub';
+    const hint = isSub ? this.t('deepLink.confirm.sub') : this.t('deepLink.confirm.config');
+    try {
+      this.getUIContext().showAlertDialog({
+        title: this.t('deepLink.confirm.title'),
+        message: `${hint}\n\n${intent.payload}`,
+        autoCancel: false,
+        alignment: DialogAlignment.Bottom,
+        offset: { dx: 0, dy: -20 },
+        primaryButton: {
+          value: this.t('action.add'),
+          fontColor: AppColor.onBrand,
+          backgroundColor: AppColor.brand,
+          action: () => {
+            this.applyDeepLinkIntent(intent);
+          }
+        },
+        secondaryButton: {
+          value: this.t('action.cancel'),
+          fontColor: AppColor.textSecondary,
+          backgroundColor: AppColor.bg,
+          action: () => {
+            SHARED_RUNTIME_CONTROLLER.appendLog(this.t('deepLink.confirm.declined'));
+          }
+        }
+      });
+    } catch (err) {
+      // 弹不出确认框就放弃导入，绝不静默执行。
+      SHARED_RUNTIME_CONTROLLER.appendLog(this.t('deepLink.confirm.declined'));
+    }
+  }
+
+  private async applyDeepLinkIntent(intent: DeepLinkIntent): Promise<void> {
     const context = this.getUIContext().getHostContext() as common.Context;
     try {
       if (intent.kind === 'sub') {
         const name = subscriptionNameFromDeepLink(intent.payload);
-        const validationMessage = SubscriptionManager.validateSubscriptionUrl(intent.payload, false);
-        if (validationMessage.length > 0) {
-          this.lastError = localizeCoreMessage(this.language, validationMessage);
-          SHARED_RUNTIME_CONTROLLER.appendLog(this.lastError);
-          return;
-        }
+        // 只添加配置源，不自动联网拉取——拉取由用户在订阅页手动触发。
         const added = await SUBSCRIPTIONS_CONTROLLER.addGroup(context, name, intent.payload, '', '', '', '', false, this.language);
-        const state = await SUBSCRIPTIONS_CONTROLLER.update(context, added.selectedGroupId, intent.payload, '', this.language);
-        this.applySubscriptionsState(state);
+        this.applySubscriptionsState(added);
         this.applyNodesState(await NODES_CONTROLLER.load(context, this.language));
         SHARED_RUNTIME_CONTROLLER.appendLog(this.f1('log.deepLinkSub', 'name', name));
       } else {

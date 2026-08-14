@@ -27,7 +27,7 @@ export default class EntryAbility extends UIAbility {
     this.stashSharedTextImport(want);
   }
 
-  // Stash a deep-link Want uri (hey://install-sub|install-config?url=...) or
+  // Stash a deep-link Want uri (hey://add-source|add-endpoint?url=...) or
   // declared shortcut parameters for the Index page to pick up on show. Set
   // before the window stage loads on cold start, and on every onNewWant for
   // warm starts.

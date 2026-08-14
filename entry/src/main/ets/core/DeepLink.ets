@@ -1,7 +1,7 @@
 // Deep-link (URL Scheme / Want) intents for import entry points plus
 // shortcut/automation controls. The app registers the scheme
-//   hey://install-sub?url=<encoded subscription url>
-//   hey://install-config?url=<encoded share link>
+//   hey://add-source?url=<encoded remote config source url>
+//   hey://add-endpoint?url=<encoded share link>
 //   hey://control?action=start|stop|toggle|scan[&guid=<node id>]
 //   hey://start | hey://stop | hey://toggle | hey://scan[?guid=<node id>]
 // EntryAbility stashes the raw Want uri or shortcut parameters; the Index page
@@ -29,8 +29,8 @@ export interface DeepLinkIntent {
   targetNodeId?: string;
 }
 
-const SUB_PREFIX: string = 'hey://install-sub';
-const CONFIG_PREFIX: string = 'hey://install-config';
+const SUB_PREFIX: string = 'hey://add-source';
+const CONFIG_PREFIX: string = 'hey://add-endpoint';
 const CONTROL_PREFIX: string = 'hey://control';
 
 export function parseDeepLink(uri: string): DeepLinkIntent {

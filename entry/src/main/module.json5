@@ -64,11 +64,11 @@
             "uris": [
               {
                 "scheme": "hey",
-                "host": "install-sub"
+                "host": "add-source"
               },
               {
                 "scheme": "hey",
-                "host": "install-config"
+                "host": "add-endpoint"
               },
               {
                 "scheme": "hey",
