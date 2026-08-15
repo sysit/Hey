@@ -3512,11 +3512,11 @@ export default function localUnitTest() {
     it('counts skipped unsupported subscription entries', 0, () => {
       const content = 'vless://00000000-0000-0000-0000-000000000000@example.com:443?encryption=none#ok\n' +
         'ssr://ZmFrZS1zc3ItcGF5bG9hZA==\n' +
-        'https://t.me/some-channel\n' +
-        '剩余流量：10GB';
+        'https://example.com/notice\n' +
+        '纯文字说明行';
       const outcome = SubscriptionManager.parseSubscriptionContentDetailed(content, 'https://sub.example/mixed');
       expect(outcome.nodes.length).assertEqual(1);
-      // ssr 链接不支持、t.me 广告行缺端口解析失败，都计入跳过；纯文字说明行不计。
+      // ssr 协议不支持、https 说明行缺端口解析失败，都计入跳过；纯文字行不计。
       expect(outcome.skipped).assertEqual(2);
     });
 
