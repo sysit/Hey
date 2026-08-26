@@ -422,7 +422,7 @@ struct NodeEditPage {
   @State private wgPreSharedKey: string = '';
   @State private wgReserved: string = '0,0,0';
   @State private wgLocalAddress: string = '172.16.0.2/32';
-  @State private wgMtu: string = '1420';
+  @State private wgMtu: string = '1280';
 
   // Hysteria2 专属字段
   @State private hy2ObfsPassword: string = '';
@@ -566,7 +566,7 @@ struct NodeEditPage {
                 this.EditorRow('nodeEdit.wgReserved', this.wgReserved, 'nodeEdit.wgReserved.placeholder', (value: string) => {
                   this.wgReserved = value;
                 })
-                this.EditorRow('nodeEdit.wgMtu', this.wgMtu, 'nodeEdit.default1420', (value: string) => {
+                this.EditorRow('nodeEdit.wgMtu', this.wgMtu, 'nodeEdit.defaultWgMtu', (value: string) => {
                   this.wgMtu = value;
                 })
               }

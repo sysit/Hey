@@ -272,7 +272,10 @@ interface VmessQrCode {
 }
 
 const DEFAULT_WIREGUARD_RESERVED: Array<number> = [0, 0, 0];
-const DEFAULT_WIREGUARD_MTU: number = 1420;
+// 默认取 1280（IPv6 最小 MTU，任何链路都不会触发分片）。
+// 1420 在移动/运营商网络上外层加密 UDP 常超过路径 MTU，导致分片/丢包重传、速度骤降。
+// 链接或 conf 里显式写了 MTU 时仍以显式值为准；用户也可在节点编辑页手动调高。
+const DEFAULT_WIREGUARD_MTU: number = 1280;
 
 function makeFailure(message: string, protocol: string = ''): ShareLinkParseResult {
   return {

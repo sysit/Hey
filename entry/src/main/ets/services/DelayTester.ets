@@ -12,6 +12,12 @@ export interface DelayTestResult {
   status: string;
 }
 
+// hysteria2 / tuic 等基于 QUIC/UDP 的 sing-box 独有协议：Xray 核心无对应 outbound，
+// 无法建临时实例做真实 ping；服务器端口通常只监听 UDP，快速 TCP 探测多半失败。
+// 这类"无法用快速探测测出延迟"的情况用此中性状态标记，UI 据此显示中性文案而非红色"失败"
+// （节点本身可正常使用，只是延迟测不出来）。
+export const DELAY_STATUS_UDP_ONLY: string = 'udp-only';
+
 interface DelayProbeServer {
   address?: string;
   port?: number;
@@ -156,11 +162,17 @@ export class DelayTester {
       return DelayTester.measureTcp(target.address, target.port, timeoutMs);
     }
     // anytls / tuic / hysteria2 等 sing-box 独有协议 Xray 核心没有对应 outbound，
-    // native 测速（建临时 Xray + ping）必然失败。退化为到节点服务器的 TCP 连接延迟，
-    // 反映真实可达性与 RTT（实际连接由 sing-box 承载）。
+    // native 测速（建临时 Xray + ping）必然失败。先尝试到节点服务器的 TCP 握手：
+    // 少数把伪装站点开在同端口的服务器能借此测出 RTT；但 hysteria2/tuic 走 QUIC/UDP，
+    // 端口通常只监听 UDP，TCP 握手会失败。此时不误报为"失败"（节点实际能用），
+    // 而是返回中性状态 DELAY_STATUS_UDP_ONLY，由 UI 显示中性文案。
     const singboxTarget = DelayTester.singboxOnlyTcpTarget(outboundJson);
     if (singboxTarget !== null) {
-      return DelayTester.measureTcp(singboxTarget.address, singboxTarget.port, timeoutMs);
+      const tcpResult = await DelayTester.measureTcp(singboxTarget.address, singboxTarget.port, timeoutMs);
+      if (tcpResult.ok) {
+        return tcpResult;
+      }
+      return { ok: false, delayMs: -1, status: DELAY_STATUS_UDP_ONLY };
     }
     const timeoutSeconds = Math.max(1, Math.floor(timeoutMs / 1000));
     let result: NativePingResult;

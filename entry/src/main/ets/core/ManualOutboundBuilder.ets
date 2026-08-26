@@ -108,7 +108,7 @@ export function buildManualWireguardOutbound(input: ManualWireguardInput): Manua
     secretKey,
     address: splitCsvWithDefault(input.localAddress, '172.16.0.2/32'),
     peers: [peer],
-    mtu: parsePositiveInt(input.mtu, 1420)
+    mtu: parsePositiveInt(input.mtu, 1280)
   };
   settings.reserved = parseNumberCsvWithDefault(input.reserved, DEFAULT_WIREGUARD_RESERVED);
 

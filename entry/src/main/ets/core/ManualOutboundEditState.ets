@@ -205,7 +205,7 @@ function createDefaultManualOutboundEditState(protocol: string): ManualOutboundE
     wgPreSharedKey: '',
     wgReserved: '0,0,0',
     wgLocalAddress: '172.16.0.2/32',
-    wgMtu: '1420',
+    wgMtu: '1280',
     hy2ObfsPassword: '',
     hy2PortHopping: '',
     hy2PortHoppingInterval: '',
@@ -234,7 +234,7 @@ function applyWireguardState(state: ManualOutboundEditState, settings: JsonRecor
   state.userIdOrPassword = stringValue(settings, 'secretKey', '');
   state.wgLocalAddress = csvFromValue(settings['address'], '172.16.0.2/32');
   state.wgReserved = csvFromValue(settings['reserved'], '0,0,0');
-  state.wgMtu = numberString(settings, 'mtu', '1420');
+  state.wgMtu = numberString(settings, 'mtu', '1280');
   const peer = firstArrayRecord(settings, 'peers');
   if (peer === null) {
     return;

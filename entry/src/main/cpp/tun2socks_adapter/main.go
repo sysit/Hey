@@ -74,6 +74,11 @@ func startTun2Socks(tunFd int, socksHost string, socksPort int, mtu int) error {
 		Device:   fmt.Sprintf("fd://%d", tunFd),
 		Proxy:    fmt.Sprintf("socks5://%s:%d", socksHost, socksPort),
 		LogLevel: "warn",
+		// 开启 gvisor 接收窗口自动调优（默认关闭）。关闭时接收缓冲固定在 1MB，
+		// 高 RTT / 高带宽链路上单流吞吐被窗口卡死（吞吐 ≈ 窗口/RTT）；
+		// 打开后接收窗口按 BDP 自动增长到上限（4MB），显著提升下载速度。
+		// 只开自动调优、不强制放大每连接默认缓冲，避免多连接下手机内存占用过高。
+		TCPModerateReceiveBuffer: true,
 	})
 	engine.Start()
 	running.Store(true)

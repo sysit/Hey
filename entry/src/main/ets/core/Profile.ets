@@ -133,7 +133,9 @@ export const VPN_BYPASS_LAN_PROXY: string = '2';
 export const DEFAULT_VPN_BYPASS_LAN: string = VPN_BYPASS_LAN_BYPASS;
 export const DEFAULT_VPN_MTU: number = 1500;
 export const MIN_VPN_MTU: number = 1280;
-export const MAX_VPN_MTU: number = 9000;
+// 上限 1500 与 gvisor tun2socks 原生侧的硬性校验（napi_init.cpp 要求 mtu ≤ 1500）对齐。
+// 此前为 9000，用户设 >1500 时 gvisor 引擎会因非法 MTU 拒绝启动、VPN 连上却不过流量。
+export const MAX_VPN_MTU: number = 1500;
 export const DEFAULT_REAL_PING_CONCURRENCY: number = 16;
 export const MIN_REAL_PING_CONCURRENCY: number = 1;
 export const MAX_REAL_PING_CONCURRENCY: number = 128;

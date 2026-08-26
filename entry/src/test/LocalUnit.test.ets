@@ -741,7 +741,7 @@ export default function localUnitTest() {
 
       const defaultMtu = normalizeOutboundInput(WIREGUARD_CONF_WITHOUT_MTU);
       expect(defaultMtu.valid).assertTrue();
-      expect(defaultMtu.normalizedJson).assertContain('"mtu": 1420');
+      expect(defaultMtu.normalizedJson).assertContain('"mtu": 1280');
 
       const missingEndpoint = normalizeOutboundInput('[Interface]\nPrivateKey = private-key\n[Peer]\nPublicKey = peer-key\n');
       expect(missingEndpoint.valid).assertFalse();
@@ -3360,10 +3360,10 @@ export default function localUnitTest() {
       const defaultReservedWireguard = parseShareLinkToOutboundJson('wireguard://private-key@example.com:51820?publickey=peer-key#wg-default');
       expect(defaultReservedWireguard.success).assertTrue();
       expect(defaultReservedWireguard.outboundJson).assertContain('"reserved": [\n      0,\n      0,\n      0\n    ]');
-      expect(defaultReservedWireguard.outboundJson).assertContain('"mtu": 1420');
+      expect(defaultReservedWireguard.outboundJson).assertContain('"mtu": 1280');
       const exportedDefaultWireguard = formatOutboundJsonToShareLink(defaultReservedWireguard.outboundJson, 'wg-default');
       expect(exportedDefaultWireguard).assertContain('reserved=0%2C0%2C0');
-      expect(exportedDefaultWireguard).assertContain('mtu=1420');
+      expect(exportedDefaultWireguard).assertContain('mtu=1280');
 
       const hysteria2 = parseShareLinkToOutboundJson('hysteria2://auth%40word%2Fwith%3F@example.com:443?sni=hy.example&insecure=1&obfs-password=obfs&mport=20000-50000&mportHopInt=10-60&pinSHA256=hy2-pinned-sha256#hy2-demo');
       expect(hysteria2.success).assertTrue();

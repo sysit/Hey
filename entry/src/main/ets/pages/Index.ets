@@ -12,7 +12,7 @@ import { DeepLinkControlAction, DeepLinkIntent, parseDeepLink, subscriptionNameF
 import { consumeRuntimeSettingsRestartDecision, markRuntimeSettingsRestartNeeded } from '../core/SettingsChange';
 import { resolveImportedNodeName } from '../core/ImportedNodeNames';
 import { shouldShowProxySharingStartWarning } from '../core/ProxySharingWarning';
-import { DelayTester, DelayTestResult } from '../services/DelayTester';
+import { DelayTester, DelayTestResult, DELAY_STATUS_UDP_ONLY } from '../services/DelayTester';
 import { convertNativeShareTextToOutbounds } from '../services/NativeShareConverter';
 import { CONTROL_CARD_MANAGER } from '../services/ControlCardManager';
 import { calculateSpeedNotificationRates, sampleSpeedNotificationStats, SpeedNotificationSample } from '../core/SpeedNotification';
@@ -2432,6 +2432,9 @@ struct Index {
     if (node.delayMs >= 0) {
       return this.f1('node.delay.ms', 'value', node.delayMs.toString());
     }
+    if (node.delayStatus === DELAY_STATUS_UDP_ONLY) {
+      return this.t('node.delay.udpOnly');
+    }
     if (node.delayStatus.length > 0) {
       return this.t('node.delay.failed');
     }
@@ -2450,6 +2453,9 @@ struct Index {
         return AppColor.warning;
       }
     }
+    if (node.delayStatus === DELAY_STATUS_UDP_ONLY) {
+      return AppColor.textSecondary;
+    }
     if (node.delayStatus.length > 0) {
       return AppColor.danger;
     }
@@ -2459,6 +2465,9 @@ struct Index {
   private delayResultText(result: DelayTestResult): string {
     if (result.ok) {
       return this.f1('node.delay.ms', 'value', result.delayMs.toString());
+    }
+    if (result.status === DELAY_STATUS_UDP_ONLY) {
+      return this.t('node.delay.udpOnly');
     }
     return `${this.t('node.delay.failed')} ${result.status}`;
   }

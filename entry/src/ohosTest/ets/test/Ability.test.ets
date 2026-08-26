@@ -57,7 +57,7 @@ export default function abilityTest() {
     it('normalizes vpn mtu settings for the vpn interface', 0, () => {
       expect(normalizeVpnMtu()).assertEqual(VPN_MTU);
       expect(normalizeVpnMtu(1279)).assertEqual(1280);
-      expect(normalizeVpnMtu(9001)).assertEqual(9000);
+      expect(normalizeVpnMtu(1501)).assertEqual(1500);
 
       const config = createDefaultVpnConfig(false, true, [], '1.1.1.1', false, 1420);
       expect(config.mtu).assertEqual(1420);
